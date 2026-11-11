@@ -465,6 +465,18 @@
   cursor: not-allowed;
 }
 
+.btn-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 .completed-notice-bar {
   display: flex;
   flex-wrap: wrap;

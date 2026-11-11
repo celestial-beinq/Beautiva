@@ -76,7 +76,7 @@ export class HomeComponent {
     {
       question: 'HOW DO I BOOK AN APPOINTMENT?',
       answer:
-        'Browse any beauty category, open a studio’s auto-generated website, pick your service, date, time, and optional specialist, then confirm with Paystack (full or 30% deposit) or pay at the studio.',
+        'Browse any beauty category, open a studio’s auto-generated website, pick your service, date, time, and optional specialist, then confirm with 100% upfront payment via Paystack.',
     },
     {
       question: 'HOW DOES EVERY VENDOR GET A WEBSITE AUTOMATICALLY?',
@@ -86,7 +86,7 @@ export class HomeComponent {
     {
       question: 'WHAT PAYSTACK PAYMENT OPTIONS ARE SUPPORTED?',
       answer:
-        'You can pay 100% online via Paystack (Card, Bank Transfer, or USSD), secure your slot with a 30% deposit, or choose Pay at Business when a studio enables walk-in settlement.',
+        'All bookings require 100% upfront payment online via Paystack (Card, Bank Transfer, or USSD) so your slot is locked in and cashless.',
     },
     {
       question: 'HOW DO I TRACK MY BOOKING AFTER PAYING?',

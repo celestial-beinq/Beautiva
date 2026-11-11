@@ -816,9 +816,9 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
         },
         payment_policy: {
           allowFull: true,
-          allowDeposit: true,
-          depositPercent: 30,
-          allowPayAtBusiness: true,
+          allowDeposit: false,
+          depositPercent: 0,
+          allowPayAtBusiness: false,
         },
       },
       { onConflict: 'slug' },

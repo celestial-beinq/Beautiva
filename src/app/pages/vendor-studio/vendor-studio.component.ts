@@ -97,9 +97,9 @@ export class VendorStudioComponent {
   };
   editPolicy: PaymentPolicy = {
     allowFull: true,
-    allowDeposit: true,
-    depositPercent: 30,
-    allowPayAtBusiness: true,
+    allowDeposit: false,
+    depositPercent: 0,
+    allowPayAtBusiness: false,
   };
 
   newBlockedDate = '';
@@ -129,9 +129,9 @@ export class VendorStudioComponent {
   galleryImages: string[] = [];
 
   allowFull = true;
-  allowDeposit = true;
-  depositPercent = 30;
-  allowPayAtBusiness = true;
+  allowDeposit = false;
+  depositPercent = 0;
+  allowPayAtBusiness = false;
 
   services: ServiceItem[] = [
     {
@@ -705,8 +705,10 @@ export class VendorStudioComponent {
         bufferMinutes: Number(this.editAvailability.bufferMinutes) || 15,
       },
       paymentPolicy: {
-        ...this.editPolicy,
-        depositPercent: Number(this.editPolicy.depositPercent) || 30,
+        allowFull: true,
+        allowDeposit: false,
+        depositPercent: 0,
+        allowPayAtBusiness: false,
       },
     });
     this.flashToast(`Saved availability, breaks, hours & Paystack rules for ${studio.name}`);
@@ -883,10 +885,10 @@ export class VendorStudioComponent {
         instagram: this.instagram.trim() || `@${slug}`,
       },
       paymentPolicy: {
-        allowFull: this.allowFull,
-        allowDeposit: this.allowDeposit,
-        depositPercent: Number(this.depositPercent) || 30,
-        allowPayAtBusiness: this.allowPayAtBusiness,
+        allowFull: true,
+        allowDeposit: false,
+        depositPercent: 0,
+        allowPayAtBusiness: false,
       },
     });
 

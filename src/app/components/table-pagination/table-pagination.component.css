@@ -4,8 +4,10 @@
   justify-content: space-between;
   align-items: center;
   gap: 0.85rem;
-  padding: 0.85rem 1rem;
-  border-top: 1px solid var(--border-linen);
+  margin-top: 0.65rem;
+  padding: 0.78rem 1rem;
+  border: 1px solid var(--border-linen);
+  border-radius: var(--radius-sm);
   background: var(--bg-ivory);
   font-size: 0.8rem;
   color: var(--ink-muted);

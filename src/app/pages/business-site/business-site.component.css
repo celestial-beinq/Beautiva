@@ -245,8 +245,17 @@
 }
 
 .srv-duration {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+.srv-duration-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .catalogue-info h3 {

@@ -98,15 +98,6 @@
           <option value="reviews">Most Reviewed</option>
         </select>
       </div>
-
-      <label class="toggle-check">
-        <input
-          type="checkbox"
-          [ngModel]="onlyPayAtBusiness()"
-          (ngModelChange)="onlyPayAtBusiness.set($event)"
-        />
-        <span>Pay at studio allowed</span>
-      </label>
     </div>
 
     <div class="results-meta">
@@ -114,7 +105,7 @@
         Showing <strong>{{ filteredBusinesses().length }}</strong>
         {{ filteredBusinesses().length === 1 ? 'vendor' : 'vendors' }}
       </span>
-      @if (searchQuery() || selectedCity() !== 'all' || onlyPayAtBusiness()) {
+      @if (searchQuery() || selectedCity() !== 'all') {
         <button type="button" class="clear-btn" (click)="resetFilters()">Clear filters</button>
       }
     </div>

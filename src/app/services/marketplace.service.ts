@@ -329,11 +329,11 @@ export class MarketplaceService {
             : { ...DEFAULT_AVAILABILITY },
           reviews: revByBiz.get(b.id) ?? [],
           contact: b.contact || { phone: '', email: '', instagram: '' },
-          paymentPolicy: b.payment_policy || {
+          paymentPolicy: {
             allowFull: true,
-            allowDeposit: true,
-            depositPercent: 30,
-            allowPayAtBusiness: true,
+            allowDeposit: false,
+            depositPercent: 0,
+            allowPayAtBusiness: false,
           },
           createdAt: b.created_at,
         }));
@@ -1798,9 +1798,9 @@ export class MarketplaceService {
       },
       paymentPolicy: {
         allowFull: true,
-        allowDeposit: true,
-        depositPercent: 30,
-        allowPayAtBusiness: true,
+        allowDeposit: false,
+        depositPercent: 0,
+        allowPayAtBusiness: false,
       },
     });
 
@@ -2744,9 +2744,9 @@ export class MarketplaceService {
       },
       paymentPolicy: {
         allowFull: true,
-        allowDeposit: true,
-        depositPercent: 30,
-        allowPayAtBusiness: true,
+        allowDeposit: false,
+        depositPercent: 0,
+        allowPayAtBusiness: false,
       },
     });
 

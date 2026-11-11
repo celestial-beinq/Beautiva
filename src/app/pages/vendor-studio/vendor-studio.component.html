@@ -126,7 +126,7 @@
         [class.is-active]="activeTab() === 'availability'"
         (click)="activeTab.set('availability')"
       >
-        04 · Availability &amp; Paystack
+        04 · Availability
       </button>
       <button
         type="button"
@@ -150,7 +150,7 @@
         [class.is-active]="activeTab() === 'builder'"
         (click)="activeTab.set('builder')"
       >
-        07 · + Launch Studio Site
+        07 · Launch Studio
       </button>
     </div>
 
@@ -802,46 +802,17 @@
           <div class="panel-card">
             <div class="panel-head">
               <div>
-                <h2>Paystack &amp; Deposit Policy</h2>
-                <p>Control how customers pay when booking your studio.</p>
+                <h2>Paystack Payment Policy</h2>
+                <p>All studio bookings require 100% upfront online payment via Paystack.</p>
               </div>
             </div>
 
             <div class="policy-stack">
               <label class="policy-check">
-                <input type="checkbox" [(ngModel)]="editPolicy.allowFull" />
+                <input type="checkbox" [checked]="true" disabled />
                 <div>
                   <strong>Full Online Payment (Paystack)</strong>
-                  <span>Customers settle 100% via Card, Bank Transfer, or USSD.</span>
-                </div>
-              </label>
-
-              <label class="policy-check">
-                <input type="checkbox" [(ngModel)]="editPolicy.allowDeposit" />
-                <div>
-                  <strong>Upfront Deposit Option</strong>
-                  <span>Lock slot with partial Paystack payment; balance paid at studio.</span>
-                </div>
-              </label>
-
-              @if (editPolicy.allowDeposit) {
-                <div class="field deposit-field">
-                  <label class="field-label">Deposit Percentage (%)</label>
-                  <input
-                    class="input"
-                    type="number"
-                    min="10"
-                    max="80"
-                    [(ngModel)]="editPolicy.depositPercent"
-                  />
-                </div>
-              }
-
-              <label class="policy-check">
-                <input type="checkbox" [(ngModel)]="editPolicy.allowPayAtBusiness" />
-                <div>
-                  <strong>Allow Pay at Business</strong>
-                  <span>Customers can reserve without upfront payment and settle on arrival.</span>
+                  <span>Customers settle payment via Card, Bank Transfer, or USSD.</span>
                 </div>
               </label>
             </div>
@@ -1160,9 +1131,7 @@
             </div>
 
             <div class="policy-toggles">
-              <label><input type="checkbox" [(ngModel)]="allowFull" /> Full Payment (Paystack)</label>
-              <label><input type="checkbox" [(ngModel)]="allowDeposit" /> 30% Deposit (Paystack)</label>
-              <label><input type="checkbox" [(ngModel)]="allowPayAtBusiness" /> Pay at Studio</label>
+              <label><input type="checkbox" [checked]="true" disabled /> Full Payment</label>
             </div>
           </div>
         </div>

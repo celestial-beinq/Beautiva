@@ -433,9 +433,14 @@
                   <button
                     type="button"
                     class="btn btn--primary btn--lg"
+                    [disabled]="launchingPaystack()"
                     (click)="startOnboardingPayment()"
                   >
-                    Pay {{ marketplace.formatNaira(app.onboardingFee) }} with Paystack &amp; Go Live →
+                    @if (launchingPaystack()) {
+                      Opening Paystack...
+                    } @else {
+                      Pay {{ marketplace.formatNaira(app.onboardingFee) }} with Paystack &amp; Go Live →
+                    }
                   </button>
                 </div>
               }
@@ -527,14 +532,3 @@
     }
   </div>
 </section>
-
-@if (showPaystackModal() && lookedUpApplication(); as app) {
-  <app-paystack-modal
-    [businessName]="'Beautiva Onboarding · ' + app.businessName"
-    [customerEmail]="app.email"
-    [amount]="app.onboardingFee"
-    [description]="'Approved Studio Activation (' + app.applicationNumber + ')'"
-    (cancel)="showPaystackModal.set(false)"
-    (success)="onPaystackSuccess($event)"
-  />
-}

@@ -740,7 +740,7 @@
                 </tr>
               </thead>
               <tbody>
-                @for (app of completedApplications(); track app.applicationNumber) {
+                @for (app of pagedCompletedApplications(); track app.applicationNumber) {
                   <tr>
                     <td><code>{{ app.applicationNumber }}</code></td>
                     <td><strong>{{ app.businessName }}</strong></td>
@@ -839,6 +839,13 @@
               </tbody>
             </table>
           </div>
+          <app-table-pagination
+            [totalItems]="completedApplications().length"
+            [page]="completedAppPage()"
+            [pageSize]="completedAppPageSize()"
+            (pageChange)="completedAppPage.set($event)"
+            (pageSizeChange)="completedAppPageSize.set($event)"
+          />
         </div>
       }
 
@@ -871,7 +878,7 @@
                 </tr>
               </thead>
               <tbody>
-                @for (log of activityLogs().slice(0, 6); track log.id) {
+                @for (log of pagedRecentActivity(); track log.id) {
                   <tr>
                     <td class="cell-sub">{{ marketplace.formatDateTime(log.createdAt) }}</td>
                     <td><span class="badge badge--muted">{{ log.category }}</span></td>
@@ -890,6 +897,14 @@
               </tbody>
             </table>
           </div>
+          <app-table-pagination
+            [totalItems]="activityLogs().length"
+            [page]="recentActivityPage()"
+            [pageSize]="recentActivityPageSize()"
+            [pageSizeOptions]="[6, 12, 24]"
+            (pageChange)="recentActivityPage.set($event)"
+            (pageSizeChange)="recentActivityPageSize.set($event)"
+          />
         }
       </div>
     }
@@ -1129,10 +1144,14 @@
           </button>
           <button
             type="button"
-            class="btn btn--outline btn--sm"
+            class="btn btn--outline btn--sm btn-with-icon"
             (click)="toggleInviteVendorForm()"
           >
-            ✉ Invite New Vendor
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect width="20" height="16" x="2" y="4" rx="2" />
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </svg>
+            <span>Invite New Vendor</span>
           </button>
         </div>
       </div>
@@ -1280,7 +1299,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (biz of filteredStudios(); track biz.id) {
+              @for (biz of pagedStudios(); track biz.id) {
                 @let creds = getVendorCreds(biz);
                 <tr [class.is-suspended]="biz.status === 'suspended'">
                   <td>
@@ -1519,6 +1538,13 @@
             </tbody>
           </table>
         </div>
+        <app-table-pagination
+          [totalItems]="filteredStudios().length"
+          [page]="studiosPage()"
+          [pageSize]="studiosPageSize()"
+          (pageChange)="studiosPage.set($event)"
+          (pageSizeChange)="studiosPageSize.set($event)"
+        />
       }
     }
 
@@ -1680,7 +1706,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (tx of filteredTransactions(); track tx.id) {
+            @for (tx of pagedTransactions(); track tx.id) {
               <tr>
                 <td class="cell-sub">{{ marketplace.formatDateTime(tx.paidAt || tx.createdAt) }}</td>
                 <td><code>{{ tx.gatewayReference || '—' }}</code></td>
@@ -1717,6 +1743,13 @@
           </tbody>
         </table>
       </div>
+      <app-table-pagination
+        [totalItems]="filteredTransactions().length"
+        [page]="paymentsPage()"
+        [pageSize]="paymentsPageSize()"
+        (pageChange)="paymentsPage.set($event)"
+        (pageSizeChange)="paymentsPageSize.set($event)"
+      />
     }
 
     <!-- TAB 6: PLATFORM SETTINGS, CUSTOMERS & REVIEWS -->
@@ -1935,7 +1968,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (log of filteredActivityLogs(); track log.id) {
+              @for (log of pagedActivityLogs(); track log.id) {
                 <tr>
                   <td class="cell-sub">{{ marketplace.formatDateTime(log.createdAt) }}</td>
                   <td><span class="badge badge--muted">{{ log.category }}</span></td>
@@ -1962,6 +1995,13 @@
             </tbody>
           </table>
         </div>
+        <app-table-pagination
+          [totalItems]="filteredActivityLogs().length"
+          [page]="logsPage()"
+          [pageSize]="logsPageSize()"
+          (pageChange)="logsPage.set($event)"
+          (pageSizeChange)="logsPageSize.set($event)"
+        />
       </div>
     }
   </div>
@@ -2026,11 +2066,7 @@
           </div>
           <div class="app-detail-item">
             <span>Payment Policy</span>
-            <strong>
-              {{ app.paymentPolicy.allowFull ? 'Full Paystack' : '' }}
-              {{ app.paymentPolicy.allowDeposit ? ' · ' + app.paymentPolicy.depositPercent + '% Deposit' : '' }}
-              {{ app.paymentPolicy.allowPayAtBusiness ? ' · Pay at Studio' : '' }}
-            </strong>
+            <strong>Full Payment</strong>
           </div>
         </div>
 

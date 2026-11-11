@@ -185,9 +185,17 @@
 }
 
 .laurel-leaf {
-  font-size: 1.35rem;
-  opacity: 0.45;
-  filter: grayscale(1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  opacity: 0.65;
+}
+
+.laurel-leaf svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .laurel-leaf--flip {

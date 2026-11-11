@@ -13,13 +13,14 @@ import {
   VendorApplication,
   VendorApplicationStatus,
 } from '../../models/marketplace.models';
+import { TablePaginationComponent } from '../../components/table-pagination/table-pagination.component';
 import { AuthService } from '../../services/auth.service';
 import { MarketplaceService } from '../../services/marketplace.service';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, TablePaginationComponent],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css',
 })
@@ -145,6 +146,18 @@ export class AdminDashboardComponent {
   readonly logCategoryFilter = signal<'all' | ActivityCategory>('all');
   readonly logSearch = signal('');
 
+  // Table pagination state
+  readonly completedAppPage = signal(1);
+  readonly completedAppPageSize = signal(5);
+  readonly recentActivityPage = signal(1);
+  readonly recentActivityPageSize = signal(6);
+  readonly studiosPage = signal(1);
+  readonly studiosPageSize = signal(10);
+  readonly paymentsPage = signal(1);
+  readonly paymentsPageSize = signal(10);
+  readonly logsPage = signal(1);
+  readonly logsPageSize = signal(10);
+
   // Platform Settings & Customer Accounts
   readonly customerSearch = signal('');
   settingsDraft: PlatformSettings = { ...this.marketplace.platformSettings() };
@@ -155,6 +168,26 @@ export class AdminDashboardComponent {
       const s = this.marketplace.platformSettings();
       this.settingsDraft = { ...s };
       this.onboardingFeeInput = s.vendorOnboardingFee;
+    });
+
+    // Reset page to 1 when table filters change
+    effect(() => {
+      this.studioSearch();
+      this.studioCategoryFilter();
+      this.studioStatusFilter();
+      this.studiosPage.set(1);
+    });
+
+    effect(() => {
+      this.paymentFilter();
+      this.paymentSearch();
+      this.paymentsPage.set(1);
+    });
+
+    effect(() => {
+      this.logCategoryFilter();
+      this.logSearch();
+      this.logsPage.set(1);
     });
 
     if (isPlatformBrowser(this.platformId)) {
@@ -850,6 +883,38 @@ export class AdminDashboardComponent {
       );
     });
   });
+
+  readonly pagedCompletedApplications = computed(() =>
+    this.paginate(
+      this.completedApplications(),
+      this.completedAppPage(),
+      this.completedAppPageSize(),
+    ),
+  );
+
+  readonly pagedRecentActivity = computed(() =>
+    this.paginate(this.activityLogs(), this.recentActivityPage(), this.recentActivityPageSize()),
+  );
+
+  readonly pagedStudios = computed(() =>
+    this.paginate(this.filteredStudios(), this.studiosPage(), this.studiosPageSize()),
+  );
+
+  readonly pagedTransactions = computed(() =>
+    this.paginate(this.filteredTransactions(), this.paymentsPage(), this.paymentsPageSize()),
+  );
+
+  readonly pagedActivityLogs = computed(() =>
+    this.paginate(this.filteredActivityLogs(), this.logsPage(), this.logsPageSize()),
+  );
+
+  private paginate<T>(items: T[], page: number, pageSize: number): T[] {
+    const size = Math.max(1, pageSize);
+    const totalPages = Math.max(1, Math.ceil(items.length / size));
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const start = (safePage - 1) * size;
+    return items.slice(start, start + size);
+  }
 
   readonly allReviews = computed(() => {
     const list: Array<{

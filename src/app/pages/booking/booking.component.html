@@ -5,8 +5,10 @@
         <!-- STEP 5 COMPLETE: BOOKING CONFIRMATION + SIMULATED EMAIL -->
         <div class="confirmation-wrap">
           <div class="confirm-banner card">
-            <span class="confirm-check">✓</span>
-            <span class="badge badge--success">Booking Confirmed</span>
+            <div class="confirm-status">
+              <span class="confirm-check">✓</span>
+              <span class="badge badge--success">Booking Confirmed</span>
+            </div>
             <h1>Your appointment is locked in!</h1>
             <p>
               We generated your unique booking reference and dispatched a confirmation email to
@@ -31,11 +33,11 @@
               <a
                 routerLink="/track"
                 [queryParams]="{ ref: booking.bookingReference }"
-                class="btn btn--primary btn--lg"
+                class="btn btn--primary"
               >
                 Track Booking Status →
               </a>
-              <a [routerLink]="['/business', biz.slug]" class="btn btn--outline btn--lg">
+              <a [routerLink]="['/business', biz.slug]" class="btn btn--outline">
                 Back to {{ biz.name }}
               </a>
             </div>
@@ -91,7 +93,13 @@
           <a [routerLink]="['/business', biz.slug]" class="back-link">← Back to {{ biz.name }}</a>
           <span class="eyebrow">Step 4 & 5 · Schedule & Paystack Checkout</span>
           <h1>Book at {{ biz.name }}</h1>
-          <p class="book-sub">📍 {{ biz.address }}</p>
+          <p class="book-sub">
+            <svg class="book-sub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span>{{ biz.address }}</span>
+          </p>
         </div>
 
         <div class="book-layout">
@@ -237,65 +245,17 @@
               </div>
             </div>
 
-            <!-- 5. Payment Option (Paystack) -->
+            <!-- 5. Payment (Paystack) -->
             <div class="book-card card">
-              <h2>5. Payment Option (Paystack)</h2>
-              <div class="pay-options">
-                @if (biz.paymentPolicy.allowFull) {
-                  <label class="pay-card" [class.selected]="paymentOption() === 'full'">
-                    <input
-                      type="radio"
-                      name="payOption"
-                      [checked]="paymentOption() === 'full'"
-                      (change)="paymentOption.set('full')"
-                    />
-                    <div>
-                      <strong>Full Payment via Paystack</strong>
-                      <span>Pay 100% upfront and walk in cashless.</span>
-                    </div>
-                    <strong>
-                      {{ marketplace.formatNaira(selectedService()?.price || 0) }}
-                    </strong>
-                  </label>
-                }
-
-                @if (biz.paymentPolicy.allowDeposit) {
-                  <label class="pay-card" [class.selected]="paymentOption() === 'deposit'">
-                    <input
-                      type="radio"
-                      name="payOption"
-                      [checked]="paymentOption() === 'deposit'"
-                      (change)="paymentOption.set('deposit')"
-                    />
-                    <div>
-                      <strong>Deposit Payment ({{ biz.paymentPolicy.depositPercent }}%) via Paystack</strong>
-                      <span>Secure your slot now; pay the remaining balance at the studio.</span>
-                    </div>
-                    <strong>
-                      {{
-                        marketplace.formatNaira(
-                          ((selectedService()?.price || 0) * biz.paymentPolicy.depositPercent) / 100
-                        )
-                      }}
-                    </strong>
-                  </label>
-                }
-
-                @if (biz.paymentPolicy.allowPayAtBusiness) {
-                  <label class="pay-card" [class.selected]="paymentOption() === 'pay-at-business'">
-                    <input
-                      type="radio"
-                      name="payOption"
-                      [checked]="paymentOption() === 'pay-at-business'"
-                      (change)="paymentOption.set('pay-at-business')"
-                    />
-                    <div>
-                      <strong>Pay at the Business</strong>
-                      <span>Allowed by {{ biz.name }} — settle directly after your appointment.</span>
-                    </div>
-                    <strong>₦0 now</strong>
-                  </label>
-                }
+              <h2>5. Payment (Paystack)</h2>
+              <div class="pay-summary-box">
+                <div class="pay-summary-info">
+                  <strong>Payment via Paystack</strong>
+                  <span>Pay online and walk in cashless.</span>
+                </div>
+                <strong class="pay-summary-amount">
+                  {{ marketplace.formatNaira(selectedService()?.price || 0) }}
+                </strong>
               </div>
             </div>
           </div>
@@ -316,15 +276,9 @@
                 <div><span>Specialist</span><strong>{{ selectedStaff() }}</strong></div>
                 <div><span>Total Price</span><strong>{{ marketplace.formatNaira(srv.price) }}</strong></div>
                 <div class="summary-pay-now">
-                  <span>Due Now</span>
+                  <span>Due Now (100%)</span>
                   <strong>{{ marketplace.formatNaira(payableNow()) }}</strong>
                 </div>
-                @if (balanceAtVenue() > 0) {
-                  <div>
-                    <span>Balance at Studio</span>
-                    <strong>{{ marketplace.formatNaira(balanceAtVenue()) }}</strong>
-                  </div>
-                }
               </div>
             }
 
@@ -335,10 +289,11 @@
             <button
               type="button"
               class="btn btn--primary btn--lg summary-cta"
+              [disabled]="launchingPaystack()"
               (click)="proceedToCheckout()"
             >
-              @if (paymentOption() === 'pay-at-business') {
-                Confirm Booking →
+              @if (launchingPaystack()) {
+                Opening Paystack...
               } @else {
                 Pay {{ marketplace.formatNaira(payableNow()) }} with Paystack →
               }
@@ -359,15 +314,4 @@
     }
   </div>
 </section>
-
-@if (showPaystackModal() && business(); as biz) {
-  <app-paystack-modal
-    [businessName]="biz.name"
-    [customerEmail]="customerEmail"
-    [amount]="payableNow()"
-    [description]="selectedService()?.name || 'Appointment'"
-    (cancel)="showPaystackModal.set(false)"
-    (success)="onPaystackSuccess($event)"
-  />
-}
 

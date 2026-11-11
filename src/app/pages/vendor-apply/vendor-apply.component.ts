@@ -1,19 +1,20 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { PaystackModalComponent } from '../../components/paystack-modal/paystack-modal.component';
 import { CategorySlug, VendorApplication } from '../../models/marketplace.models';
 import { MarketplaceService } from '../../services/marketplace.service';
+import { PaystackService } from '../../services/paystack.service';
 
 @Component({
   selector: 'app-vendor-apply',
   standalone: true,
-  imports: [RouterLink, FormsModule, PaystackModalComponent],
+  imports: [RouterLink, FormsModule],
   templateUrl: './vendor-apply.component.html',
   styleUrl: './vendor-apply.component.css',
 })
 export class VendorApplyComponent {
   readonly marketplace = inject(MarketplaceService);
+  private readonly paystack = inject(PaystackService);
   private readonly route = inject(ActivatedRoute);
 
   readonly categories = this.marketplace.categories;
@@ -27,7 +28,7 @@ export class VendorApplyComponent {
   // Status Lookup state
   lookupInput = '';
   readonly searchedAppNum = signal('');
-  readonly showPaystackModal = signal(false);
+  readonly launchingPaystack = signal(false);
   readonly paymentSuccessApp = signal<VendorApplication | null>(null);
   readonly paymentError = signal('');
 
@@ -170,13 +171,38 @@ export class VendorApplyComponent {
     this.paymentError.set('');
   }
 
-  startOnboardingPayment(): void {
+  async startOnboardingPayment(): Promise<void> {
+    const app = this.lookedUpApplication();
+    if (!app || this.launchingPaystack()) return;
+
     this.paymentError.set('');
-    this.showPaystackModal.set(true);
+    this.launchingPaystack.set(true);
+
+    const result = await this.paystack.openCheckout({
+      email: app.email,
+      amountNaira: app.onboardingFee,
+      metadata: {
+        business_name: 'Beautiva Onboarding · ' + app.businessName,
+        description: 'Approved Studio Activation (' + app.applicationNumber + ')',
+      },
+    });
+
+    this.launchingPaystack.set(false);
+
+    if (result.status === 'success' && result.reference) {
+      await this.onPaystackSuccess(result.reference);
+      return;
+    }
+
+    if (result.status === 'cancelled') {
+      this.paymentError.set('Paystack window closed before payment completed.');
+      return;
+    }
+
+    this.paymentError.set(result.error || 'Unable to complete Paystack payment.');
   }
 
   async onPaystackSuccess(paystackRef: string): Promise<void> {
-    this.showPaystackModal.set(false);
     const app = this.lookedUpApplication();
     if (!app) return;
 

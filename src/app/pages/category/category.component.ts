@@ -24,7 +24,6 @@ export class CategoryComponent {
   readonly searchQuery = signal('');
   readonly selectedCity = signal('all');
   readonly sortBy = signal<'rating' | 'price-asc' | 'reviews'>('rating');
-  readonly onlyPayAtBusiness = signal(false);
 
   readonly activeCategory = computed(() => {
     const slug = this.routeSlug();
@@ -36,7 +35,7 @@ export class CategoryComponent {
       this.searchQuery(),
       this.routeSlug(),
       this.selectedCity(),
-      this.onlyPayAtBusiness(),
+      false,
     );
     const sort = this.sortBy();
     return [...list].sort((a, b) => {
@@ -78,7 +77,6 @@ export class CategoryComponent {
     this.searchQuery.set('');
     this.selectedCity.set('all');
     this.sortBy.set('rating');
-    this.onlyPayAtBusiness.set(false);
   }
 }
 

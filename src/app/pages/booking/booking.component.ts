@@ -1,9 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { PaystackModalComponent } from '../../components/paystack-modal/paystack-modal.component';
 import { BookingRecord, PaymentOption } from '../../models/marketplace.models';
 import { MarketplaceService } from '../../services/marketplace.service';
+import { PaystackService } from '../../services/paystack.service';
 
 interface DateChip {
   iso: string;
@@ -26,12 +26,13 @@ const ALL_SLOTS = [
 @Component({
   selector: 'app-booking',
   standalone: true,
-  imports: [RouterLink, FormsModule, PaystackModalComponent],
+  imports: [RouterLink, FormsModule],
   templateUrl: './booking.component.html',
   styleUrl: './booking.component.css',
 })
 export class BookingComponent {
   readonly marketplace = inject(MarketplaceService);
+  private readonly paystack = inject(PaystackService);
   private readonly route = inject(ActivatedRoute);
 
   readonly slug = signal('');
@@ -61,7 +62,7 @@ export class BookingComponent {
 
   readonly paymentOption = signal<PaymentOption>('full');
   readonly validationError = signal('');
-  readonly showPaystackModal = signal(false);
+  readonly launchingPaystack = signal(false);
   readonly confirmedBooking = signal<BookingRecord | null>(null);
   readonly copiedRef = signal(false);
 
@@ -82,21 +83,10 @@ export class BookingComponent {
 
   readonly payableNow = computed(() => {
     const srv = this.selectedService();
-    const biz = this.business();
-    if (!srv || !biz) return 0;
-    const opt = this.paymentOption();
-    if (opt === 'full') return srv.price;
-    if (opt === 'deposit') {
-      return Math.round((srv.price * (biz.paymentPolicy.depositPercent || 30)) / 100);
-    }
-    return 0;
+    return srv ? srv.price : 0;
   });
 
-  readonly balanceAtVenue = computed(() => {
-    const srv = this.selectedService();
-    if (!srv) return 0;
-    return Math.max(0, srv.price - this.payableNow());
-  });
+  readonly balanceAtVenue = computed(() => 0);
 
   constructor() {
     this.route.paramMap.subscribe((params) => {
@@ -136,9 +126,12 @@ export class BookingComponent {
     return this.marketplace.isDateBlocked(this.business(), iso);
   }
 
-  proceedToCheckout(): void {
+  async proceedToCheckout(): Promise<void> {
+    if (this.launchingPaystack()) return;
     this.validationError.set('');
-    if (!this.selectedService()) {
+    const srv = this.selectedService();
+    const biz = this.business();
+    if (!srv || !biz) {
       this.validationError.set('Please select a service to continue.');
       return;
     }
@@ -159,16 +152,31 @@ export class BookingComponent {
       return;
     }
 
-    if (this.paymentOption() === 'pay-at-business') {
-      this.finalizeBooking();
-    } else {
-      this.showPaystackModal.set(true);
-    }
-  }
+    this.paymentOption.set('full');
+    this.launchingPaystack.set(true);
 
-  onPaystackSuccess(paystackRef: string): void {
-    this.showPaystackModal.set(false);
-    this.finalizeBooking(paystackRef);
+    const result = await this.paystack.openCheckout({
+      email: this.customerEmail,
+      amountNaira: this.payableNow(),
+      metadata: {
+        business_name: biz.name,
+        description: srv.name || 'Appointment',
+      },
+    });
+
+    this.launchingPaystack.set(false);
+
+    if (result.status === 'success' && result.reference) {
+      this.finalizeBooking(result.reference);
+      return;
+    }
+
+    if (result.status === 'cancelled') {
+      this.validationError.set('Paystack window closed before payment completed.');
+      return;
+    }
+
+    this.validationError.set(result.error || 'Unable to complete Paystack payment.');
   }
 
   copyReference(ref: string): void {
