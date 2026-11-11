@@ -13,6 +13,7 @@ import {
   StaffMember,
   WorkingHours,
 } from '../../models/marketplace.models';
+import { TablePaginationComponent } from '../../components/table-pagination/table-pagination.component';
 import { AuthService } from '../../services/auth.service';
 import {
   DEFAULT_AVAILABILITY,
@@ -23,7 +24,7 @@ import {
 @Component({
   selector: 'app-vendor-studio',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, TablePaginationComponent],
   templateUrl: './vendor-studio.component.html',
   styleUrl: './vendor-studio.component.css',
 })
@@ -47,6 +48,8 @@ export class VendorStudioComponent {
   readonly selectedStudioSlug = signal<string>(this.auth.demoVendorStudioSlug() || '');
   readonly bookingStatusFilter = signal<'all' | BookingStatus>('all');
   readonly bookingSearch = signal('');
+  readonly bookingPage = signal(1);
+  readonly bookingPageSize = signal(10);
   readonly customerSearch = signal('');
   readonly saveToast = signal('');
 
@@ -191,6 +194,15 @@ export class VendorStudioComponent {
     });
   });
 
+  readonly pagedStudioBookings = computed(() => {
+    const items = this.filteredStudioBookings();
+    const size = Math.max(1, this.bookingPageSize());
+    const totalPages = Math.max(1, Math.ceil(items.length / size));
+    const safePage = Math.min(Math.max(1, this.bookingPage()), totalPages);
+    const start = (safePage - 1) * size;
+    return items.slice(start, start + size);
+  });
+
   readonly studioMetrics = computed(() => {
     const all = this.studioBookings();
     const todayIso = new Date().toISOString().slice(0, 10);
@@ -302,6 +314,13 @@ export class VendorStudioComponent {
   }
 
   constructor() {
+    effect(() => {
+      this.bookingSearch();
+      this.bookingStatusFilter();
+      this.selectedStudioSlug();
+      this.bookingPage.set(1);
+    });
+
     effect(() => {
       const studio = this.activeStudio();
       if (!studio) return;

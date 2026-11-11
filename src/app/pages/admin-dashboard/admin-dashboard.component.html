@@ -284,22 +284,6 @@
                 </label>
               </div>
             }
-
-            <button
-              type="button"
-              class="btn btn--outline btn--sm"
-              (click)="liveAutoRefresh.set(!liveAutoRefresh())"
-            >
-              {{ liveAutoRefresh() ? 'Pause Live' : 'Resume Live' }}
-            </button>
-            <button
-              type="button"
-              class="btn btn--primary btn--sm"
-              [disabled]="isSyncing()"
-              (click)="syncLiveAnalytics()"
-            >
-              {{ isSyncing() ? 'Syncing...' : 'Sync Now' }}
-            </button>
           </div>
         </div>
 

@@ -184,141 +184,163 @@
       </div>
 
       @if (filteredStudioBookings().length > 0) {
-        <div class="ledger-list">
-          @for (b of filteredStudioBookings(); track b.bookingReference) {
-            <div class="ledger-card-wrap">
-              <div class="ledger-card">
-                <div class="ledger-main">
-                  <div class="ledger-top-line">
-                    <a
-                      routerLink="/track"
-                      [queryParams]="{ ref: b.bookingReference }"
-                      class="ref-link"
-                    >
-                      {{ b.bookingReference }}
-                    </a>
-                    <span
-                      class="badge"
-                      [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
-                      [class.badge--warning]="b.status === 'Pending'"
-                      [class.badge--danger]="b.status === 'Cancelled'"
-                    >
-                      {{ b.status }}
-                    </span>
-                    <span class="badge badge--bronze">{{ b.paymentStatus }}</span>
-                  </div>
-
-                  <h3>{{ b.serviceName }} · {{ b.customerName }}</h3>
-                  <p class="ledger-sub">
-                    {{ b.dateDisplay }} at {{ b.time }} · Specialist: {{ b.staffName }} ·
-                    {{ b.customerPhone }} ({{ b.customerEmail }})
-                  </p>
-                  <p class="ledger-sub">
-                    Booked: {{ marketplace.formatDateTime(b.createdAt) }}
-                  </p>
-                  @if (b.rescheduledFrom) {
-                    <p class="ledger-note">Rescheduled from: {{ b.rescheduledFrom }}</p>
-                  }
-                  @if (b.notes) {
-                    <p class="ledger-note">Client note: “{{ b.notes }}”</p>
-                  }
-                </div>
-
-                <div class="ledger-right">
-                  <div class="ledger-amounts">
+        <div class="menu-table-wrap">
+          <table class="menu-table bookings-table">
+            <thead>
+              <tr>
+                <th>Booking</th>
+                <th>Service &amp; Client</th>
+                <th>Schedule &amp; Specialist</th>
+                <th>Amount</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (b of pagedStudioBookings(); track b.bookingReference) {
+                <tr>
+                  <td>
+                    <div class="booking-ref-stack">
+                      <div class="ledger-top-line">
+                        <a
+                          routerLink="/track"
+                          [queryParams]="{ ref: b.bookingReference }"
+                          class="ref-link"
+                        >
+                          {{ b.bookingReference }}
+                        </a>
+                        <span
+                          class="badge"
+                          [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
+                          [class.badge--warning]="b.status === 'Pending'"
+                          [class.badge--danger]="b.status === 'Cancelled'"
+                        >
+                          {{ b.status }}
+                        </span>
+                        <span class="badge badge--bronze">{{ b.paymentStatus }}</span>
+                      </div>
+                      <span class="cell-sub">Booked: {{ marketplace.formatDateTime(b.createdAt) }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <strong>{{ b.serviceName }} · {{ b.customerName }}</strong>
+                    <div class="cell-sub">{{ b.customerPhone }} ({{ b.customerEmail }})</div>
+                    @if (b.notes) {
+                      <div class="ledger-note">Client note: “{{ b.notes }}”</div>
+                    }
+                  </td>
+                  <td>
+                    <strong>{{ b.dateDisplay }} at {{ b.time }}</strong>
+                    <div class="cell-sub">Specialist: {{ b.staffName }}</div>
+                    @if (b.rescheduledFrom) {
+                      <div class="ledger-note">Rescheduled from: {{ b.rescheduledFrom }}</div>
+                    }
+                  </td>
+                  <td>
                     <strong>Paid: {{ marketplace.formatNaira(b.amountPaid) }}</strong>
-                    @if (b.balanceDue > 0) {
-                      <span>Balance at studio: {{ marketplace.formatNaira(b.balanceDue) }}</span>
-                    } @else {
-                      <span>Settled in full</span>
-                    }
-                  </div>
+                    <div class="cell-sub">
+                      @if (b.balanceDue > 0) {
+                        Balance at studio: {{ marketplace.formatNaira(b.balanceDue) }}
+                      } @else {
+                        Settled in full
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <div class="ledger-actions">
+                      @if (b.status === 'Pending') {
+                        <button
+                          type="button"
+                          class="btn btn--primary btn--sm"
+                          (click)="setStatus(b.bookingReference, 'Confirmed')"
+                        >
+                          Accept &amp; Confirm
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn--outline btn--sm"
+                          (click)="setStatus(b.bookingReference, 'Cancelled')"
+                        >
+                          Reject
+                        </button>
+                      }
+                      @if (b.balanceDue > 0 && b.status !== 'Cancelled') {
+                        <button
+                          type="button"
+                          class="btn btn--outline btn--sm"
+                          (click)="markPaid(b.bookingReference)"
+                        >
+                          Mark Paid
+                        </button>
+                      }
+                      @if (b.status !== 'Completed' && b.status !== 'Cancelled') {
+                        <button
+                          type="button"
+                          class="btn btn--outline btn--sm"
+                          (click)="openReschedule(b.bookingReference, b.date, b.time)"
+                        >
+                          Reschedule
+                        </button>
+                      }
+                      @if (b.status === 'Confirmed') {
+                        <button
+                          type="button"
+                          class="btn btn--outline btn--sm"
+                          (click)="setStatus(b.bookingReference, 'Completed')"
+                        >
+                          Mark Completed
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn--outline btn--sm"
+                          (click)="setStatus(b.bookingReference, 'Cancelled')"
+                        >
+                          Cancel
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
 
-                  <div class="ledger-actions">
-                    @if (b.status === 'Pending') {
-                      <button
-                        type="button"
-                        class="btn btn--primary btn--sm"
-                        (click)="setStatus(b.bookingReference, 'Confirmed')"
-                      >
-                        Accept &amp; Confirm
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="setStatus(b.bookingReference, 'Cancelled')"
-                      >
-                        Reject
-                      </button>
-                    }
-                    @if (b.balanceDue > 0 && b.status !== 'Cancelled') {
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="markPaid(b.bookingReference)"
-                      >
-                        Mark Paid
-                      </button>
-                    }
-                    @if (b.status !== 'Completed' && b.status !== 'Cancelled') {
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="openReschedule(b.bookingReference, b.date, b.time)"
-                      >
-                        Reschedule
-                      </button>
-                    }
-                    @if (b.status === 'Confirmed') {
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="setStatus(b.bookingReference, 'Completed')"
-                      >
-                        Mark Completed
-                      </button>
-                    }
-                    @if (b.status === 'Confirmed') {
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="setStatus(b.bookingReference, 'Cancelled')"
-                      >
-                        Cancel
-                      </button>
-                    }
-                  </div>
-                </div>
-              </div>
-
-              @if (reschedulingRef() === b.bookingReference) {
-                <div class="reschedule-bar">
-                  <strong>Reschedule {{ b.bookingReference }}</strong>
-                  <input type="date" class="input" [(ngModel)]="rescheduleDate" />
-                  <select class="select" [(ngModel)]="rescheduleTime">
-                    @for (slot of editAvailability.enabledSlots; track slot) {
-                      <option [value]="slot">{{ slot }}</option>
-                    }
-                  </select>
-                  <button
-                    type="button"
-                    class="btn btn--primary btn--sm"
-                    (click)="confirmReschedule(b.bookingReference)"
-                  >
-                    Save New Slot
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn--outline btn--sm"
-                    (click)="reschedulingRef.set(null)"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                @if (reschedulingRef() === b.bookingReference) {
+                  <tr class="reschedule-row">
+                    <td colspan="5" class="reschedule-cell">
+                      <div class="reschedule-bar">
+                        <strong>Reschedule {{ b.bookingReference }}</strong>
+                        <input type="date" class="input" [(ngModel)]="rescheduleDate" />
+                        <select class="select" [(ngModel)]="rescheduleTime">
+                          @for (slot of editAvailability.enabledSlots; track slot) {
+                            <option [value]="slot">{{ slot }}</option>
+                          }
+                        </select>
+                        <button
+                          type="button"
+                          class="btn btn--primary btn--sm"
+                          (click)="confirmReschedule(b.bookingReference)"
+                        >
+                          Save New Slot
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn--outline btn--sm"
+                          (click)="reschedulingRef.set(null)"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
               }
-            </div>
-          }
+            </tbody>
+          </table>
         </div>
+        <app-table-pagination
+          [totalItems]="filteredStudioBookings().length"
+          [page]="bookingPage()"
+          [pageSize]="bookingPageSize()"
+          (pageChange)="bookingPage.set($event)"
+          (pageSizeChange)="bookingPageSize.set($event)"
+        />
       } @else {
         <div class="empty-box">
           <h3>No matching bookings for this studio</h3>

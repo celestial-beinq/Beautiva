@@ -660,9 +660,28 @@
   gap: 0.65rem;
   padding: 0.85rem 1rem;
   background: var(--bg-sand);
-  border: 1px solid var(--border-linen);
-  border-top: 0;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.bookings-table td {
+  vertical-align: top;
+}
+
+.booking-ref-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bookings-table .ledger-top-line {
+  margin-bottom: 0;
+}
+
+.bookings-table .ledger-actions {
+  flex-wrap: nowrap;
+}
+
+.reschedule-cell {
+  padding: 0 !important;
 }
 
 .stack-form {
