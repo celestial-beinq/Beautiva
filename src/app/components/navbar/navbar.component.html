@@ -9,11 +9,17 @@
     </a>
 
     <nav class="nav-links" aria-label="Primary">
+      <a
+        routerLink="/"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        Home
+      </a>
       <a routerLink="/about" routerLinkActive="is-active">About</a>
       <a routerLink="/vendors" routerLinkActive="is-active">Vendors</a>
       <a routerLink="/track" routerLinkActive="is-active">Tracking</a>
       <a routerLink="/contact" routerLinkActive="is-active">Contact</a>
-      <a routerLink="/vendor" routerLinkActive="is-active">Vendor Portal</a>
     </nav>
 
     <div class="nav-actions">
@@ -23,7 +29,7 @@
         [class.btn--white]="isTransparentHero()"
         [class.btn--primary]="!isTransparentHero()"
       >
-        Book a session
+        Book a session →
       </a>
 
       <button
@@ -40,6 +46,7 @@
 
   @if (mobileOpen()) {
     <div class="mobile-drawer">
+      <a routerLink="/" (click)="closeMobile()">Home</a>
       <a routerLink="/about" (click)="closeMobile()">About</a>
       <a routerLink="/vendors" (click)="closeMobile()">Vendors</a>
       <a routerLink="/category/hairdressers" (click)="closeMobile()">Hairdressers</a>

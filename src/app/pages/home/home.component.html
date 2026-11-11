@@ -1,95 +1,76 @@
-<!-- 01 | EDITORIAL HERO -->
+<!-- 01 | EDITORIAL HERO (CLEAN SCISSOR PROPORTIONS) -->
 <section class="hero">
   <img src="images/hero-salon.jpg" alt="Sunlit beauty studio interior" class="hero-bg" />
   <div class="hero-scrim" aria-hidden="true"></div>
 
   <div class="container hero-inner">
     <div class="hero-main">
-      <div class="section-index section-index--light hero-tag">
-        <span class="section-index-num">01</span>
-        <span>Beauty &amp; Personal Care Marketplace · Lagos &amp; Abuja</span>
+      <div class="hero-pill">
+        <span class="hero-pill-num">01</span>
+        <span>Beauty &amp; Care · Lagos &amp; Abuja</span>
       </div>
 
       <h1 class="hero-title">
-        Great hair,<br />
-        sharp fades,<br />
-        clean craft.
+        The art of<br />
+        great care.
       </h1>
 
       <p class="hero-sub">
-        Hair stylists, barbers, nail ateliers, lash artists, makeup studios, and tattoo artists in
-        one place. Open any studio’s website, reserve your chair, pay via Paystack, and track your
-        booking reference.
+        Hair stylists, barbers, nail techs, lash artists, makeup and tattoo studios. Tailored to
+        your craft, your city and the look you want.
       </p>
 
-      <!-- Search -->
-      <form class="hero-search" (ngSubmit)="submitSearch()">
-        <input
-          type="text"
-          name="q"
-          [ngModel]="searchQuery()"
-          (ngModelChange)="searchQuery.set($event)"
-          placeholder="Search Knotless Braids, Skin Fade, Lekki..."
-          aria-label="Search beauty professionals or services"
-        />
-
-        <select
-          name="category"
-          [ngModel]="selectedCategory()"
-          (ngModelChange)="selectedCategory.set($event)"
-          aria-label="Filter by category"
-        >
-          <option value="all">All 6 Categories</option>
-          @for (cat of categories(); track cat.slug) {
-            <option [value]="cat.slug">{{ cat.name }}</option>
-          }
-        </select>
-
-        <button type="submit" class="btn btn--primary">Search</button>
-      </form>
-
       <div class="hero-ctas">
-        <a routerLink="/vendors" class="btn btn--white btn--lg">Explore vendors</a>
-        <a routerLink="/about" class="btn btn--ghost-light btn--lg">About Beautiva</a>
+        <a routerLink="/vendors" class="btn btn--white">Explore vendors →</a>
+        <a href="#service-menu" class="btn btn--ghost-light">Explore services →</a>
       </div>
     </div>
 
-    <div class="hero-bottom-row">
-      <a routerLink="/business/glamour-studio" class="hero-highlight">
-        <img
-          src="images/cat-hairdressers.jpg"
-          alt="Glamour Studio Knotless Braids"
-          class="highlight-thumb"
-        />
-        <div class="highlight-meta">
-          <span class="highlight-label">Most booked this week</span>
-          <strong class="highlight-title">Knotless Braids · Glamour Studio</strong>
-          <span class="highlight-sub">3 hrs · from ₦25,000 · Lekki Phase 1</span>
-        </div>
-        <span class="highlight-arrow" aria-hidden="true">↗</span>
-      </a>
-
-      <a routerLink="/track" [queryParams]="{ ref: 'BK-2026-000124' }" class="hero-track-pill">
-        <span>Have a reference?</span>
-        <strong>Track BK-2026-000124 →</strong>
-      </a>
-    </div>
-  </div>
-
-  <!-- Scissor-Style Ticker Strip -->
-  <div class="marquee-strip" aria-hidden="true">
-    <div class="marquee-track">
-      @for (item of marqueeItems; track $index) {
-        <span class="marquee-item">{{ item }}</span>
-        <span class="marquee-sep">·</span>
-      }
-      @for (item of marqueeItems; track $index) {
-        <span class="marquee-item">{{ item }}</span>
-        <span class="marquee-sep">·</span>
-      }
-    </div>
+    <a routerLink="/business/glamour-studio" class="hero-highlight">
+      <img
+        src="images/cat-hairdressers.jpg"
+        alt="Glamour Studio Knotless Braids"
+        class="highlight-thumb"
+      />
+      <div class="highlight-meta">
+        <span class="highlight-label">Most booked this week</span>
+        <strong class="highlight-title">Knotless Braids · Glamour Studio</strong>
+        <span class="highlight-sub">3 hrs, from ₦25,000</span>
+      </div>
+      <span class="highlight-arrow" aria-hidden="true">↗</span>
+    </a>
   </div>
 </section>
+
+<!-- CLEAN SEARCH BAR STRIP -->
+<div class="search-strip">
+  <div class="container">
+    <form class="hero-search" (ngSubmit)="submitSearch()">
+      <input
+        type="text"
+        name="q"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+        placeholder="Search Knotless Braids, Skin Fade, Lekki..."
+        aria-label="Search beauty professionals or services"
+      />
+
+      <select
+        name="category"
+        [ngModel]="selectedCategory()"
+        (ngModelChange)="selectedCategory.set($event)"
+        aria-label="Filter by category"
+      >
+        <option value="all">All 6 Categories</option>
+        @for (cat of categories(); track cat.slug) {
+          <option [value]="cat.slug">{{ cat.name }}</option>
+        }
+      </select>
+
+      <button type="submit" class="btn btn--primary">Search studios</button>
+    </form>
+  </div>
+</div>
 
 <!-- 02 | SIX CRAFTS (INTERACTIVE EDITORIAL SHOWCASE) -->
 <section id="categories" class="section">
@@ -171,7 +152,7 @@
 </section>
 
 <!-- 03 | SERVICE MENU (SCISSOR TABBED LIST) -->
-<section class="section section--sand">
+<section id="service-menu" class="section section--sand">
   <div class="container menu-layout">
     <div class="menu-sidebar">
       <div class="section-index">

@@ -8,9 +8,9 @@
 }
 
 .nav-shell--transparent {
-  background: linear-gradient(180deg, rgba(31, 28, 25, 0.72) 0%, rgba(31, 28, 25, 0) 100%);
+  background: linear-gradient(180deg, rgba(31, 28, 25, 0.34) 0%, rgba(31, 28, 25, 0) 100%);
   color: var(--bg-ivory);
-  border-bottom: 1px solid rgba(247, 245, 240, 0.14);
+  border-bottom: 1px solid transparent;
 }
 
 .nav-shell--solid {
