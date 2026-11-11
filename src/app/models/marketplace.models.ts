@@ -196,6 +196,40 @@ export interface TransactionRecord {
   createdAt: string;
 }
 
+export type VendorApplicationStatus = 'pending' | 'approved' | 'declined' | 'paid_live';
+
+export interface VendorApplication {
+  id: string;
+  applicationNumber: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  businessName: string;
+  slug: string;
+  categorySlug: CategorySlug;
+  categoryLabel: string;
+  city: string;
+  location: string;
+  address: string;
+  tagline: string;
+  about: string;
+  instagram: string;
+  coverImage: string;
+  startingServiceName: string;
+  startingServicePrice: number;
+  startingServiceDurationMinutes: number;
+  onboardingFee: number;
+  status: VendorApplicationStatus;
+  adminNote?: string;
+  paystackReference?: string;
+  paidAt?: string;
+  issuedLoginEmail?: string;
+  issuedTempPassword?: string;
+  liveBusinessSlug?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
 export interface VendorInvitation {
   id: string;
   email: string;

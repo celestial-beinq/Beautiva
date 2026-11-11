@@ -348,6 +348,20 @@ textarea:focus-visible,
   border-radius: var(--radius-sm);
 }
 
+.table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table th,
+table td {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
 @media (max-width: 768px) {
   .section {
     padding-block: 3.75rem;

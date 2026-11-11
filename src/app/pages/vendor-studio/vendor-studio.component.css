@@ -769,12 +769,23 @@
 
 .break-list,
 .top-services-list,
-.customer-cards,
+.customer-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+  min-width: 0;
+}
+
 .customer-history {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   margin-top: 0.85rem;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .break-row,
@@ -789,6 +800,8 @@
   border-radius: var(--radius-xs);
   background: var(--bg-ivory);
   font-size: 0.88rem;
+  white-space: nowrap;
+  min-width: max-content;
 }
 
 .analytics-kpi-grid {
@@ -830,6 +843,13 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+}
+
+.break-list,
+.top-services-list {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 1024px) {

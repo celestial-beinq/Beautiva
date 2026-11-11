@@ -9,6 +9,8 @@ import {
   CategorySlug,
   PlatformSettings,
   StudioStatus,
+  VendorApplication,
+  VendorApplicationStatus,
 } from '../../models/marketplace.models';
 import { AuthService } from '../../services/auth.service';
 import { MarketplaceService } from '../../services/marketplace.service';
@@ -29,11 +31,17 @@ export class AdminDashboardComponent {
   readonly bookings = this.marketplace.bookings;
   readonly transactions = this.marketplace.transactions;
   readonly invitations = this.marketplace.vendorInvitations;
+  readonly vendorApplications = this.marketplace.vendorApplications;
 
   readonly activeTab = signal<
     'overview' | 'vendors' | 'categories' | 'bookings' | 'payments' | 'settings'
   >('overview');
   readonly toast = signal('');
+
+  // Vendor Applications review state
+  readonly applicationFilter = signal<'all' | VendorApplicationStatus>('all');
+  readonly viewingApplicationNum = signal<string | null>(null);
+  applicationReviewNote = '';
 
   // Vendor Management filters & forms
   readonly studioSearch = signal('');
@@ -42,6 +50,7 @@ export class AdminDashboardComponent {
   readonly showCreateVendor = signal(false);
   readonly showInviteVendor = signal(false);
   readonly editingVendorSlug = signal<string | null>(null);
+  readonly viewingApplication = signal<BusinessProfile | null>(null);
 
   newVendor = {
     fullName: '',
@@ -231,6 +240,15 @@ export class AdminDashboardComponent {
     return map;
   });
 
+  readonly filteredApplications = computed(() => {
+    const f = this.applicationFilter();
+    return this.vendorApplications().filter((a) => f === 'all' || a.status === f);
+  });
+
+  readonly pendingApplicationsCount = computed(
+    () => this.vendorApplications().filter((a) => a.status === 'pending').length,
+  );
+
   readonly filteredStudios = computed(() => {
     const q = this.studioSearch().trim().toLowerCase();
     const cat = this.studioCategoryFilter();
@@ -409,9 +427,50 @@ export class AdminDashboardComponent {
     this.flash(`Copied invite link: ${url}`);
   }
 
+  openApplicationView(biz: BusinessProfile): void {
+    this.viewingApplication.set(biz);
+  }
+
+  closeApplicationView(): void {
+    this.viewingApplication.set(null);
+  }
+
   approveVendor(slug: string): void {
     this.marketplace.setBusinessStatus(slug, 'active');
+    this.viewingApplication.set(null);
     this.flash(`Approved & activated studio: ${slug}`);
+  }
+
+  declineVendor(biz: BusinessProfile): void {
+    this.marketplace.deleteBusiness(biz.slug);
+    this.viewingApplication.set(null);
+    this.flash(`Declined vendor application: ${biz.name}`);
+  }
+
+  inspectApplication(app: VendorApplication): void {
+    if (this.viewingApplicationNum() === app.applicationNumber) {
+      this.viewingApplicationNum.set(null);
+      this.applicationReviewNote = '';
+    } else {
+      this.viewingApplicationNum.set(app.applicationNumber);
+      this.applicationReviewNote = app.adminNote || '';
+    }
+  }
+
+  decideApplication(appNumber: string, decision: 'approved' | 'declined'): void {
+    const updated = this.marketplace.reviewVendorApplication(
+      appNumber,
+      decision,
+      this.applicationReviewNote,
+    );
+    if (!updated) return;
+    this.viewingApplicationNum.set(null);
+    this.applicationReviewNote = '';
+    this.flash(
+      decision === 'approved'
+        ? `Accepted ${updated.businessName} (${updated.applicationNumber}). Vendor can now pay onboarding fee & go live.`
+        : `Declined ${updated.businessName} (${updated.applicationNumber}).`,
+    );
   }
 
   startEditVendor(biz: BusinessProfile): void {

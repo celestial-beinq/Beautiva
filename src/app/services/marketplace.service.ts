@@ -21,6 +21,8 @@ import {
   StudioStatus,
   TransactionRecord,
   UserProfile,
+  VendorApplication,
+  VendorApplicationStatus,
   VendorInvitation,
   WorkingHours,
 } from '../models/marketplace.models';
@@ -34,6 +36,7 @@ const TRANSACTIONS_STORAGE_KEY = 'beautiva_transactions_v2';
 const INVITATIONS_STORAGE_KEY = 'beautiva_invitations_v2';
 const SETTINGS_STORAGE_KEY = 'beautiva_settings_v2';
 const CUSTOMERS_STORAGE_KEY = 'beautiva_customers_v2';
+const APPLICATIONS_STORAGE_KEY = 'beautiva_vendor_applications_v2';
 
 const LEGACY_STORAGE_KEYS = [
   'beautiva_businesses_v1',
@@ -129,6 +132,7 @@ export class MarketplaceService {
   readonly vendorInvitations = signal<VendorInvitation[]>(this.loadInvitations());
   readonly platformSettings = signal<PlatformSettings>(this.loadSettings());
   readonly customerAccounts = signal<UserProfile[]>(this.loadCustomerAccounts());
+  readonly vendorApplications = signal<VendorApplication[]>(this.loadApplications());
 
   readonly bookedSlotsExternal = signal<
     Array<{ businessSlug: string; bookingDate: string; bookingTime: string; status: string }>
@@ -362,7 +366,7 @@ export class MarketplaceService {
 
       // Scoped authenticated fetches (Super Admin / Vendor / Customer)
       if (this.auth.authMode() === 'supabase') {
-        const [bkRes, txRes, invRes, profRes] = await Promise.all([
+        const [bkRes, txRes, invRes, profRes, appRes] = await Promise.all([
           this.sb.client.from('bookings').select('*').order('created_at', { ascending: false }),
           this.sb.client.from('transactions').select('*').order('created_at', { ascending: false }),
           this.sb.client
@@ -370,6 +374,10 @@ export class MarketplaceService {
             .select('*')
             .order('created_at', { ascending: false }),
           this.sb.client.from('profiles').select('*').order('created_at', { ascending: false }),
+          this.sb.client
+            .from('vendor_applications')
+            .select('*')
+            .order('created_at', { ascending: false }),
         ]);
 
         if (bkRes.data) {
@@ -416,6 +424,14 @@ export class MarketplaceService {
           }));
           this.vendorInvitations.set(mappedInv);
           this.saveInvitations(mappedInv);
+        }
+
+        if (appRes.data) {
+          const mappedApps: VendorApplication[] = appRes.data.map((a: any) =>
+            this.mapApplicationRow(a),
+          );
+          this.vendorApplications.set(mappedApps);
+          this.saveApplications(mappedApps);
         }
 
         if (profRes.data) {
@@ -1685,5 +1701,359 @@ export class MarketplaceService {
 
   private saveCustomerAccounts(list: UserProfile[]): void {
     this.saveArrayToStorage(CUSTOMERS_STORAGE_KEY, list);
+  }
+
+  // ==========================================================================
+  // VENDOR APPLICATION & ONBOARDING PAYMENT WORKFLOW
+  // ==========================================================================
+  submitVendorApplication(input: {
+    ownerName: string;
+    email: string;
+    phone: string;
+    businessName: string;
+    categorySlug: CategorySlug;
+    city: string;
+    location: string;
+    address?: string;
+    tagline?: string;
+    about?: string;
+    instagram?: string;
+    coverImage?: string;
+    startingServiceName: string;
+    startingServicePrice: number;
+    startingServiceDurationMinutes?: number;
+  }): VendorApplication {
+    const cat = this.getCategoryBySlug(input.categorySlug);
+    const slug = this.slugify(input.businessName) || `studio-${Date.now()}`;
+    const applicationNumber = this.generateNextApplicationNumber();
+    const record: VendorApplication = {
+      id: `app-${Date.now()}`,
+      applicationNumber,
+      ownerName: input.ownerName.trim(),
+      email: input.email.trim().toLowerCase(),
+      phone: input.phone.trim(),
+      businessName: input.businessName.trim(),
+      slug,
+      categorySlug: input.categorySlug,
+      categoryLabel: cat?.name ?? input.categorySlug,
+      city: input.city.trim() || 'Lagos',
+      location: input.location.trim() || input.city.trim(),
+      address: input.address?.trim() || input.location.trim() || input.city.trim(),
+      tagline:
+        input.tagline?.trim() ||
+        `Verified ${cat?.shortName || 'beauty'} studio in ${input.location.trim() || input.city}.`,
+      about:
+        input.about?.trim() ||
+        `${input.businessName.trim()} delivers bespoke ${cat?.shortName?.toLowerCase() || 'beauty'} services in ${input.location.trim() || input.city}.`,
+      instagram: input.instagram?.trim() || `@${slug}`,
+      coverImage: input.coverImage || cat?.coverImage || 'images/hero-salon.jpg',
+      startingServiceName: input.startingServiceName.trim() || 'Signature Session',
+      startingServicePrice: Number(input.startingServicePrice) || 20000,
+      startingServiceDurationMinutes: Number(input.startingServiceDurationMinutes) || 60,
+      onboardingFee: 25000,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [record, ...this.vendorApplications()];
+    this.vendorApplications.set(updated);
+    this.saveApplications(updated);
+
+    if (this.isBrowser) {
+      void fetch('/api/public/vendor-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record),
+      }).catch(() => {});
+    }
+
+    return record;
+  }
+
+  findApplicationByNumber(appNumber: string): VendorApplication | undefined {
+    const normalized = appNumber.trim().toUpperCase();
+    if (!normalized) return undefined;
+    return this.vendorApplications().find(
+      (a) => a.applicationNumber.toUpperCase() === normalized,
+    );
+  }
+
+  async lookupApplicationRemote(appNumber: string): Promise<VendorApplication | undefined> {
+    const local = this.findApplicationByNumber(appNumber);
+    if (!this.isBrowser) return local;
+    const normalized = appNumber.trim().toUpperCase();
+    if (!normalized) return local;
+    try {
+      const resp = await fetch(
+        `/api/public/vendor-application/${encodeURIComponent(normalized)}`,
+      );
+      if (resp.ok) {
+        const json = (await resp.json()) as { application?: any };
+        if (json.application) {
+          const mapped = this.mapApplicationRow(json.application);
+          const merged = [
+            mapped,
+            ...this.vendorApplications().filter(
+              (a) => a.applicationNumber.toUpperCase() !== mapped.applicationNumber.toUpperCase(),
+            ),
+          ];
+          this.vendorApplications.set(merged);
+          this.saveApplications(merged);
+          return mapped;
+        }
+      }
+    } catch {
+      // Fallback to local
+    }
+    return local;
+  }
+
+  reviewVendorApplication(
+    appNumber: string,
+    decision: 'approved' | 'declined',
+    adminNote?: string,
+  ): VendorApplication | undefined {
+    const normalized = appNumber.trim().toUpperCase();
+    let updatedApp: VendorApplication | undefined;
+    const reviewedAt = new Date().toISOString();
+    const list = this.vendorApplications().map((a) => {
+      if (a.applicationNumber.toUpperCase() !== normalized) return a;
+      updatedApp = {
+        ...a,
+        status: decision,
+        adminNote: adminNote?.trim() || undefined,
+        reviewedAt,
+      };
+      return updatedApp;
+    });
+
+    if (updatedApp) {
+      this.vendorApplications.set(list);
+      this.saveApplications(list);
+      if (this.sb.client) {
+        void this.sb.client
+          .from('vendor_applications')
+          .update({
+            status: decision,
+            admin_note: updatedApp.adminNote ?? null,
+            reviewed_at: reviewedAt,
+          })
+          .ilike('application_number', normalized);
+      }
+    }
+    return updatedApp;
+  }
+
+  async completeVendorApplicationPayment(
+    appNumber: string,
+    paystackReference: string,
+  ): Promise<{
+    ok: boolean;
+    error?: string;
+    application?: VendorApplication;
+    business?: BusinessProfile;
+  }> {
+    const app = this.findApplicationByNumber(appNumber);
+    if (!app) {
+      return { ok: false, error: 'Application number not found.' };
+    }
+    if (app.status !== 'approved') {
+      return {
+        ok: false,
+        error:
+          app.status === 'paid_live'
+            ? 'This application has already been paid and activated.'
+            : 'This application must be approved by the Super Admin before payment.',
+      };
+    }
+
+    const tempPassword = this.generateTempPassword();
+    const paidAt = new Date().toISOString();
+    const cat = this.getCategoryBySlug(app.categorySlug);
+    const words = app.businessName.trim().split(/\s+/);
+    const logoText =
+      words.length >= 2
+        ? `${words[0][0]}${words[1][0]}`.toUpperCase()
+        : app.businessName.trim().slice(0, 2).toUpperCase();
+
+    const business = this.upsertBusiness({
+      slug: app.slug,
+      name: app.businessName,
+      categorySlug: app.categorySlug,
+      categoryLabel: cat?.name ?? app.categoryLabel,
+      tagline: app.tagline,
+      about: app.about,
+      location: app.location,
+      city: app.city,
+      address: app.address,
+      logoText,
+      logoBg: '#3b0b0b',
+      coverImage: app.coverImage,
+      gallery: [app.coverImage, 'images/hero-salon.jpg'],
+      featured: false,
+      verified: true,
+      status: 'active',
+      services: [
+        {
+          id: `srv-${Date.now()}`,
+          name: app.startingServiceName,
+          categoryLabel: cat?.shortName || 'Signature',
+          price: app.startingServicePrice,
+          durationMinutes: app.startingServiceDurationMinutes,
+          description: `${app.startingServiceName} at ${app.businessName}.`,
+          isActive: true,
+        },
+      ],
+      staff: [
+        {
+          id: `stf-${Date.now()}`,
+          name: app.ownerName,
+          role: 'Founder & Lead Specialist',
+          specialty: cat?.shortName || 'Studio Craft',
+          avatarColor: '#b81d1a',
+        },
+      ],
+      workingHours: DEFAULT_WORKING_HOURS,
+      contact: {
+        phone: app.phone || '+234 800 000 0000',
+        email: app.email,
+        instagram: app.instagram,
+      },
+      paymentPolicy: {
+        allowFull: true,
+        allowDeposit: true,
+        depositPercent: 30,
+        allowPayAtBusiness: true,
+      },
+    });
+
+    // Log Paystack onboarding fee transaction
+    const tx: TransactionRecord = {
+      id: `tx-onb-${Date.now()}`,
+      bookingReference: app.applicationNumber,
+      businessId: business.id,
+      businessName: business.name,
+      customerName: app.ownerName,
+      customerEmail: app.email,
+      gateway: 'Paystack (Vendor Onboarding)',
+      gatewayReference: paystackReference,
+      amount: app.onboardingFee,
+      platformCommissionRate: 100,
+      platformCommissionAmount: app.onboardingFee,
+      vendorNetAmount: 0,
+      status: 'success',
+      paidAt,
+      createdAt: paidAt,
+    };
+    const nextTx = [tx, ...this.transactions()];
+    this.transactions.set(nextTx);
+    this.saveTransactions(nextTx);
+
+    // Provision local vendor login credentials + attempt Supabase Auth user creation
+    this.auth.registerLocalVendorCredentials({
+      email: app.email,
+      password: tempPassword,
+      fullName: app.ownerName,
+      phone: app.phone,
+      studioSlug: business.slug,
+    });
+
+    if (this.isBrowser) {
+      try {
+        await fetch(
+          `/api/public/vendor-applications/${encodeURIComponent(app.applicationNumber)}/complete-onboarding`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paystackReference,
+              tempPassword,
+              email: app.email,
+              ownerName: app.ownerName,
+              phone: app.phone,
+            }),
+          },
+        );
+      } catch {
+        // Local credentials remain active fallback
+      }
+    }
+
+    const updatedApp: VendorApplication = {
+      ...app,
+      status: 'paid_live',
+      paystackReference,
+      paidAt,
+      issuedLoginEmail: app.email,
+      issuedTempPassword: tempPassword,
+      liveBusinessSlug: business.slug,
+    };
+
+    const nextApps = this.vendorApplications().map((a) =>
+      a.applicationNumber.toUpperCase() === app.applicationNumber.toUpperCase() ? updatedApp : a,
+    );
+    this.vendorApplications.set(nextApps);
+    this.saveApplications(nextApps);
+
+    return { ok: true, application: updatedApp, business };
+  }
+
+  private generateNextApplicationNumber(): string {
+    let maxSeq = 100;
+    for (const a of this.vendorApplications()) {
+      const m = a.applicationNumber.match(/APP-\d{4}-(\d+)/i);
+      if (m) {
+        const seq = parseInt(m[1], 10);
+        if (!Number.isNaN(seq) && seq > maxSeq) maxSeq = seq;
+      }
+    }
+    return `APP-2026-${String(maxSeq + 1).padStart(6, '0')}`;
+  }
+
+  private generateTempPassword(): string {
+    const num = Math.floor(1000 + Math.random() * 9000);
+    return `Btv!${num}Ng`;
+  }
+
+  private mapApplicationRow(r: any): VendorApplication {
+    return {
+      id: r.id,
+      applicationNumber: r.application_number,
+      ownerName: r.owner_name,
+      email: r.email,
+      phone: r.phone || '',
+      businessName: r.business_name,
+      slug: r.slug,
+      categorySlug: r.category_slug,
+      categoryLabel: r.category_label,
+      city: r.city || 'Lagos',
+      location: r.location || '',
+      address: r.address || '',
+      tagline: r.tagline || '',
+      about: r.about || '',
+      instagram: r.instagram || '',
+      coverImage: r.cover_image || 'images/hero-salon.jpg',
+      startingServiceName: r.starting_service_name || 'Signature Session',
+      startingServicePrice: Number(r.starting_service_price) || 20000,
+      startingServiceDurationMinutes: Number(r.starting_service_duration_minutes) || 60,
+      onboardingFee: Number(r.onboarding_fee) || 25000,
+      status: (r.status || 'pending') as VendorApplicationStatus,
+      adminNote: r.admin_note || undefined,
+      paystackReference: r.paystack_reference || undefined,
+      paidAt: r.paid_at || undefined,
+      issuedLoginEmail: r.issued_login_email || undefined,
+      issuedTempPassword: r.issued_temp_password || undefined,
+      liveBusinessSlug: r.live_business_slug || undefined,
+      createdAt: r.created_at,
+      reviewedAt: r.reviewed_at || undefined,
+    };
+  }
+
+  private loadApplications(): VendorApplication[] {
+    return this.loadArrayFromStorage<VendorApplication>(APPLICATIONS_STORAGE_KEY);
+  }
+
+  private saveApplications(list: VendorApplication[]): void {
+    this.saveArrayToStorage(APPLICATIONS_STORAGE_KEY, list);
   }
 }

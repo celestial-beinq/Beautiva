@@ -1,0 +1,536 @@
+<!-- 01 | VENDOR APPLICATION & STATUS PORTAL HERO -->
+<section class="apply-hero section--dark">
+  <div class="container">
+    <div class="section-index section-index--light">
+      <span class="section-index-num">01</span>
+      <span>Vendor Onboarding · Beautiva Nigeria</span>
+    </div>
+    <h1 class="apply-title">Apply to List Your Studio</h1>
+    <p class="apply-sub">
+      Submit your business details to receive an application number, track Super Admin approval,
+      complete onboarding via Paystack, and launch live on Beautiva with your vendor login.
+    </p>
+
+    <div class="apply-tabs" role="tablist">
+      <button
+        type="button"
+        class="apply-tab"
+        [class.is-active]="activeTab() === 'apply'"
+        (click)="activeTab.set('apply')"
+      >
+        01 · Submit Business Application
+      </button>
+      <button
+        type="button"
+        class="apply-tab"
+        [class.is-active]="activeTab() === 'status'"
+        (click)="activeTab.set('status')"
+      >
+        02 · Check Status &amp; Pay Onboarding Fee
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- 02 | BODY -->
+<section class="section">
+  <div class="container">
+    <!-- TAB 1: SUBMIT VENDOR APPLICATION -->
+    @if (activeTab() === 'apply') {
+      @if (submittedApp(); as app) {
+        <div class="confirm-card">
+          <span class="badge badge--warning">Application Submitted · Pending Admin Review</span>
+          <h2>Your application has been sent to the Super Admin.</h2>
+          <p>
+            Save your unique <strong>Application Number</strong> below. Once the Super Admin accepts
+            your application, use this number to pay the onboarding fee via Paystack, go live on
+            listings, and receive your vendor login details.
+          </p>
+
+          <div class="app-num-box">
+            <div>
+              <span class="app-num-label">Application Number</span>
+              <strong class="app-num-code">{{ app.applicationNumber }}</strong>
+            </div>
+            <button
+              type="button"
+              class="btn btn--outline btn--sm"
+              (click)="copyAppNumber(app.applicationNumber)"
+            >
+              {{ copiedAppNum() ? 'Copied ✓' : 'Copy Number' }}
+            </button>
+          </div>
+
+          <div class="summary-grid">
+            <div><span>Business</span><strong>{{ app.businessName }}</strong></div>
+            <div><span>Owner</span><strong>{{ app.ownerName }}</strong></div>
+            <div><span>Email</span><strong>{{ app.email }}</strong></div>
+            <div><span>Category</span><strong>{{ app.categoryLabel }}</strong></div>
+            <div><span>Location</span><strong>{{ app.location }}</strong></div>
+            <div><span>Status</span><strong>Pending Review</strong></div>
+          </div>
+
+          <div class="confirm-actions">
+            <button
+              type="button"
+              class="btn btn--primary btn--lg"
+              (click)="goToStatusCheck(app.applicationNumber)"
+            >
+              Check Application Status →
+            </button>
+            <button type="button" class="btn btn--outline" (click)="resetForm()">
+              Submit Another Application
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="apply-grid">
+          <form class="apply-form-col" (ngSubmit)="submitApplication()">
+            <div class="form-card">
+              <h2>1. Owner &amp; Contact Information</h2>
+              <div class="form-three">
+                <div class="field">
+                  <label class="field-label" for="app-owner">Owner Full Name *</label>
+                  <input
+                    id="app-owner"
+                    class="input"
+                    name="ownerName"
+                    [(ngModel)]="ownerName"
+                    placeholder="e.g. Tolu Adeyemi"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="app-email">Business Email *</label>
+                  <input
+                    id="app-email"
+                    type="email"
+                    class="input"
+                    name="email"
+                    [(ngModel)]="email"
+                    placeholder="hello@yourstudio.ng"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="app-phone">Phone Number *</label>
+                  <input
+                    id="app-phone"
+                    class="input"
+                    name="phone"
+                    [(ngModel)]="phone"
+                    placeholder="+234 809 000 0000"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-card">
+              <h2>2. Business Details</h2>
+              <div class="form-two">
+                <div class="field">
+                  <label class="field-label" for="app-biz">Business / Studio Name *</label>
+                  <input
+                    id="app-biz"
+                    class="input"
+                    name="businessName"
+                    [(ngModel)]="businessName"
+                    placeholder="e.g. Glamour Studio"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="app-cat">Service Category *</label>
+                  <select
+                    id="app-cat"
+                    class="select"
+                    name="categorySlug"
+                    [ngModel]="categorySlug"
+                    (ngModelChange)="onCategoryChange($event)"
+                  >
+                    @for (cat of categories(); track cat.slug) {
+                      <option [value]="cat.slug">{{ cat.name }}</option>
+                    }
+                    @if (categories().length === 0) {
+                      <option value="hairdressers">Hairdressers / Hair Stylists</option>
+                      <option value="barbers">Barbers</option>
+                      <option value="nail-technicians">Nail Technicians</option>
+                      <option value="lash-technicians">Lash Technicians</option>
+                      <option value="makeup-artists">Makeup Artists</option>
+                      <option value="tattoo-artists">Tattoo Artists</option>
+                    }
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="app-city">City *</label>
+                  <input id="app-city" class="input" name="city" [(ngModel)]="city" placeholder="Lagos" />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="app-loc">Area / Location *</label>
+                  <input
+                    id="app-loc"
+                    class="input"
+                    name="location"
+                    [(ngModel)]="location"
+                    placeholder="e.g. Lekki Phase 1, Lagos"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-two">
+                <div class="field">
+                  <label class="field-label" for="app-addr">Street Address</label>
+                  <input
+                    id="app-addr"
+                    class="input"
+                    name="address"
+                    [(ngModel)]="address"
+                    placeholder="14 Admiralty Way, Lekki Phase 1"
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="app-ig">Instagram Handle</label>
+                  <input
+                    id="app-ig"
+                    class="input"
+                    name="instagram"
+                    [(ngModel)]="instagram"
+                    placeholder="@yourstudio.ng"
+                  />
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="app-tag">Short Tagline</label>
+                <input
+                  id="app-tag"
+                  class="input"
+                  name="tagline"
+                  [(ngModel)]="tagline"
+                  placeholder="One-line studio description"
+                />
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="app-about">About Your Studio</label>
+                <textarea
+                  id="app-about"
+                  class="textarea"
+                  rows="3"
+                  name="about"
+                  [(ngModel)]="about"
+                  placeholder="Share your specialties, hygiene standards, and experience..."
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="form-card">
+              <h2>3. Signature Service &amp; Cover Photo</h2>
+              <div class="form-three">
+                <div class="field">
+                  <label class="field-label" for="app-srv">Starting Service Name</label>
+                  <input
+                    id="app-srv"
+                    class="input"
+                    name="startingServiceName"
+                    [(ngModel)]="startingServiceName"
+                    placeholder="e.g. Knotless Braids"
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="app-price">Price (₦)</label>
+                  <input
+                    id="app-price"
+                    type="number"
+                    class="input"
+                    name="startingServicePrice"
+                    [(ngModel)]="startingServicePrice"
+                    min="500"
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="app-dur">Duration (mins)</label>
+                  <input
+                    id="app-dur"
+                    type="number"
+                    class="input"
+                    name="startingServiceDurationMinutes"
+                    [(ngModel)]="startingServiceDurationMinutes"
+                    min="15"
+                  />
+                </div>
+              </div>
+
+              <div class="cover-pick-row">
+                <img [src]="coverImage" alt="Cover preview" class="cover-thumb" />
+                <div class="cover-pick-controls">
+                  <span class="field-label">Select a cover preset or upload your photo</span>
+                  <div class="preset-chips">
+                    @for (opt of coverOptions; track opt.path) {
+                      <button
+                        type="button"
+                        class="chip-btn"
+                        [class.is-active]="coverImage === opt.path"
+                        (click)="coverImage = opt.path"
+                      >
+                        {{ opt.label }}
+                      </button>
+                    }
+                  </div>
+                  <input type="file" accept="image/*" (change)="onCoverSelected($event)" />
+                </div>
+              </div>
+
+              @if (formError()) {
+                <p class="form-error">{{ formError() }}</p>
+              }
+
+              <button type="submit" class="btn btn--primary btn--lg submit-btn">
+                Submit Application &amp; Get Application Number →
+              </button>
+            </div>
+          </form>
+
+          <aside class="apply-sidebar">
+            <div class="aside-card">
+              <span class="eyebrow">[ HOW ONBOARDING WORKS ]</span>
+              <h3>4 Steps to Go Live</h3>
+              <ol class="steps-ol">
+                <li>
+                  <strong>Submit business details</strong>
+                  <span>Receive an instant Application Number (<code>APP-2026-...</code>).</span>
+                </li>
+                <li>
+                  <strong>Super Admin review</strong>
+                  <span>Admin inspects your studio details and accepts or declines.</span>
+                </li>
+                <li>
+                  <strong>Pay onboarding fee</strong>
+                  <span>Check your Application Number and complete the ₦25,000 Paystack fee.</span>
+                </li>
+                <li>
+                  <strong>Go live &amp; sign in</strong>
+                  <span>Your studio appears on Beautiva listings and you receive your login details.</span>
+                </li>
+              </ol>
+            </div>
+          </aside>
+        </div>
+      }
+    }
+
+    <!-- TAB 2: CHECK APPLICATION STATUS & PAY TO GO LIVE -->
+    @if (activeTab() === 'status') {
+      <div class="status-shell">
+        <form class="status-search" (ngSubmit)="checkStatus()">
+          <input
+            type="text"
+            class="input"
+            name="lookupInput"
+            [(ngModel)]="lookupInput"
+            placeholder="Enter Application Number e.g. APP-2026-000101"
+            aria-label="Application Number"
+          />
+          <button type="submit" class="btn btn--primary btn--lg">Check Status →</button>
+        </form>
+
+        @if (applications().length > 0) {
+          <div class="quick-apps">
+            <span>Recent applications:</span>
+            @for (a of applications().slice(0, 5); track a.applicationNumber) {
+              <button
+                type="button"
+                class="chip-btn"
+                [class.is-active]="searchedAppNum().toUpperCase() === a.applicationNumber.toUpperCase()"
+                (click)="selectQuickApp(a.applicationNumber)"
+              >
+                {{ a.applicationNumber }} · {{ a.businessName }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (searchedAppNum()) {
+          @if (lookedUpApplication(); as app) {
+            <div class="status-card">
+              <div class="status-card-head">
+                <div>
+                  <span class="eyebrow">[ APPLICATION {{ app.applicationNumber }} ]</span>
+                  <h2>{{ app.businessName }}</h2>
+                  <p>{{ app.categoryLabel }} · {{ app.location }} · Owner: {{ app.ownerName }}</p>
+                </div>
+
+                <span
+                  class="badge"
+                  [class.badge--warning]="app.status === 'pending'"
+                  [class.badge--bronze]="app.status === 'approved'"
+                  [class.badge--danger]="app.status === 'declined'"
+                  [class.badge--success]="app.status === 'paid_live'"
+                >
+                  {{
+                    app.status === 'pending'
+                      ? 'Pending Review'
+                      : app.status === 'approved'
+                        ? 'Approved — Awaiting Payment'
+                        : app.status === 'declined'
+                          ? 'Declined'
+                          : 'Paid & Live on Beautiva'
+                  }}
+                </span>
+              </div>
+
+              <!-- Status-Specific Panels -->
+              @if (app.status === 'pending') {
+                <div class="notice notice--pending">
+                  <strong>Under Super Admin Review</strong>
+                  <p>
+                    Your application has been received and is queued for Super Admin verification.
+                    Check back shortly with <code>{{ app.applicationNumber }}</code>.
+                  </p>
+                </div>
+              }
+
+              @if (app.status === 'declined') {
+                <div class="notice notice--declined">
+                  <strong>Application Declined</strong>
+                  <p>
+                    {{
+                      app.adminNote ||
+                        'Your application did not meet our current verification requirements.'
+                    }}
+                  </p>
+                  <button
+                    type="button"
+                    class="btn btn--outline btn--sm"
+                    (click)="activeTab.set('apply')"
+                  >
+                    Submit New Application
+                  </button>
+                </div>
+              }
+
+              @if (app.status === 'approved') {
+                <div class="notice notice--approved">
+                  <div>
+                    <strong>Congratulations — Your Application Was Accepted!</strong>
+                    <p>
+                      @if (app.adminNote) {
+                        Admin note: “{{ app.adminNote }}” ·
+                      }
+                      Complete your one-time studio onboarding fee of
+                      <strong>{{ marketplace.formatNaira(app.onboardingFee) }}</strong> via Paystack
+                      to publish your studio on Beautiva listings and receive your vendor login
+                      credentials.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="btn btn--primary btn--lg"
+                    (click)="startOnboardingPayment()"
+                  >
+                    Pay {{ marketplace.formatNaira(app.onboardingFee) }} with Paystack &amp; Go Live →
+                  </button>
+                </div>
+              }
+
+              @if (paymentError()) {
+                <p class="form-error">{{ paymentError() }}</p>
+              }
+
+              @if (app.status === 'paid_live') {
+                <div class="credentials-box">
+                  <div class="cred-head">
+                    <span class="badge badge--success">Live on Beautiva Listings</span>
+                    <h3>Vendor Login Credentials Issued</h3>
+                    <p>
+                      A copy of your login credentials has been dispatched to
+                      <strong>{{ app.issuedLoginEmail || app.email }}</strong>. Your studio is now
+                      discoverable on the public directory and at
+                      <code>/business/{{ app.liveBusinessSlug || app.slug }}</code>.
+                    </p>
+                  </div>
+
+                  <div class="cred-grid">
+                    <div>
+                      <span>Vendor Login Email</span>
+                      <strong>{{ app.issuedLoginEmail || app.email }}</strong>
+                    </div>
+                    <div>
+                      <span>Temporary Password</span>
+                      <code>{{ app.issuedTempPassword }}</code>
+                    </div>
+                    <div>
+                      <span>Paystack Reference</span>
+                      <code>{{ app.paystackReference }}</code>
+                    </div>
+                    <div>
+                      <span>Live Studio Website</span>
+                      <a [routerLink]="['/business', app.liveBusinessSlug || app.slug]" class="cred-link">
+                        /business/{{ app.liveBusinessSlug || app.slug }} ↗
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="cred-actions">
+                    <a
+                      routerLink="/auth"
+                      [queryParams]="{ redirect: '/vendor' }"
+                      class="btn btn--primary btn--lg"
+                    >
+                      Sign In to Vendor Dashboard →
+                    </a>
+                    <a
+                      [routerLink]="['/business', app.liveBusinessSlug || app.slug]"
+                      class="btn btn--outline"
+                    >
+                      View Live Studio Site
+                    </a>
+                    <a routerLink="/vendors" class="btn btn--outline">View in Vendors Listing</a>
+                  </div>
+                </div>
+              }
+
+              <!-- Submitted Business Details -->
+              <div class="details-table">
+                <div><span>Application ID</span><strong>{{ app.applicationNumber }}</strong></div>
+                <div><span>Email</span><strong>{{ app.email }}</strong></div>
+                <div><span>Phone</span><strong>{{ app.phone }}</strong></div>
+                <div><span>Address</span><strong>{{ app.address }}</strong></div>
+                <div>
+                  <span>Starting Service</span>
+                  <strong>
+                    {{ app.startingServiceName }} ·
+                    {{ marketplace.formatNaira(app.startingServicePrice) }}
+                  </strong>
+                </div>
+                <div><span>Instagram</span><strong>{{ app.instagram }}</strong></div>
+              </div>
+            </div>
+          } @else {
+            <div class="empty-status">
+              <h3>No application found for “{{ searchedAppNum() }}”</h3>
+              <p>
+                Verify the Application Number from your submission (e.g.
+                <code>APP-2026-000101</code>) or submit a new application.
+              </p>
+            </div>
+          }
+        }
+      </div>
+    }
+  </div>
+</section>
+
+@if (showPaystackModal() && lookedUpApplication(); as app) {
+  <app-paystack-modal
+    [businessName]="'Beautiva Onboarding · ' + app.businessName"
+    [customerEmail]="app.email"
+    [amount]="app.onboardingFee"
+    [description]="'Approved Studio Activation (' + app.applicationNumber + ')'"
+    (cancel)="showPaystackModal.set(false)"
+    (success)="onPaystackSuccess($event)"
+  />
+}

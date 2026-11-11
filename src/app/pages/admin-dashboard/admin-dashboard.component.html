@@ -125,7 +125,7 @@
         [class.is-active]="activeTab() === 'vendors'"
         (click)="activeTab.set('vendors')"
       >
-        02 · Vendor Management ({{ businesses().length }})
+        02 · Vendor Management ({{ businesses().length }}@if (pendingApplicationsCount() > 0) { · {{ pendingApplicationsCount() }} pending})
       </button>
       <button
         type="button"
@@ -204,10 +204,30 @@
         <div class="side-stack">
           <div class="panel-card">
             <h2>Pending Vendor Applications</h2>
-            @if (platformMetrics().pendingStudios === 0) {
+            @if (pendingApplicationsCount() === 0 && platformMetrics().pendingStudios === 0) {
               <p class="muted-note">No pending applications right now.</p>
             } @else {
               <div class="split-rows">
+                @for (app of vendorApplications(); track app.applicationNumber) {
+                  @if (app.status === 'pending') {
+                    <div class="split-row">
+                      <div>
+                        <strong>{{ app.businessName }}</strong>
+                        <div class="cell-sub">
+                          <code>{{ app.applicationNumber }}</code> · {{ app.categoryLabel }} ·
+                          {{ app.location }}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn--primary btn--sm"
+                        (click)="activeTab.set('vendors'); viewingApplicationNum.set(app.applicationNumber)"
+                      >
+                        Review
+                      </button>
+                    </div>
+                  }
+                }
                 @for (biz of businesses(); track biz.id) {
                   @if (biz.status === 'pending') {
                     <div class="split-row">
@@ -218,9 +238,9 @@
                       <button
                         type="button"
                         class="btn btn--primary btn--sm"
-                        (click)="approveVendor(biz.slug)"
+                        (click)="openApplicationView(biz)"
                       >
-                        Approve
+                        View
                       </button>
                     </div>
                   }
@@ -294,6 +314,191 @@
 
     <!-- TAB 2: VENDOR MANAGEMENT -->
     @if (activeTab() === 'vendors') {
+      <!-- VENDOR APPLICATIONS QUEUE -->
+      <div class="panel-card" style="margin-bottom: 1.5rem">
+        <div class="panel-head">
+          <div>
+            <h2>Incoming Vendor Applications ({{ vendorApplications().length }})</h2>
+            <p>
+              Inspect submitted business applications and accept or decline. Approved vendors pay
+              their onboarding fee using their Application Number to go live and receive login
+              credentials.
+            </p>
+          </div>
+          <div class="status-pills">
+            @for (st of ['all', 'pending', 'approved', 'declined', 'paid_live']; track st) {
+              <button
+                type="button"
+                class="filter-pill"
+                [class.is-active]="applicationFilter() === st"
+                (click)="applicationFilter.set($any(st))"
+              >
+                {{
+                  st === 'all'
+                    ? 'All'
+                    : st === 'paid_live'
+                      ? 'Paid & Live'
+                      : st === 'pending'
+                        ? 'Pending'
+                        : st === 'approved'
+                          ? 'Approved'
+                          : 'Declined'
+                }}
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (filteredApplications().length === 0) {
+          <p class="muted-note">
+            No vendor applications in this filter yet. Vendors can apply at
+            <a routerLink="/apply" class="studio-link">/apply</a>.
+          </p>
+        } @else {
+          <div class="app-queue">
+            @for (app of filteredApplications(); track app.applicationNumber) {
+              <div class="app-queue-card">
+                <div class="app-queue-top">
+                  <div class="app-queue-id">
+                    <img [src]="app.coverImage" [alt]="app.businessName" class="studio-thumb" />
+                    <div>
+                      <div class="studio-badges-inline">
+                        <code>{{ app.applicationNumber }}</code>
+                        <strong>{{ app.businessName }}</strong>
+                        <span
+                          class="badge"
+                          [class.badge--warning]="app.status === 'pending'"
+                          [class.badge--bronze]="app.status === 'approved'"
+                          [class.badge--danger]="app.status === 'declined'"
+                          [class.badge--success]="app.status === 'paid_live'"
+                        >
+                          {{
+                            app.status === 'pending'
+                              ? 'Pending Review'
+                              : app.status === 'approved'
+                                ? 'Approved — Awaiting Fee'
+                                : app.status === 'declined'
+                                  ? 'Declined'
+                                  : 'Paid & Live'
+                          }}
+                        </span>
+                      </div>
+                      <p>
+                        Owner: <strong>{{ app.ownerName }}</strong> · {{ app.email }} ·
+                        {{ app.phone }}
+                      </p>
+                      <span class="cell-sub">
+                        {{ app.categoryLabel }} · {{ app.location }} · Starting:
+                        {{ app.startingServiceName }}
+                        ({{ marketplace.formatNaira(app.startingServicePrice) }})
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="studio-admin-actions">
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="inspectApplication(app)"
+                    >
+                      {{
+                        viewingApplicationNum() === app.applicationNumber
+                          ? 'Hide Details'
+                          : 'View Application'
+                      }}
+                    </button>
+                    @if (app.status === 'pending') {
+                      <button
+                        type="button"
+                        class="btn btn--primary btn--sm"
+                        (click)="decideApplication(app.applicationNumber, 'approved')"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm btn-danger-outline"
+                        (click)="decideApplication(app.applicationNumber, 'declined')"
+                      >
+                        Decline
+                      </button>
+                    }
+                    @if (app.status === 'paid_live' && app.liveBusinessSlug) {
+                      <a
+                        [routerLink]="['/business', app.liveBusinessSlug]"
+                        class="btn btn--primary btn--sm"
+                      >
+                        Live Site ↗
+                      </a>
+                    }
+                  </div>
+                </div>
+
+                @if (viewingApplicationNum() === app.applicationNumber) {
+                  <div class="app-detail-drawer">
+                    <div class="app-queue-grid">
+                      <div><span>Business Name</span><strong>{{ app.businessName }}</strong></div>
+                      <div><span>Owner</span><strong>{{ app.ownerName }}</strong></div>
+                      <div><span>Email</span><strong>{{ app.email }}</strong></div>
+                      <div><span>Phone</span><strong>{{ app.phone }}</strong></div>
+                      <div><span>Category</span><strong>{{ app.categoryLabel }}</strong></div>
+                      <div><span>Address</span><strong>{{ app.address }}</strong></div>
+                      <div><span>Instagram</span><strong>{{ app.instagram }}</strong></div>
+                      <div>
+                        <span>Onboarding Fee</span>
+                        <strong>{{ marketplace.formatNaira(app.onboardingFee) }}</strong>
+                      </div>
+                      <div>
+                        <span>Signature Service</span>
+                        <strong>
+                          {{ app.startingServiceName }} ({{
+                            marketplace.formatNaira(app.startingServicePrice)
+                          }})
+                        </strong>
+                      </div>
+                    </div>
+                    <p class="app-about-line"><strong>Tagline:</strong> {{ app.tagline }}</p>
+                    <p class="app-about-line"><strong>About:</strong> {{ app.about }}</p>
+
+                    @if (app.status === 'paid_live') {
+                      <p class="app-about-line">
+                        <strong>Paystack Ref:</strong> <code>{{ app.paystackReference }}</code> ·
+                        <strong>Issued Vendor Login:</strong> {{ app.issuedLoginEmail }} /
+                        <code>{{ app.issuedTempPassword }}</code>
+                      </p>
+                    }
+
+                    @if (app.status === 'pending' || app.status === 'declined') {
+                      <div class="app-decision-bar">
+                        <input
+                          class="input"
+                          [(ngModel)]="applicationReviewNote"
+                          placeholder="Optional note or decline reason for applicant..."
+                        />
+                        <button
+                          type="button"
+                          class="btn btn--primary btn--sm"
+                          (click)="decideApplication(app.applicationNumber, 'approved')"
+                        >
+                          Accept Application
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn--outline btn--sm btn-danger-outline"
+                          (click)="decideApplication(app.applicationNumber, 'declined')"
+                        >
+                          Decline Application
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
       <div class="action-bar">
         <div class="action-bar-buttons">
           <button
@@ -494,9 +699,9 @@
                   <button
                     type="button"
                     class="btn btn--primary btn--sm"
-                    (click)="approveVendor(biz.slug)"
+                    (click)="openApplicationView(biz)"
                   >
-                    Approve
+                    View
                   </button>
                 }
                 <button
@@ -1089,3 +1294,124 @@
     }
   </div>
 </section>
+
+@if (viewingApplication(); as app) {
+  <div class="app-modal-backdrop" (click)="closeApplicationView()">
+    <div
+      class="app-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="app-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="app-modal-head">
+        <div>
+          <span class="badge badge--warning">Pending Vendor Application</span>
+          <h2 id="app-modal-title">{{ app.name }}</h2>
+          <p class="cell-sub">{{ app.categoryLabel }} · {{ app.location }}</p>
+        </div>
+        <button
+          type="button"
+          class="app-modal-close"
+          aria-label="Close application details"
+          (click)="closeApplicationView()"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="app-modal-body">
+        <div class="app-overview-row">
+          <img [src]="app.coverImage" [alt]="app.name" class="app-cover-img" />
+          <div>
+            @if (app.tagline) {
+              <p class="app-tagline"><strong>{{ app.tagline }}</strong></p>
+            }
+            <p class="app-about">{{ app.about || 'No studio description provided.' }}</p>
+          </div>
+        </div>
+
+        <div class="app-detail-grid">
+          <div class="app-detail-item">
+            <span>City &amp; Address</span>
+            <strong>{{ app.address || app.location }} ({{ app.city }})</strong>
+          </div>
+          <div class="app-detail-item">
+            <span>Storefront URL</span>
+            <code>/business/{{ app.slug }}</code>
+          </div>
+          <div class="app-detail-item">
+            <span>Email</span>
+            <strong>{{ app.contact.email || 'Not provided' }}</strong>
+          </div>
+          <div class="app-detail-item">
+            <span>Phone</span>
+            <strong>{{ app.contact.phone || 'Not provided' }}</strong>
+          </div>
+          <div class="app-detail-item">
+            <span>Instagram</span>
+            <strong>{{ app.contact.instagram || 'Not provided' }}</strong>
+          </div>
+          <div class="app-detail-item">
+            <span>Payment Policy</span>
+            <strong>
+              {{ app.paymentPolicy.allowFull ? 'Full Paystack' : '' }}
+              {{ app.paymentPolicy.allowDeposit ? ' · ' + app.paymentPolicy.depositPercent + '% Deposit' : '' }}
+              {{ app.paymentPolicy.allowPayAtBusiness ? ' · Pay at Studio' : '' }}
+            </strong>
+          </div>
+        </div>
+
+        @if (app.services.length > 0) {
+          <div class="app-section">
+            <h3>Submitted Services ({{ app.services.length }})</h3>
+            <div class="app-service-list">
+              @for (srv of app.services; track srv.id) {
+                <div class="app-service-row">
+                  <div>
+                    <strong>{{ srv.name }}</strong>
+                    <span class="cell-sub">{{ marketplace.formatDuration(srv.durationMinutes) }}</span>
+                  </div>
+                  <strong>{{ marketplace.formatNaira(srv.price) }}</strong>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (app.staff.length > 0) {
+          <div class="app-section">
+            <h3>Team Members ({{ app.staff.length }})</h3>
+            <div class="app-staff-tags">
+              @for (m of app.staff; track m.id) {
+                <span class="badge badge--bronze">{{ m.name }} · {{ m.role }}</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="app-modal-foot">
+        <button type="button" class="btn btn--outline" (click)="closeApplicationView()">
+          Close
+        </button>
+        <div class="app-modal-decisions">
+          <button
+            type="button"
+            class="btn btn--outline btn-danger-outline"
+            (click)="declineVendor(app)"
+          >
+            Decline
+          </button>
+          <button
+            type="button"
+            class="btn btn--primary"
+            (click)="approveVendor(app.slug)"
+          >
+            Approve
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

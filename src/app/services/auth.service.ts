@@ -5,6 +5,15 @@ import { UserProfile, UserRole, VendorInvitation } from '../models/marketplace.m
 import { SupabaseService } from './supabase.service';
 
 const DEMO_SESSION_KEY = 'beautiva_demo_session_v1';
+const VENDOR_CREDS_KEY = 'beautiva_vendor_creds_v2';
+
+export interface LocalVendorCredential {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  studioSlug: string;
+}
 
 export interface AuthActionResult {
   ok: boolean;
@@ -86,21 +95,31 @@ export class AuthService {
   }
 
   async signIn(email: string, password: string): Promise<AuthActionResult> {
+    const normalizedEmail = email.trim().toLowerCase();
+
     if (!this.sb.client) {
+      const localMatch = this.findLocalVendorCredential(normalizedEmail, password);
+      if (localMatch) {
+        return this.signInLocalVendor(localMatch);
+      }
       return {
         ok: false,
-        error: 'Supabase .env keys are not configured yet. Use Demo Quick-Switch below or add SUPABASE_URL & SUPABASE_ANON_KEY to .env.',
+        error: 'Supabase .env keys are not configured yet. Use an approved vendor login or add SUPABASE_URL & SUPABASE_ANON_KEY to .env.',
       };
     }
 
     this.loading.set(true);
     try {
       const { data, error } = await this.sb.client.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
       });
 
       if (error || !data.user) {
+        const localMatch = this.findLocalVendorCredential(normalizedEmail, password);
+        if (localMatch) {
+          return this.signInLocalVendor(localMatch);
+        }
         return { ok: false, error: error?.message || 'Invalid credentials' };
       }
 
@@ -119,6 +138,68 @@ export class AuthService {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  registerLocalVendorCredentials(creds: LocalVendorCredential): void {
+    if (!this.isBrowser) return;
+    try {
+      const existing = this.loadLocalVendorCredentials().filter(
+        (c) => c.email.toLowerCase() !== creds.email.trim().toLowerCase(),
+      );
+      existing.unshift({
+        ...creds,
+        email: creds.email.trim().toLowerCase(),
+      });
+      localStorage.setItem(VENDOR_CREDS_KEY, JSON.stringify(existing));
+    } catch {
+      // Ignore storage error
+    }
+  }
+
+  private findLocalVendorCredential(
+    email: string,
+    password: string,
+  ): LocalVendorCredential | undefined {
+    return this.loadLocalVendorCredentials().find(
+      (c) => c.email.toLowerCase() === email && c.password === password,
+    );
+  }
+
+  private loadLocalVendorCredentials(): LocalVendorCredential[] {
+    if (!this.isBrowser) return [];
+    try {
+      const raw = localStorage.getItem(VENDOR_CREDS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private signInLocalVendor(creds: LocalVendorCredential): AuthActionResult {
+    const user: UserProfile = {
+      id: `vendor-${creds.studioSlug}`,
+      email: creds.email,
+      fullName: creds.fullName,
+      phone: creds.phone,
+      role: 'vendor',
+      status: 'active',
+    };
+    this.currentUser.set(user);
+    this.authMode.set('demo');
+    this.demoVendorStudioSlug.set(creds.studioSlug);
+    if (this.isBrowser) {
+      try {
+        localStorage.setItem(
+          DEMO_SESSION_KEY,
+          JSON.stringify({ user, studioSlug: creds.studioSlug }),
+        );
+      } catch {
+        // Ignore
+      }
+    }
+    return { ok: true, profile: user };
   }
 
   async signOut(): Promise<void> {

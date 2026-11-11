@@ -20,11 +20,21 @@
         </p>
 
         <div class="policy-callout">
-          <span class="callout-eyebrow">Account Provisioning Policy</span>
+          <span class="callout-eyebrow">Vendor Onboarding</span>
           <p>
-            Public account creation is disabled. Vendor accounts are created and issued exclusively
-            by the <strong>Super Admin</strong> from the Platform Dashboard.
+            Own a beauty studio? Apply with your business details to receive an application number,
+            get Super Admin approval, and activate via Paystack to receive your login details.
           </p>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.75rem">
+            <a routerLink="/apply" class="btn btn--primary btn--sm">Apply as Vendor →</a>
+            <a
+              routerLink="/apply"
+              [queryParams]="{ tab: 'status' }"
+              class="btn btn--outline btn--sm"
+            >
+              Check Application Status
+            </a>
+          </div>
         </div>
 
         <div class="brand-panel-footer">

@@ -218,4 +218,56 @@ describe('App & MarketplaceService', () => {
     expect(rescheduled?.rescheduledFrom).toBeTruthy();
     expect(biz.slug).toBe('atelier-lagos');
   });
+
+  it('should support full vendor application, admin approval, onboarding payment, and live listing', async () => {
+    const service = TestBed.inject(MarketplaceService);
+    const auth = TestBed.inject(AuthService);
+
+    const app = service.submitVendorApplication({
+      ownerName: 'Chidinma Obi',
+      email: 'chidinma@obiatelier.ng',
+      phone: '+234 809 111 2233',
+      businessName: 'Obi Beauty Atelier',
+      categorySlug: 'hairdressers',
+      city: 'Lagos',
+      location: 'Lekki Phase 1, Lagos',
+      startingServiceName: 'Knotless Braids',
+      startingServicePrice: 25000,
+    });
+
+    expect(app.applicationNumber).toMatch(/^APP-2026-\d{6}$/);
+    expect(app.status).toBe('pending');
+
+    // Super Admin views & approves application
+    const reviewed = service.reviewVendorApplication(
+      app.applicationNumber,
+      'approved',
+      'Verified studio details.',
+    );
+    expect(reviewed?.status).toBe('approved');
+
+    // Vendor checks status by Application Number & pays onboarding fee via Paystack
+    const lookedUp = service.findApplicationByNumber(app.applicationNumber);
+    expect(lookedUp?.status).toBe('approved');
+
+    const activation = await service.completeVendorApplicationPayment(
+      app.applicationNumber,
+      'PSK_ONBOARD_999',
+    );
+    expect(activation.ok).toBe(true);
+    expect(activation.application?.status).toBe('paid_live');
+    expect(activation.application?.issuedTempPassword).toBeTruthy();
+    expect(activation.business?.slug).toBe('obi-beauty-atelier');
+    expect(
+      service.activeBusinesses().some((b) => b.slug === 'obi-beauty-atelier'),
+    ).toBe(true);
+
+    // Vendor can sign in with issued credentials
+    const login = await auth.signIn(
+      activation.application!.issuedLoginEmail!,
+      activation.application!.issuedTempPassword!,
+    );
+    expect(login.ok).toBe(true);
+    expect(login.profile?.role).toBe('vendor');
+  });
 });

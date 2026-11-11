@@ -30,6 +30,12 @@ export const routes: Routes = [
     title: 'Sign In & Role Access — Beautiva',
   },
   {
+    path: 'apply',
+    loadComponent: () =>
+      import('./pages/vendor-apply/vendor-apply.component').then((m) => m.VendorApplyComponent),
+    title: 'Vendor Application & Onboarding — Beautiva',
+  },
+  {
     path: 'vendor',
     canActivate: [vendorGuard],
     loadComponent: () =>

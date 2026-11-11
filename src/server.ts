@@ -144,6 +144,154 @@ app.post('/api/admin/create-vendor-account', async (req, res) => {
   res.status(201).json({ userId: created.user.id, email: created.user.email });
 });
 
+// Public: Submit a new vendor application
+app.post('/api/public/vendor-applications', async (req, res) => {
+  const admin = getAdminClient();
+  if (!admin) {
+    res.status(503).json({ error: 'Service role not configured' });
+    return;
+  }
+
+  const body = req.body as Record<string, unknown>;
+  const { error, data } = await admin
+    .from('vendor_applications')
+    .insert({
+      application_number: body['applicationNumber'],
+      owner_name: body['ownerName'],
+      email: String(body['email'] || '').trim().toLowerCase(),
+      phone: body['phone'] || '',
+      business_name: body['businessName'],
+      slug: body['slug'],
+      category_slug: body['categorySlug'],
+      category_label: body['categoryLabel'],
+      city: body['city'] || 'Lagos',
+      location: body['location'] || '',
+      address: body['address'] || '',
+      tagline: body['tagline'] || '',
+      about: body['about'] || '',
+      instagram: body['instagram'] || '',
+      cover_image: body['coverImage'] || 'images/hero-salon.jpg',
+      starting_service_name: body['startingServiceName'] || 'Signature Session',
+      starting_service_price: Number(body['startingServicePrice']) || 20000,
+      starting_service_duration_minutes: Number(body['startingServiceDurationMinutes']) || 60,
+      onboarding_fee: Number(body['onboardingFee']) || 25000,
+      status: 'pending',
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+  res.status(201).json({ application: data });
+});
+
+// Public: Look up a vendor application by exact application number
+app.get('/api/public/vendor-application/:appNumber', async (req, res) => {
+  const admin = getAdminClient();
+  if (!admin) {
+    res.status(503).json({ error: 'Service role not configured' });
+    return;
+  }
+  const appNum = String(req.params['appNumber'] || '').trim().toUpperCase();
+  if (!appNum) {
+    res.status(400).json({ error: 'Application number is required' });
+    return;
+  }
+  const { data, error } = await admin
+    .from('vendor_applications')
+    .select('*')
+    .ilike('application_number', appNum)
+    .maybeSingle();
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+  if (!data) {
+    res.status(404).json({ error: 'Application not found' });
+    return;
+  }
+  res.json({ application: data });
+});
+
+// Public: Complete Paystack onboarding payment for an approved application & issue vendor login
+app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async (req, res) => {
+  const admin = getAdminClient();
+  if (!admin) {
+    res.status(503).json({ error: 'Service role not configured' });
+    return;
+  }
+
+  const appNum = String(req.params['appNumber'] || '').trim().toUpperCase();
+  const { paystackReference, tempPassword, email, ownerName, phone } = req.body as {
+    paystackReference?: string;
+    tempPassword?: string;
+    email?: string;
+    ownerName?: string;
+    phone?: string;
+  };
+
+  if (!paystackReference || !tempPassword || !email) {
+    res.status(400).json({ error: 'Paystack reference, email, and temp password are required' });
+    return;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  let userId: string | null = null;
+
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email: normalizedEmail,
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: {
+      full_name: ownerName || normalizedEmail.split('@')[0],
+      phone: phone || '',
+      requested_role: 'vendor',
+    },
+  });
+
+  if (!createErr && created.user) {
+    userId = created.user.id;
+  } else {
+    const { data: existingProfile } = await admin
+      .from('profiles')
+      .select('id')
+      .ilike('email', normalizedEmail)
+      .maybeSingle();
+    if (existingProfile?.id) {
+      const existingId = String(existingProfile.id);
+      userId = existingId;
+      await admin.auth.admin.updateUserById(existingId, { password: tempPassword });
+    }
+  }
+
+  if (userId) {
+    await admin.from('profiles').upsert({
+      id: userId,
+      email: normalizedEmail,
+      full_name: ownerName || normalizedEmail.split('@')[0],
+      phone: phone || '',
+      role: 'vendor',
+      status: 'active',
+    });
+  }
+
+  await admin
+    .from('vendor_applications')
+    .update({
+      status: 'paid_live',
+      paystack_reference: paystackReference,
+      paid_at: new Date().toISOString(),
+      issued_login_email: normalizedEmail,
+      issued_temp_password: tempPassword,
+    })
+    .ilike('application_number', appNum);
+
+  res.status(200).json({ ok: true, userId, email: normalizedEmail });
+});
+
 /**
  * Serve static files from /browser
  */
