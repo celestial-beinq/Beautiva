@@ -1,64 +1,71 @@
-<header
-  class="nav-shell"
-  [class.nav-shell--transparent]="isTransparentHero()"
-  [class.nav-shell--solid]="!isTransparentHero()"
->
-  <div class="container nav-inner">
-    <a routerLink="/" class="brand" (click)="closeMobile()">
-      <span class="brand-name">BEAUTIVA</span>
-    </a>
+<header class="site-header">
+  <div class="container">
+    <nav class="nav-bar" aria-label="Primary Navigation">
+      <div class="nav-links-desktop">
+        <a
+          routerLink="/"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="nav-link"
+          (click)="closeMobile()"
+        >
+          Home
+        </a>
+        <a routerLink="/about" routerLinkActive="is-active" class="nav-link" (click)="closeMobile()">
+          About
+        </a>
+        <a routerLink="/vendors" routerLinkActive="is-active" class="nav-link" (click)="closeMobile()">
+          Vendors
+        </a>
+        <a routerLink="/track" routerLinkActive="is-active" class="nav-link" (click)="closeMobile()">
+          Tracking
+        </a>
+        <a routerLink="/contact" routerLinkActive="is-active" class="nav-link" (click)="closeMobile()">
+          Contact
+        </a>
+      </div>
 
-    <nav class="nav-links" aria-label="Primary">
-      <a
-        routerLink="/"
-        routerLinkActive="is-active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        Home
+      <a routerLink="/" class="nav-brand" aria-label="Beautiva Home" (click)="closeMobile()">
+        <span class="brand-name">BEAUTIVA</span>
       </a>
-      <a routerLink="/about" routerLinkActive="is-active">About</a>
-      <a routerLink="/vendors" routerLinkActive="is-active">Vendors</a>
-      <a routerLink="/track" routerLinkActive="is-active">Tracking</a>
-      <a routerLink="/contact" routerLinkActive="is-active">Contact</a>
+
+      <div class="nav-actions">
+        <a routerLink="/vendor" routerLinkActive="is-active" class="nav-link nav-portal-link" (click)="closeMobile()">
+          Vendor
+        </a>
+        <a routerLink="/admin" routerLinkActive="is-active" class="nav-link nav-portal-link" (click)="closeMobile()">
+          Admin
+        </a>
+        <a routerLink="/vendors" class="btn btn--primary nav-cta" (click)="closeMobile()">
+          Book a session
+        </a>
+
+        <button
+          type="button"
+          class="mobile-toggle"
+          aria-label="Toggle Menu"
+          [attr.aria-expanded]="mobileOpen()"
+          (click)="toggleMobile()"
+        >
+          <span></span>
+          <span></span>
+        </button>
+      </div>
     </nav>
 
-    <div class="nav-actions">
-      <a
-        routerLink="/vendors"
-        class="btn btn--sm nav-cta"
-        [class.btn--white]="isTransparentHero()"
-        [class.btn--primary]="!isTransparentHero()"
-      >
-        Book a session →
-      </a>
-
-      <button
-        type="button"
-        class="menu-btn"
-        aria-label="Toggle menu"
-        [attr.aria-expanded]="mobileOpen()"
-        (click)="toggleMobile()"
-      >
-        {{ mobileOpen() ? '✕' : '☰' }}
-      </button>
-    </div>
+    @if (mobileOpen()) {
+      <div class="mobile-drawer">
+        <a routerLink="/" class="mobile-link" (click)="closeMobile()">Home</a>
+        <a routerLink="/about" class="mobile-link" (click)="closeMobile()">About</a>
+        <a routerLink="/vendors" class="mobile-link" (click)="closeMobile()">Vendors</a>
+        <a routerLink="/track" class="mobile-link" (click)="closeMobile()">Tracking</a>
+        <a routerLink="/contact" class="mobile-link" (click)="closeMobile()">Contact</a>
+        <a routerLink="/vendor" class="mobile-link" (click)="closeMobile()">Vendor Dashboard</a>
+        <a routerLink="/admin" class="mobile-link" (click)="closeMobile()">Super Admin</a>
+        <a routerLink="/vendors" class="btn btn--primary mobile-cta" (click)="closeMobile()">
+          Book a session
+        </a>
+      </div>
+    }
   </div>
-
-  @if (mobileOpen()) {
-    <div class="mobile-drawer">
-      <a routerLink="/" (click)="closeMobile()">Home</a>
-      <a routerLink="/about" (click)="closeMobile()">About</a>
-      <a routerLink="/vendors" (click)="closeMobile()">Vendors</a>
-      <a routerLink="/category/hairdressers" (click)="closeMobile()">Hairdressers</a>
-      <a routerLink="/category/barbers" (click)="closeMobile()">Barbers</a>
-      <a routerLink="/category/nail-technicians" (click)="closeMobile()">Nail Technicians</a>
-      <a routerLink="/category/lash-technicians" (click)="closeMobile()">Lash Technicians</a>
-      <a routerLink="/category/makeup-artists" (click)="closeMobile()">Makeup Artists</a>
-      <a routerLink="/category/tattoo-artists" (click)="closeMobile()">Tattoo Artists</a>
-      <a routerLink="/track" (click)="closeMobile()">Tracking</a>
-      <a routerLink="/contact" (click)="closeMobile()">Contact</a>
-      <a routerLink="/vendor" (click)="closeMobile()">Vendor Dashboard</a>
-      <a routerLink="/admin" (click)="closeMobile()">Super Admin Console</a>
-    </div>
-  }
 </header>
