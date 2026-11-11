@@ -61,7 +61,7 @@
             @if (auth.isSuperAdmin()) {
               <a routerLink="/admin" class="btn btn--primary btn--lg">Open Super Admin Console →</a>
             }
-            @if (auth.isVendor() || auth.isSuperAdmin()) {
+            @if (auth.isVendor()) {
               <a routerLink="/vendor" class="btn btn--outline btn--lg">Open Vendor Dashboard →</a>
             }
             <a routerLink="/vendors" class="btn btn--outline">Browse Marketplace</a>

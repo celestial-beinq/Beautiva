@@ -31,6 +31,31 @@
   font-size: 0.96rem;
 }
 
+.admin-status-row {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.status-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.badge--verified {
+  background: #e8f4fd;
+  color: #0c5f9b;
+}
+
 .admin-head-actions {
   display: flex;
   flex-wrap: wrap;

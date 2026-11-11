@@ -324,15 +324,22 @@ textarea {
   background: #ffffff;
   color: var(--ink-primary);
   font-size: 0.9rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible,
 .input:focus,
+.input:focus-visible,
 .select:focus,
-.textarea:focus {
+.select:focus-visible,
+.textarea:focus,
+.textarea:focus-visible {
   outline: none;
-  border-color: var(--accent-crimson);
-  box-shadow: 0 0 0 3px rgba(184, 29, 26, 0.12);
+  box-shadow: none;
 }
 
 .card {

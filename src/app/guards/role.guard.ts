@@ -24,7 +24,8 @@ export const vendorGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);
   await auth.waitForReady();
-  if (auth.isVendor() || auth.isSuperAdmin()) return true;
+  if (auth.isVendor()) return true;
+  if (auth.isSuperAdmin()) return router.createUrlTree(['/admin']);
 
   return router.createUrlTree(['/auth'], {
     queryParams: { redirect: '/vendor', role: 'vendor' },

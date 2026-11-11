@@ -1,6 +1,171 @@
-/* 01 | CENTERED CREAM + CRIMSON HERO & 4-COLUMN STRIP */
+/* 01 | HERO */
+.hero {
+  position: relative;
+  min-height: clamp(560px, 84vh, 760px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-top: 112px;
+  padding-bottom: 2.75rem;
+  background: var(--dark-bg);
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+   linear-gradient( 2deg, rgb(0 0 0) 0%, rgba(43, 6, 6, 0.44) 48%, rgba(43, 6, 6, 0.08) 100%), linear-gradient( 180deg, rgba(43, 6, 6, 0.24) 0%, rgba(43, 6, 6, 0.04) 45%, rgba(43, 6, 6, 0.56) 100%)
+}
+
+.hero-watermark {
+  position: absolute;
+  right: 5.5rem;
+  top: 52%;
+  transform: translateY(-50%) rotate(180deg);
+  writing-mode: vertical-rl;
+  font-family: var(--font-display);
+  font-size: clamp(3.25rem, 6.5vw, 5.75rem);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.589);
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.hero-main {
+  max-width: 560px;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.28rem 0.75rem 0.28rem 0.28rem;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.94);
+  margin-bottom: 1.35rem;
+}
+
+.hero-pill-num {
+  display: inline-grid;
+  place-items: center;
+  padding: 0.14rem 0.42rem;
+  border-radius: 2px;
+  background: var(--accent-crimson);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6.4vw, 5.2rem);
+  font-weight: 500;
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+}
+
+.hero-sub {
+  margin-top: 1.25rem;
+  max-width: 44ch;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.hero-ctas {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.hero-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.95rem;
+  align-self: flex-start;
+  padding: 0.65rem 1.15rem 0.65rem 0.65rem;
+  border-radius: var(--radius-xs);
+  background: rgba(43, 6, 6, 0.72);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.hero-highlight:hover {
+  background: #5a1212;
+  transform: translateY(-2px);
+}
+
+.highlight-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 3px;
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+.highlight-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.highlight-label {
+  font-size: 0.7rem;
+  color: #f4c6c4;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.highlight-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.highlight-sub {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.highlight-arrow {
+  margin-left: 1rem;
+  opacity: 0.88;
+}
+
+/* 02 | CENTERED STATEMENT & 4-COLUMN STRIP */
 .hero-top {
-  padding-top: 120px;
+  padding-top: 4.5rem;
   padding-bottom: 1.5rem;
   background: var(--bg-ivory);
 }
@@ -52,9 +217,11 @@
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 2.7vw, 2.25rem);
   font-weight: 600;
-  line-height: 1.16;
+  line-height: 1.2;
   letter-spacing: -0.02em;
-  text-transform: uppercase;
+  text-transform: none;
+  text-align: center;
+  margin-inline: auto;
   color: var(--ink-primary);
   max-width: 34ch;
 }
@@ -694,5 +861,12 @@
 
   .hero-strip {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .hero-watermark {
+    right: 0.5rem;
+    font-size: 2.5rem;
+    letter-spacing: 0.16em;
+    color: rgba(255, 255, 255, 0.12);
   }
 }

@@ -69,8 +69,12 @@
         <a routerLink="/vendors" class="mobile-link" (click)="closeMobile()">Vendors</a>
         <a routerLink="/track" class="mobile-link" (click)="closeMobile()">Tracking</a>
         <a routerLink="/contact" class="mobile-link" (click)="closeMobile()">Contact</a>
-        <a routerLink="/vendor" class="mobile-link" (click)="closeMobile()">Vendor Dashboard</a>
-        <a routerLink="/admin" class="mobile-link" (click)="closeMobile()">Super Admin</a>
+        @if (auth.isVendor()) {
+          <a routerLink="/vendor" class="mobile-link" (click)="closeMobile()">Vendor Dashboard</a>
+        }
+        @if (auth.isSuperAdmin()) {
+          <a routerLink="/admin" class="mobile-link" (click)="closeMobile()">Super Admin</a>
+        }
         <a routerLink="/auth" class="mobile-link" (click)="closeMobile()">
           {{ auth.currentUser() ? 'Account / Switch Role' : 'Sign In' }}
         </a>
