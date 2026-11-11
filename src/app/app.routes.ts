@@ -1,11 +1,9 @@
 import { Routes } from '@angular/router';
-import { AdminDashboardComponent } from './pages/admin-dashboard/admin-dashboard.component';
 import { BookingComponent } from './pages/booking/booking.component';
 import { BusinessSiteComponent } from './pages/business-site/business-site.component';
 import { CategoryComponent } from './pages/category/category.component';
 import { HomeComponent } from './pages/home/home.component';
 import { TrackBookingComponent } from './pages/track-booking/track-booking.component';
-import { VendorStudioComponent } from './pages/vendor-studio/vendor-studio.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, title: 'Beautiva — Nigerian Beauty & Personal Care Marketplace' },
@@ -14,7 +12,19 @@ export const routes: Routes = [
   { path: 'business/:slug', component: BusinessSiteComponent, title: 'Studio Website — Beautiva' },
   { path: 'book/:slug', component: BookingComponent, title: 'Book Appointment — Beautiva' },
   { path: 'track', component: TrackBookingComponent, title: 'Track Booking — Beautiva' },
-  { path: 'vendor', component: VendorStudioComponent, title: 'Vendor Dashboard — Beautiva' },
-  { path: 'admin', component: AdminDashboardComponent, title: 'Super Admin Console — Beautiva' },
+  {
+    path: 'vendor',
+    loadComponent: () =>
+      import('./pages/vendor-studio/vendor-studio.component').then((m) => m.VendorStudioComponent),
+    title: 'Vendor Dashboard — Beautiva',
+  },
+  {
+    path: 'admin',
+    loadComponent: () =>
+      import('./pages/admin-dashboard/admin-dashboard.component').then(
+        (m) => m.AdminDashboardComponent,
+      ),
+    title: 'Super Admin Console — Beautiva',
+  },
   { path: '**', redirectTo: '' },
 ];
