@@ -1,7 +1,6 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { BusinessProfile } from '../../models/marketplace.models';
-import { MarketplaceService } from '../../services/marketplace.service';
 
 @Component({
   selector: 'app-business-card',
@@ -11,11 +10,5 @@ import { MarketplaceService } from '../../services/marketplace.service';
   styleUrl: './business-card.component.css',
 })
 export class BusinessCardComponent {
-  private readonly marketplace = inject(MarketplaceService);
   readonly business = input.required<BusinessProfile>();
-
-  readonly startingPrice = computed(() =>
-    this.marketplace.formatNaira(this.marketplace.getStartingPrice(this.business())),
-  );
 }
-
