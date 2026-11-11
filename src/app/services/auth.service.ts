@@ -121,62 +121,6 @@ export class AuthService {
     }
   }
 
-  async signUp(input: {
-    email: string;
-    password: string;
-    fullName: string;
-    phone: string;
-    role: 'customer' | 'vendor';
-    inviteToken?: string;
-  }): Promise<AuthActionResult> {
-    if (!this.sb.client) {
-      return {
-        ok: false,
-        error: 'Supabase .env keys are not configured yet. Use Demo Quick-Switch below or configure .env.',
-      };
-    }
-
-    this.loading.set(true);
-    try {
-      const normalizedEmail = input.email.trim().toLowerCase();
-      const { data, error } = await this.sb.client.auth.signUp({
-        email: normalizedEmail,
-        password: input.password,
-        options: {
-          data: {
-            full_name: input.fullName.trim(),
-            phone: input.phone.trim(),
-            requested_role: input.role,
-            invite_token: input.inviteToken || null,
-          },
-        },
-      });
-
-      if (error) {
-        return { ok: false, error: error.message };
-      }
-
-      if (!data.session && data.user) {
-        return {
-          ok: true,
-          needsEmailConfirmation: true,
-        };
-      }
-
-      if (data.user) {
-        this.clearDemoStorage();
-        this.accessToken.set(data.session?.access_token ?? null);
-        const profile = await this.loadProfileFromSupabase(data.user.id, normalizedEmail);
-        this.authMode.set('supabase');
-        return { ok: true, profile };
-      }
-
-      return { ok: false, error: 'Unable to complete registration.' };
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
   async signOut(): Promise<void> {
     if (this.sb.client && this.authMode() === 'supabase') {
       await this.sb.client.auth.signOut();

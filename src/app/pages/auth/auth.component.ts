@@ -18,90 +18,34 @@ export class AuthComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  readonly mode = signal<'signin' | 'signup'>('signin');
-  readonly requestedRole = signal<'customer' | 'vendor'>('customer');
   readonly redirectTarget = signal<string>('/');
-  readonly inviteToken = signal<string>('');
-  readonly inviteBusinessName = signal<string>('');
+  readonly showPassword = signal<boolean>(false);
   readonly errorMsg = signal<string>('');
-  readonly successMsg = signal<string>('');
+  readonly statusMsg = signal<string>('');
   readonly demoStudioSlug = signal<string>('glamour-studio');
 
   email = '';
   password = '';
-  fullName = '';
-  phone = '';
 
   constructor() {
-    this.route.queryParamMap.subscribe(async (qp) => {
+    this.route.queryParamMap.subscribe((qp) => {
       const redirect = qp.get('redirect');
       if (redirect) this.redirectTarget.set(redirect);
-
-      const role = qp.get('role');
-      if (role === 'vendor') {
-        this.requestedRole.set('vendor');
-      }
-
-      const invite = qp.get('invite');
-      if (invite) {
-        this.mode.set('signup');
-        this.requestedRole.set('vendor');
-        this.inviteToken.set(invite);
-        const found = await this.auth.lookupInvitation(invite);
-        if (found) {
-          this.email = found.email;
-          this.inviteBusinessName.set(found.businessName);
-        }
-      }
     });
   }
 
   async submitSignIn(): Promise<void> {
     this.errorMsg.set('');
-    this.successMsg.set('');
+    this.statusMsg.set('');
 
     if (!this.email.trim() || !this.password) {
-      this.errorMsg.set('Please enter your email and password.');
+      this.errorMsg.set('Please enter your email address and password.');
       return;
     }
 
     const res = await this.auth.signIn(this.email, this.password);
     if (!res.ok) {
-      this.errorMsg.set(res.error || 'Sign in failed.');
-      return;
-    }
-
-    this.navigateAfterAuth(res.profile?.role);
-  }
-
-  async submitSignUp(): Promise<void> {
-    this.errorMsg.set('');
-    this.successMsg.set('');
-
-    if (!this.fullName.trim() || !this.email.trim() || this.password.length < 6) {
-      this.errorMsg.set('Enter your full name, email, and a password of at least 6 characters.');
-      return;
-    }
-
-    const res = await this.auth.signUp({
-      email: this.email,
-      password: this.password,
-      fullName: this.fullName,
-      phone: this.phone,
-      role: this.requestedRole(),
-      inviteToken: this.inviteToken() || undefined,
-    });
-
-    if (!res.ok) {
-      this.errorMsg.set(res.error || 'Registration failed.');
-      return;
-    }
-
-    if (res.needsEmailConfirmation) {
-      this.successMsg.set(
-        'Account created! Please check your email inbox to confirm your address before signing in.',
-      );
-      this.mode.set('signin');
+      this.errorMsg.set(res.error || 'Invalid email or password.');
       return;
     }
 
@@ -110,13 +54,14 @@ export class AuthComponent {
 
   quickSwitch(role: UserRole): void {
     this.errorMsg.set('');
+    this.statusMsg.set('');
     this.auth.switchDemoRole(role, this.demoStudioSlug());
     this.navigateAfterAuth(role);
   }
 
   async logout(): Promise<void> {
     await this.auth.signOut();
-    this.successMsg.set('Signed out cleanly.');
+    this.statusMsg.set('You have been signed out.');
   }
 
   private navigateAfterAuth(role?: UserRole): void {
@@ -134,4 +79,3 @@ export class AuthComponent {
     }
   }
 }
-

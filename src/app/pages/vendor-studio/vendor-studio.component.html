@@ -790,7 +790,7 @@
         <div class="panel-head">
           <div>
             <h2>Most Booked Services</h2>
-            <p>Service demand and revenue ranking for {{ activeStudio()?.name }}.</p>
+            <p>Service demand and revenue ranking for {{ activeStudio().name }}.</p>
           </div>
         </div>
 
@@ -829,7 +829,7 @@
         </div>
       } @else {
         <div class="customer-cards">
-          @for (cust of filteredCustomers(); track cust.email) {
+          @for (cust of filteredCustomers(); track cust.customerEmail) {
             <div class="panel-card customer-card">
               <div class="customer-card-head">
                 <div>

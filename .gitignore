@@ -43,7 +43,19 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# Environment variables & generated environment configs
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+!.env.example
+/src/environments/
+
+# Keys, certificates & local secrets
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+.npmrc
+supabase/.temp/

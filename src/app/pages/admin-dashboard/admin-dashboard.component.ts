@@ -323,6 +323,10 @@ export class AdminDashboardComponent {
       this.flash('Enter Business Name and Vendor Email.');
       return;
     }
+    if (!this.newVendor.password || this.newVendor.password.length < 6) {
+      this.flash('Enter a temporary password (minimum 6 characters) for the vendor login.');
+      return;
+    }
     const res = await this.marketplace.createVendorAccount({
       fullName: this.newVendor.fullName || 'Studio Owner',
       email: this.newVendor.email,

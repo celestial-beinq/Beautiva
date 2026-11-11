@@ -271,14 +271,22 @@
           <div class="panel-head">
             <div>
               <h2>Create Vendor Account &amp; Studio</h2>
-              <p>Provisions a vendor studio and Auth account (when service role key is set in .env).</p>
+              <p>
+                Only the Super Admin can create vendor login accounts. Provisions a Supabase Auth
+                vendor login and studio profile.
+              </p>
             </div>
           </div>
           <div class="form-grid-3">
             <input class="input" [(ngModel)]="newVendor.businessName" placeholder="Business Name *" />
             <input class="input" [(ngModel)]="newVendor.fullName" placeholder="Owner Full Name" />
-            <input class="input" [(ngModel)]="newVendor.email" type="email" placeholder="Vendor Email *" />
-            <input class="input" [(ngModel)]="newVendor.password" type="password" placeholder="Temporary Password" />
+            <input class="input" [(ngModel)]="newVendor.email" type="email" placeholder="Vendor Login Email *" />
+            <input
+              class="input"
+              [(ngModel)]="newVendor.password"
+              type="password"
+              placeholder="Assign Password (min 6 chars) *"
+            />
             <input class="input" [(ngModel)]="newVendor.phone" placeholder="Phone (+234...)" />
             <select class="select" [(ngModel)]="newVendor.categorySlug">
               @for (cat of categories(); track cat.slug) {

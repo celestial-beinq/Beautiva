@@ -1243,11 +1243,18 @@ export class MarketplaceService {
           const data = await resp.json();
           ownerId = data.userId;
           authProvisioned = true;
-          message = `Supabase Auth vendor user & studio "${input.businessName}" provisioned.`;
+          message = `Vendor login (${input.email.toLowerCase()}) & studio "${input.businessName}" created. The vendor can now sign in at /auth.`;
+        } else {
+          const errJson = await resp.json().catch(() => ({}));
+          if (errJson?.error) {
+            message = `Studio created, but Supabase Auth user failed: ${errJson.error}`;
+          }
         }
       } catch {
-        // Fallback cleanly to invitation + studio creation
+        message = `Studio "${input.businessName}" created locally. Sign in with a Supabase Super Admin session to provision live Auth credentials.`;
       }
+    } else if (!token) {
+      message = `Studio "${input.businessName}" created in preview mode. Sign in with a real Supabase Super Admin account at /auth to provision live vendor login credentials.`;
     }
 
     if (!authProvisioned) {
