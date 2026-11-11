@@ -68,7 +68,7 @@ export class CategoryComponent {
 
   switchCategory(slug: CategorySlug | 'all'): void {
     if (slug === 'all') {
-      this.router.navigate(['/businesses']);
+      this.router.navigate(['/vendors']);
     } else {
       this.router.navigate(['/category', slug]);
     }

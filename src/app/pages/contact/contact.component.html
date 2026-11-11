@@ -1,0 +1,196 @@
+<!-- 01 | EDITORIAL HERO -->
+<section class="contact-hero section--dark">
+  <div class="container">
+    <div class="section-index section-index--light">
+      <span class="section-index-num">01</span>
+      <span>Contact &amp; Desk</span>
+    </div>
+    <h1 class="contact-title">
+      Talk to our Lagos<br />
+      &amp; Abuja desk.
+    </h1>
+    <p class="contact-sub">
+      Send a message, ask about a booking reference, or get help launching your studio website. We
+      reply within the hour.
+    </p>
+    <div class="contact-hero-actions">
+      <a href="tel:+2348094128800" class="btn btn--white btn--lg">Call +234 809 412 8800</a>
+      <a routerLink="/track" class="btn btn--ghost-light btn--lg">Track a booking</a>
+    </div>
+  </div>
+</section>
+
+<!-- 02 | SCISSOR SPLIT CONTACT & REQUEST FORM -->
+<section class="section">
+  <div class="container contact-split">
+    <div class="contact-details">
+      <div class="section-index">
+        <span class="section-index-num">02</span>
+        <span>Concierge desk</span>
+      </div>
+      <h2 class="section-title">Reach us directly.</h2>
+      <p class="section-subtitle">
+        Prefer to speak with someone on the phone or visit our Lagos partner lounge? Here are our
+        direct lines.
+      </p>
+
+      <div class="detail-rows">
+        <div class="detail-row">
+          <span>Lagos Office</span>
+          <strong>14 Admiralty Way, Lekki Phase 1, Lagos</strong>
+        </div>
+        <div class="detail-row">
+          <span>Abuja Desk</span>
+          <strong>42 Aminu Kano Crescent, Wuse II, Abuja</strong>
+        </div>
+        <div class="detail-row">
+          <span>Opening Hours</span>
+          <strong>Mon to Sun, 8:00 AM to 8:00 PM WAT</strong>
+        </div>
+        <div class="detail-row">
+          <span>Call</span>
+          <strong>+234 809 412 8800</strong>
+        </div>
+        <div class="detail-row">
+          <span>Email</span>
+          <strong>concierge@beautiva.ng</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-form-card">
+      @if (submittedTicket(); as ticket) {
+        <div class="ticket-sent">
+          <span class="badge badge--success">Message Received</span>
+          <h3>Thank you, {{ ticket.name }}.</h3>
+          <p>
+            Your <strong>{{ ticket.topic }}</strong> inquiry has been logged under ticket
+            <code>{{ ticket.ticketId }}</code>. We sent a copy to <strong>{{ ticket.email }}</strong>
+            and will respond within one hour.
+          </p>
+          <div class="ticket-actions">
+            <button type="button" class="btn btn--primary" (click)="resetForm()">
+              Send another message
+            </button>
+            <a routerLink="/vendors" class="btn btn--outline">Explore vendors</a>
+          </div>
+        </div>
+      } @else {
+        <div class="form-head">
+          <h3>Send a request</h3>
+          <p>Fields marked with * are required.</p>
+        </div>
+
+        <form class="contact-form" (ngSubmit)="submitInquiry()">
+          <div class="form-two">
+            <div class="field">
+              <label class="field-label" for="c-name">Name *</label>
+              <input
+                id="c-name"
+                class="input"
+                name="name"
+                [(ngModel)]="name"
+                placeholder="Adaeze Okonkwo"
+              />
+            </div>
+            <div class="field">
+              <label class="field-label" for="c-phone">Phone *</label>
+              <input
+                id="c-phone"
+                class="input"
+                name="phone"
+                [(ngModel)]="phone"
+                placeholder="+234 803 000 0000"
+              />
+            </div>
+          </div>
+
+          <div class="form-two">
+            <div class="field">
+              <label class="field-label" for="c-email">Email *</label>
+              <input
+                id="c-email"
+                type="email"
+                class="input"
+                name="email"
+                [(ngModel)]="email"
+                placeholder="adaeze@example.com"
+              />
+            </div>
+            <div class="field">
+              <label class="field-label" for="c-topic">Topic</label>
+              <select id="c-topic" class="select" name="topic" [(ngModel)]="topic">
+                <option value="Booking Support">Booking Support</option>
+                <option value="Vendor Onboarding">Vendor Onboarding</option>
+                <option value="Paystack Settlement">Paystack Settlement</option>
+                <option value="Studio Verification">Studio Verification</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="c-ref">Booking Reference (optional)</label>
+            <input
+              id="c-ref"
+              class="input"
+              name="bookingRef"
+              [(ngModel)]="bookingRef"
+              placeholder="e.g. BK-2026-000124"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="c-msg">Anything we should know? *</label>
+            <textarea
+              id="c-msg"
+              class="textarea"
+              rows="4"
+              name="message"
+              [(ngModel)]="message"
+              placeholder="Tell us about your appointment, studio inquiry, or feedback..."
+            ></textarea>
+          </div>
+
+          @if (errorMsg()) {
+            <p class="form-error">{{ errorMsg() }}</p>
+          }
+
+          <button type="submit" class="btn btn--primary btn--lg submit-btn">
+            Send message →
+          </button>
+        </form>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- 03 | FAQ (SAND) -->
+<section class="section section--sand">
+  <div class="container faq-split">
+    <div>
+      <div class="section-index">
+        <span class="section-index-num">03</span>
+        <span>FAQ</span>
+      </div>
+      <h2 class="section-title">Quick answers.</h2>
+    </div>
+
+    <div class="faq-list">
+      @for (f of faqs; track f.q; let i = $index) {
+        <div class="faq-item">
+          <button
+            type="button"
+            class="faq-trigger"
+            (click)="openFaq.set(openFaq() === i ? null : i)"
+          >
+            <span>{{ f.q }}</span>
+            <span>{{ openFaq() === i ? '−' : '+' }}</span>
+          </button>
+          @if (openFaq() === i) {
+            <p class="faq-answer">{{ f.a }}</p>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</section>

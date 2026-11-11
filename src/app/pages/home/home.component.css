@@ -954,6 +954,21 @@
   max-width: 62ch;
 }
 
+/* 10 | CONTACT SPLIT */
+.contact-cta-split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.contact-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 @media (max-width: 1024px) {
   .split-intro,
   .crafts-grid,

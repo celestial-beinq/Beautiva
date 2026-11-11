@@ -1,25 +1,27 @@
-<section class="track-shell section">
-  <div class="container track-container">
-    <div class="track-header">
-      <span class="eyebrow">Step 6 · Live Booking Lookup</span>
-      <h1>Track your booking</h1>
-      <p>
-        Enter the unique booking reference from your confirmation email (for example
-        <code>BK-2026-000124</code>) to view real-time payment and appointment status.
-      </p>
+<!-- 01 | EDITORIAL TRACKING HEADER -->
+<section class="track-hero section--dark">
+  <div class="container">
+    <div class="section-index section-index--light">
+      <span class="section-index-num">01</span>
+      <span>Booking Tracking</span>
     </div>
+    <h1 class="track-title">Check your booking<br />in seconds.</h1>
+    <p class="track-sub">
+      Enter the unique reference from your confirmation email (for example
+      <code>BK-2026-000124</code>) to view live Paystack settlement and chair status.
+    </p>
 
-    <form class="track-search card" (ngSubmit)="lookupBooking()">
+    <form class="track-search" (ngSubmit)="lookupBooking()">
       <input
         type="text"
-        class="input track-input"
+        class="track-input"
         [ngModel]="referenceInput()"
         (ngModelChange)="referenceInput.set($event)"
         name="reference"
         placeholder="Enter booking ID e.g. BK-2026-000124"
         aria-label="Booking Reference"
       />
-      <button type="submit" class="btn btn--primary btn--lg">Track Booking →</button>
+      <button type="submit" class="btn btn--primary btn--lg">Track booking</button>
     </form>
 
     <div class="sample-chips">
@@ -35,117 +37,137 @@
         </button>
       }
     </div>
-
-    @if (foundBooking(); as booking) {
-      <div class="booking-result card">
-        <div class="result-top">
-          <div>
-            <span class="result-label">Booking Information</span>
-            <h2>{{ booking.bookingReference }}</h2>
-          </div>
-          <span
-            class="badge"
-            [class.badge--success]="booking.status === 'Confirmed' || booking.status === 'Completed'"
-            [class.badge--danger]="booking.status === 'Cancelled'"
-            [class.badge--warning]="booking.status === 'Pending'"
-          >
-            {{ booking.status }}
-          </span>
-        </div>
-
-        <div class="info-table">
-          <div class="info-row">
-            <span class="info-key">Booking ID</span>
-            <strong class="info-val">{{ booking.bookingReference }}</strong>
-          </div>
-          <div class="info-row">
-            <span class="info-key">Business</span>
-            <a [routerLink]="['/business', booking.businessSlug]" class="info-link">
-              {{ booking.businessName }} ↗
-            </a>
-          </div>
-          <div class="info-row">
-            <span class="info-key">Service</span>
-            <strong class="info-val">{{ booking.serviceName }}</strong>
-          </div>
-          <div class="info-row">
-            <span class="info-key">Date</span>
-            <strong class="info-val">{{ booking.dateDisplay }}</strong>
-          </div>
-          <div class="info-row">
-            <span class="info-key">Time</span>
-            <strong class="info-val">{{ booking.time }}</strong>
-          </div>
-          <div class="info-row">
-            <span class="info-key">Specialist</span>
-            <strong class="info-val">{{ booking.staffName }}</strong>
-          </div>
-          <div class="info-row">
-            <span class="info-key">Payment</span>
-            <strong class="info-val">
-              {{ booking.paymentStatus }}
-              @if (booking.amountPaid > 0) {
-                ({{ marketplace.formatNaira(booking.amountPaid) }})
-              }
-              @if (booking.balanceDue > 0) {
-                · Balance at studio: {{ marketplace.formatNaira(booking.balanceDue) }}
-              }
-            </strong>
-          </div>
-          <div class="info-row">
-            <span class="info-key">Status</span>
-            <strong class="info-val">{{ booking.status }}</strong>
-          </div>
-        </div>
-
-        <!-- Status Timeline -->
-        <div class="timeline">
-          <div class="tl-step done">
-            <span class="tl-dot">✓</span>
-            <span>Booking Created</span>
-          </div>
-          <div class="tl-step done">
-            <span class="tl-dot">✓</span>
-            <span>{{ booking.paymentStatus }}</span>
-          </div>
-          <div
-            class="tl-step"
-            [class.done]="booking.status === 'Confirmed' || booking.status === 'Completed'"
-          >
-            <span class="tl-dot">{{ booking.status === 'Cancelled' ? '✕' : '✓' }}</span>
-            <span>{{ booking.status }}</span>
-          </div>
-        </div>
-
-        <div class="result-footer">
-          <div class="cust-meta">
-            Booked for <strong>{{ booking.customerName }}</strong> ({{ booking.customerEmail }})
-          </div>
-          <div class="result-actions">
-            @if (booking.status === 'Confirmed') {
-              <button
-                type="button"
-                class="btn btn--outline btn--sm"
-                (click)="cancelBooking(booking.bookingReference)"
-              >
-                Cancel Booking
-              </button>
-            }
-            <a [routerLink]="['/book', booking.businessSlug]" class="btn btn--primary btn--sm">
-              Book Again →
-            </a>
-          </div>
-        </div>
-      </div>
-    } @else {
-      <div class="not-found-card card">
-        <h3>No booking found for “{{ searchedRef() }}”</h3>
-        <p>
-          Double-check the booking reference from your email, or try the sample reference
-          <strong>BK-2026-000124</strong> above.
-        </p>
-      </div>
-    }
   </div>
 </section>
 
+<!-- 02 | BOOKING DETAILS & CONCIERGE -->
+<section class="section">
+  <div class="container track-grid">
+    <div class="track-main">
+      @if (foundBooking(); as booking) {
+        <div class="booking-result">
+          <div class="result-top">
+            <div>
+              <span class="result-label">Booking Information</span>
+              <h2>{{ booking.bookingReference }}</h2>
+            </div>
+            <span
+              class="badge"
+              [class.badge--success]="booking.status === 'Confirmed' || booking.status === 'Completed'"
+              [class.badge--danger]="booking.status === 'Cancelled'"
+              [class.badge--warning]="booking.status === 'Pending'"
+            >
+              {{ booking.status }}
+            </span>
+          </div>
+
+          <div class="info-table">
+            <div class="info-row">
+              <span class="info-key">Booking ID</span>
+              <strong class="info-val">{{ booking.bookingReference }}</strong>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Business</span>
+              <a [routerLink]="['/business', booking.businessSlug]" class="info-link">
+                {{ booking.businessName }} ↗
+              </a>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Service</span>
+              <strong class="info-val">{{ booking.serviceName }}</strong>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Date</span>
+              <strong class="info-val">{{ booking.dateDisplay }}</strong>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Time</span>
+              <strong class="info-val">{{ booking.time }}</strong>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Specialist</span>
+              <strong class="info-val">{{ booking.staffName }}</strong>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Payment</span>
+              <strong class="info-val">
+                {{ booking.paymentStatus }}
+                @if (booking.amountPaid > 0) {
+                  ({{ marketplace.formatNaira(booking.amountPaid) }})
+                }
+                @if (booking.balanceDue > 0) {
+                  · Balance at studio: {{ marketplace.formatNaira(booking.balanceDue) }}
+                }
+              </strong>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Status</span>
+              <strong class="info-val">{{ booking.status }}</strong>
+            </div>
+          </div>
+
+          <div class="timeline">
+            <div class="tl-step done">
+              <span class="tl-dot">✓</span>
+              <span>Booking Created</span>
+            </div>
+            <div class="tl-step done">
+              <span class="tl-dot">✓</span>
+              <span>{{ booking.paymentStatus }}</span>
+            </div>
+            <div
+              class="tl-step"
+              [class.done]="booking.status === 'Confirmed' || booking.status === 'Completed'"
+            >
+              <span class="tl-dot">{{ booking.status === 'Cancelled' ? '✕' : '✓' }}</span>
+              <span>{{ booking.status }}</span>
+            </div>
+          </div>
+
+          <div class="result-footer">
+            <div class="cust-meta">
+              Booked for <strong>{{ booking.customerName }}</strong> ({{ booking.customerEmail }})
+            </div>
+            <div class="result-actions">
+              @if (booking.status === 'Confirmed') {
+                <button
+                  type="button"
+                  class="btn btn--outline btn--sm"
+                  (click)="cancelBooking(booking.bookingReference)"
+                >
+                  Cancel Booking
+                </button>
+              }
+              <a [routerLink]="['/book', booking.businessSlug]" class="btn btn--primary btn--sm">
+                Book Again →
+              </a>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <div class="not-found-card">
+          <h3>No booking found for “{{ searchedRef() }}”</h3>
+          <p>
+            Double-check the booking reference from your email, or try the sample reference
+            <strong>BK-2026-000124</strong> above.
+          </p>
+        </div>
+      }
+    </div>
+
+    <aside class="track-aside">
+      <div class="aside-card">
+        <span class="aside-eyebrow">Need assistance?</span>
+        <h3>Reschedule or ask our desk</h3>
+        <p>
+          Need to move your time slot, check a Paystack receipt, or message the studio directly?
+          Our Lagos &amp; Abuja desk replies within the hour.
+        </p>
+        <div class="aside-actions">
+          <a routerLink="/contact" class="btn btn--primary">Contact concierge</a>
+          <a routerLink="/vendors" class="btn btn--outline">Browse studios</a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>

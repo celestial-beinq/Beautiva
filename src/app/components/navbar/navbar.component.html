@@ -9,16 +9,16 @@
     </a>
 
     <nav class="nav-links" aria-label="Primary">
-      <a routerLink="/businesses" routerLinkActive="is-active">Studios</a>
-      <a routerLink="/category/hairdressers" routerLinkActive="is-active">Categories</a>
-      <a routerLink="/track" routerLinkActive="is-active">Track Booking</a>
-      <a routerLink="/vendor" routerLinkActive="is-active">Vendor Dashboard</a>
-      <a routerLink="/admin" routerLinkActive="is-active">Super Admin</a>
+      <a routerLink="/about" routerLinkActive="is-active">About</a>
+      <a routerLink="/vendors" routerLinkActive="is-active">Vendors</a>
+      <a routerLink="/track" routerLinkActive="is-active">Tracking</a>
+      <a routerLink="/contact" routerLinkActive="is-active">Contact</a>
+      <a routerLink="/vendor" routerLinkActive="is-active">Vendor Portal</a>
     </nav>
 
     <div class="nav-actions">
       <a
-        routerLink="/businesses"
+        routerLink="/vendors"
         class="btn btn--sm nav-cta"
         [class.btn--white]="isTransparentHero()"
         [class.btn--primary]="!isTransparentHero()"
@@ -40,14 +40,16 @@
 
   @if (mobileOpen()) {
     <div class="mobile-drawer">
-      <a routerLink="/businesses" (click)="closeMobile()">All Studios</a>
+      <a routerLink="/about" (click)="closeMobile()">About</a>
+      <a routerLink="/vendors" (click)="closeMobile()">Vendors</a>
       <a routerLink="/category/hairdressers" (click)="closeMobile()">Hairdressers</a>
       <a routerLink="/category/barbers" (click)="closeMobile()">Barbers</a>
       <a routerLink="/category/nail-technicians" (click)="closeMobile()">Nail Technicians</a>
       <a routerLink="/category/lash-technicians" (click)="closeMobile()">Lash Technicians</a>
       <a routerLink="/category/makeup-artists" (click)="closeMobile()">Makeup Artists</a>
       <a routerLink="/category/tattoo-artists" (click)="closeMobile()">Tattoo Artists</a>
-      <a routerLink="/track" (click)="closeMobile()">Track Booking</a>
+      <a routerLink="/track" (click)="closeMobile()">Tracking</a>
+      <a routerLink="/contact" (click)="closeMobile()">Contact</a>
       <a routerLink="/vendor" (click)="closeMobile()">Vendor Dashboard</a>
       <a routerLink="/admin" (click)="closeMobile()">Super Admin Console</a>
     </div>

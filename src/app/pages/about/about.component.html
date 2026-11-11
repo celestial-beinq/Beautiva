@@ -1,0 +1,160 @@
+<!-- 01 | EDITORIAL HERO -->
+<section class="page-hero section--dark">
+  <img src="images/studio-interior-2.jpg" alt="Sunlit Nigerian beauty studio" class="page-hero-bg" />
+  <div class="page-hero-scrim" aria-hidden="true"></div>
+
+  <div class="container page-hero-inner">
+    <div class="section-index section-index--light">
+      <span class="section-index-num">01</span>
+      <span>About Beautiva</span>
+    </div>
+    <h1 class="page-hero-title">
+      A platform built for<br />
+      Nigerian craft.
+    </h1>
+    <p class="page-hero-sub">
+      Connecting clients across Lagos and Abuja with independent hair stylists, barbers, nail
+      ateliers, lash artists, makeup studios, and fine-line tattoo artists—every vendor backed by
+      an instant website and transparent Naira booking.
+    </p>
+    <div class="page-hero-actions">
+      <a routerLink="/vendors" class="btn btn--white btn--lg">Explore vendors</a>
+      <a routerLink="/vendor" class="btn btn--ghost-light btn--lg">List your studio</a>
+    </div>
+  </div>
+</section>
+
+<!-- 02 | OUR STORY (SCISSOR ASYMMETRIC SPLIT) -->
+<section class="section">
+  <div class="container story-grid">
+    <div class="story-left">
+      <div class="section-index">
+        <span class="section-index-num">02</span>
+        <span>Our story</span>
+      </div>
+      <h2 class="section-title">
+        Great studios shouldn’t need a web developer just to take a booking.
+      </h2>
+      <p class="story-copy">
+        Across Lagos and Abuja, some of the sharpest braiders, barbers, nail techs, and bridal MUAs
+        still manage appointments through buried Instagram DMs and screenshots of bank transfers.
+      </p>
+      <p class="story-copy">
+        Beautiva changes that in minutes. When a studio uploads its services, Naira prices, team,
+        and photos, we generate a dedicated website—like
+        <code>beautiva.ng/business/glamour-studio</code>—complete with live slot availability,
+        Paystack checkout, and instant booking references.
+      </p>
+
+      <div class="story-stats">
+        <div>
+          <strong>{{ activeCount().length }}</strong>
+          <span>Active Nigerian studios</span>
+        </div>
+        <div>
+          <strong>6</strong>
+          <span>Specialized disciplines</span>
+        </div>
+        <div>
+          <strong>4.9</strong>
+          <span>Average client rating</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="story-media">
+      <div class="story-frame">
+        <img src="images/studio-lounge.jpg" alt="Minimalist studio waiting lounge" />
+      </div>
+      <div class="story-caption">
+        <span>Built for transparency</span>
+        <p>Real studio hours, real Naira pricing, and verified client feedback on every page.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 | FOUR STANDARDS (SAND HAIRLINE GRID) -->
+<section class="section section--sand">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-index">
+          <span class="section-index-num">03</span>
+          <span>Our standard</span>
+        </div>
+        <h2 class="section-title">Four promises on every booking.</h2>
+      </div>
+      <a routerLink="/track" class="btn btn--outline">Track a booking</a>
+    </div>
+
+    <div class="standards-grid">
+      <article class="standard-item">
+        <span class="standard-num">01 / 04</span>
+        <h3>Clear Naira pricing</h3>
+        <p>
+          Every service displays its starting price in ₦ and session duration upfront before you
+          ever pick a date.
+        </p>
+      </article>
+
+      <article class="standard-item">
+        <span class="standard-num">02 / 04</span>
+        <h3>Auto-generated studio sites</h3>
+        <p>
+          Each vendor owns a clean, shareable web address with their menu, staff, hours, and real
+          gallery photos.
+        </p>
+      </article>
+
+      <article class="standard-item">
+        <span class="standard-num">03 / 04</span>
+        <h3>Flexible Paystack checkout</h3>
+        <p>
+          Pay 100% online via Card, Bank Transfer, or USSD, lock your chair with a 30% deposit, or
+          settle at the studio where allowed.
+        </p>
+      </article>
+
+      <article class="standard-item">
+        <span class="standard-num">04 / 04</span>
+        <h3>Live booking references</h3>
+        <p>
+          Every confirmed reservation generates a unique ID like <code>BK-2026-000124</code> so
+          clients and studios stay aligned.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 04 | SIX DISCIPLINES -->
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-index">
+          <span class="section-index-num">04</span>
+          <span>Six disciplines</span>
+        </div>
+        <h2 class="section-title">Every craft on one floor.</h2>
+      </div>
+      <a routerLink="/vendors" class="btn btn--primary">Browse all vendors</a>
+    </div>
+
+    <div class="disciplines-grid">
+      @for (cat of categories(); track cat.slug; let i = $index) {
+        <a [routerLink]="['/category', cat.slug]" class="discipline-card">
+          <div class="discipline-img-wrap">
+            <img [src]="cat.coverImage" [alt]="cat.name" loading="lazy" />
+          </div>
+          <div class="discipline-body">
+            <span class="discipline-num">0{{ i + 1 }}</span>
+            <h3>{{ cat.name }}</h3>
+            <p>{{ cat.tagline }}</p>
+          </div>
+        </a>
+      }
+    </div>
+  </div>
+</section>

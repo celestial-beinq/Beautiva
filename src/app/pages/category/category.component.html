@@ -1,31 +1,39 @@
-<section class="cat-hero">
+<!-- 01 | VENDORS / CATEGORY HERO -->
+<section class="cat-hero section--dark">
   <img
     [src]="activeCategory()?.coverImage || 'images/hero-salon.jpg'"
-    [alt]="activeCategory()?.name || 'All Beauty Studios'"
+    [alt]="activeCategory()?.name || 'Verified Nigerian Vendors'"
     class="cat-hero-bg"
   />
-  <div class="cat-hero-scrim"></div>
+  <div class="cat-hero-scrim" aria-hidden="true"></div>
 
   <div class="container cat-hero-inner">
-    <a routerLink="/" class="back-link">← Back to Marketplace</a>
-    <span class="eyebrow eyebrow--light">
-      {{ activeCategory() ? 'Service Category' : 'Marketplace Directory' }}
-    </span>
+    <div class="section-index section-index--light">
+      <span class="section-index-num">01</span>
+      <span>{{ activeCategory() ? 'Service Category' : 'Verified Vendors' }}</span>
+    </div>
+
     <h1 class="cat-hero-title">
-      {{ activeCategory()?.name || 'All Beauty & Personal Care Studios' }}
+      {{ activeCategory()?.name || 'The studios behind every chair.' }}
     </h1>
+
     <p class="cat-hero-desc">
       {{
         activeCategory()?.description ||
-          'Browse vetted professionals across all 6 disciplines. Visit each business’s auto-generated website or book directly with Paystack.'
+          'Browse Nigerian hair stylists, barbers, nail ateliers, lash artists, makeup studios, and fine-line tattoo artists. Open any vendor’s auto-generated website or book directly.'
       }}
     </p>
+
+    <div class="cat-hero-actions">
+      <a routerLink="/vendor" class="btn btn--white">List your studio</a>
+      <a routerLink="/track" class="btn btn--ghost-light">Track a booking</a>
+    </div>
   </div>
 </section>
 
+<!-- 02 | DIRECTORY & FILTERS -->
 <section class="section">
   <div class="container">
-    <!-- Category Switcher Pills -->
     <div class="cat-switcher" role="tablist" aria-label="Service categories">
       <button
         type="button"
@@ -33,7 +41,7 @@
         [class.active]="routeSlug() === 'all'"
         (click)="switchCategory('all')"
       >
-        All Studios
+        All Vendors
       </button>
       @for (cat of categories(); track cat.slug) {
         <button
@@ -47,10 +55,9 @@
       }
     </div>
 
-    <!-- Filter Bar -->
-    <div class="filter-bar card">
+    <div class="filter-bar">
       <div class="field">
-        <label class="field-label" for="cat-search">Search business, service, or area</label>
+        <label class="field-label" for="cat-search">Search vendor, service, or area</label>
         <input
           id="cat-search"
           type="text"
@@ -96,14 +103,14 @@
           [ngModel]="onlyPayAtBusiness()"
           (ngModelChange)="onlyPayAtBusiness.set($event)"
         />
-        <span>Pay at business allowed</span>
+        <span>Pay at studio allowed</span>
       </label>
     </div>
 
     <div class="results-meta">
       <span>
         Showing <strong>{{ filteredBusinesses().length }}</strong>
-        {{ filteredBusinesses().length === 1 ? 'studio' : 'studios' }}
+        {{ filteredBusinesses().length === 1 ? 'vendor' : 'vendors' }}
       </span>
       @if (searchQuery() || selectedCity() !== 'all' || onlyPayAtBusiness()) {
         <button type="button" class="clear-btn" (click)="resetFilters()">Clear filters</button>
@@ -117,14 +124,34 @@
         }
       </div>
     } @else {
-      <div class="empty-state card">
-        <h3>No matching studios found</h3>
-        <p>Try clearing your filters or searching across all categories.</p>
+      <div class="empty-state">
+        <h3>No studios matched your filters</h3>
+        <p>Try clearing your search or switching to another Nigerian city or discipline.</p>
         <button type="button" class="btn btn--primary" (click)="resetFilters()">
-          Reset Filters
+          Reset filters
         </button>
       </div>
     }
   </div>
 </section>
 
+<!-- 03 | VENDOR WEBSITE CALLOUT -->
+<section class="section section--sand">
+  <div class="container vendor-cta-split">
+    <div>
+      <div class="section-index">
+        <span class="section-index-num">03</span>
+        <span>For Nigerian studios</span>
+      </div>
+      <h2 class="section-title">Want your studio listed here?</h2>
+      <p class="section-subtitle">
+        Upload your services, Naira pricing, and photos once—Beautiva publishes your standalone
+        booking website automatically.
+      </p>
+    </div>
+    <div class="vendor-cta-actions">
+      <a routerLink="/vendor" class="btn btn--primary btn--lg">Launch studio website</a>
+      <a routerLink="/contact" class="btn btn--outline btn--lg">Talk to onboarding</a>
+    </div>
+  </div>
+</section>
