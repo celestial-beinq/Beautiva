@@ -64,7 +64,9 @@
 
       <div class="admin-head-actions">
         <a routerLink="/businesses" class="btn btn--white btn--sm">Public Directory ↗</a>
-        <a routerLink="/auth" class="btn btn--ghost-light btn--sm">Switch Role</a>
+        <button type="button" class="btn btn--ghost-light btn--sm" (click)="logout()">
+          Log Out
+        </button>
       </div>
     </div>
 
@@ -641,142 +643,155 @@
         </select>
       </div>
 
-      <div class="studio-admin-list">
-        @if (filteredStudios().length === 0) {
-          <div class="panel-card">
-            <p class="muted-note">
-              No vendor studios yet. Click <strong>+ Create Vendor Account</strong> above to add your first studio.
-            </p>
-          </div>
-        }
-        @for (biz of filteredStudios(); track biz.id) {
-          <div class="studio-admin-card">
-            <div class="studio-admin-row" [class.is-suspended]="biz.status === 'suspended'">
-              <div class="studio-admin-id">
-                <img [src]="biz.coverImage" [alt]="biz.name" class="studio-thumb" />
-                <div>
-                  <div class="studio-badges-inline">
-                    <strong>{{ biz.name }}</strong>
-                    @if (biz.status === 'pending') {
-                      <span class="badge badge--warning">Pending Approval</span>
-                    }
-                    @if (biz.verified) {
-                      <span class="badge badge--success">Verified</span>
-                    }
-                    @if (biz.featured) {
-                      <span class="badge badge--bronze">Featured</span>
-                    }
-                    @if (biz.status === 'suspended') {
-                      <span class="badge badge--danger">Suspended</span>
-                    }
-                  </div>
-                  <p>
-                    {{ biz.categoryLabel }} · {{ biz.location }} · {{ biz.contact.email }}
-                  </p>
-                  <code>/business/{{ biz.slug }}</code>
-                </div>
-              </div>
+      @if (filteredStudios().length === 0) {
+        <div class="panel-card">
+          <p class="muted-note">
+            No vendor studios yet. Click <strong>+ Create Vendor Account</strong> above to add your first studio.
+          </p>
+        </div>
+      } @else {
+        <div class="ledger-table-wrap">
+          <table class="ledger-table studio-admin-table">
+            <thead>
+              <tr>
+                <th>Studio</th>
+                <th>Bookings</th>
+                <th>Settled</th>
+                <th>Rating</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (biz of filteredStudios(); track biz.id) {
+                <tr [class.is-suspended]="biz.status === 'suspended'">
+                  <td>
+                    <div class="studio-admin-id">
+                      <img [src]="biz.coverImage" [alt]="biz.name" class="studio-thumb" />
+                      <div>
+                        <div class="studio-badges-inline">
+                          <strong>{{ biz.name }}</strong>
+                          @if (biz.status === 'pending') {
+                            <span class="badge badge--warning">Pending Approval</span>
+                          }
+                          @if (biz.verified) {
+                            <span class="badge badge--success">Verified</span>
+                          }
+                          @if (biz.featured) {
+                            <span class="badge badge--bronze">Featured</span>
+                          }
+                          @if (biz.status === 'suspended') {
+                            <span class="badge badge--danger">Suspended</span>
+                          }
+                        </div>
+                        <p>
+                          {{ biz.categoryLabel }} · {{ biz.location }} · {{ biz.contact.email }}
+                        </p>
+                        <code>/business/{{ biz.slug }}</code>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <strong>{{ studioStatsMap().get(biz.slug)?.bookings || 0 }}</strong>
+                  </td>
+                  <td>
+                    <strong>
+                      {{ marketplace.formatNaira(studioStatsMap().get(biz.slug)?.revenue || 0) }}
+                    </strong>
+                  </td>
+                  <td>
+                    <strong>★ {{ biz.rating.toFixed(1) }}</strong>
+                  </td>
+                  <td>
+                    <div class="table-actions">
+                      @if (biz.status === 'pending') {
+                        <button
+                          type="button"
+                          class="btn btn--primary btn--sm"
+                          (click)="openApplicationView(biz)"
+                        >
+                          View
+                        </button>
+                      }
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="startEditVendor(biz)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="toggleVerified(biz.slug)"
+                      >
+                        {{ biz.verified ? 'Unverify' : 'Verify' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="toggleFeatured(biz.slug)"
+                      >
+                        {{ biz.featured ? 'Unfeature' : 'Feature' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn--sm"
+                        [class.btn--outline]="biz.status !== 'suspended'"
+                        [class.btn--primary]="biz.status === 'suspended'"
+                        (click)="toggleSuspend(biz.slug, biz.status)"
+                      >
+                        {{ biz.status === 'suspended' ? 'Restore' : 'Suspend' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm btn-danger-outline"
+                        (click)="deleteVendor(biz.slug, biz.name)"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
 
-              <div class="studio-admin-stats">
-                <div>
-                  <span>Bookings</span>
-                  <strong>{{ studioStatsMap().get(biz.slug)?.bookings || 0 }}</strong>
-                </div>
-                <div>
-                  <span>Settled</span>
-                  <strong>
-                    {{ marketplace.formatNaira(studioStatsMap().get(biz.slug)?.revenue || 0) }}
-                  </strong>
-                </div>
-                <div>
-                  <span>Rating</span>
-                  <strong>★ {{ biz.rating.toFixed(1) }}</strong>
-                </div>
-              </div>
-
-              <div class="studio-admin-actions">
-                @if (biz.status === 'pending') {
-                  <button
-                    type="button"
-                    class="btn btn--primary btn--sm"
-                    (click)="openApplicationView(biz)"
-                  >
-                    View
-                  </button>
+                @if (editingVendorSlug() === biz.slug) {
+                  <tr class="inline-editor-row">
+                    <td colspan="5" class="inline-editor-cell">
+                      <div class="inline-editor">
+                        <div class="form-grid-3">
+                          <input class="input" [(ngModel)]="editVendorForm.name" placeholder="Business Name" />
+                          <select class="select" [(ngModel)]="editVendorForm.categorySlug">
+                            @for (cat of categories(); track cat.slug) {
+                              <option [value]="cat.slug">{{ cat.name }}</option>
+                            }
+                          </select>
+                          <input class="input" [(ngModel)]="editVendorForm.city" placeholder="City" />
+                          <input class="input" [(ngModel)]="editVendorForm.location" placeholder="Area / Location" />
+                          <input class="input" [(ngModel)]="editVendorForm.address" placeholder="Street Address" />
+                          <input class="input" [(ngModel)]="editVendorForm.phone" placeholder="Phone" />
+                          <input class="input" [(ngModel)]="editVendorForm.email" placeholder="Email" />
+                          <input class="input" [(ngModel)]="editVendorForm.tagline" placeholder="Tagline" />
+                          <div class="table-actions">
+                            <button type="button" class="btn btn--primary btn--sm" (click)="saveVendorEdit(biz)">
+                              Save Changes
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn--outline btn--sm"
+                              (click)="editingVendorSlug.set(null)"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
                 }
-                <button
-                  type="button"
-                  class="btn btn--outline btn--sm"
-                  (click)="startEditVendor(biz)"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  class="btn btn--outline btn--sm"
-                  (click)="toggleVerified(biz.slug)"
-                >
-                  {{ biz.verified ? 'Unverify' : 'Verify' }}
-                </button>
-                <button
-                  type="button"
-                  class="btn btn--outline btn--sm"
-                  (click)="toggleFeatured(biz.slug)"
-                >
-                  {{ biz.featured ? 'Unfeature' : 'Feature' }}
-                </button>
-                <button
-                  type="button"
-                  class="btn btn--sm"
-                  [class.btn--outline]="biz.status !== 'suspended'"
-                  [class.btn--primary]="biz.status === 'suspended'"
-                  (click)="toggleSuspend(biz.slug, biz.status)"
-                >
-                  {{ biz.status === 'suspended' ? 'Restore' : 'Suspend' }}
-                </button>
-                <button
-                  type="button"
-                  class="btn btn--outline btn--sm btn-danger-outline"
-                  (click)="deleteVendor(biz.slug, biz.name)"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-
-            @if (editingVendorSlug() === biz.slug) {
-              <div class="inline-editor">
-                <div class="form-grid-3">
-                  <input class="input" [(ngModel)]="editVendorForm.name" placeholder="Business Name" />
-                  <select class="select" [(ngModel)]="editVendorForm.categorySlug">
-                    @for (cat of categories(); track cat.slug) {
-                      <option [value]="cat.slug">{{ cat.name }}</option>
-                    }
-                  </select>
-                  <input class="input" [(ngModel)]="editVendorForm.city" placeholder="City" />
-                  <input class="input" [(ngModel)]="editVendorForm.location" placeholder="Area / Location" />
-                  <input class="input" [(ngModel)]="editVendorForm.address" placeholder="Street Address" />
-                  <input class="input" [(ngModel)]="editVendorForm.phone" placeholder="Phone" />
-                  <input class="input" [(ngModel)]="editVendorForm.email" placeholder="Email" />
-                  <input class="input" [(ngModel)]="editVendorForm.tagline" placeholder="Tagline" />
-                  <div class="table-actions">
-                    <button type="button" class="btn btn--primary btn--sm" (click)="saveVendorEdit(biz)">
-                      Save Changes
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn--outline btn--sm"
-                      (click)="editingVendorSlug.set(null)"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            }
-          </div>
-        }
-      </div>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     }
 
     <!-- TAB 3: CATEGORY MANAGEMENT -->

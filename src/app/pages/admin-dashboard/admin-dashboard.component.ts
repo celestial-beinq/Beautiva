@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   AccountStatus,
   BookingStatus,
@@ -25,6 +25,12 @@ import { MarketplaceService } from '../../services/marketplace.service';
 export class AdminDashboardComponent {
   readonly marketplace = inject(MarketplaceService);
   readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  async logout(): Promise<void> {
+    await this.auth.signOut();
+    void this.router.navigate(['/auth']);
+  }
 
   readonly categories = this.marketplace.categories;
   readonly businesses = this.marketplace.businesses;

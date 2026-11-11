@@ -44,7 +44,9 @@
         @if (auth.isSuperAdmin()) {
           <a routerLink="/admin" class="btn btn--ghost-light btn--sm">Super Admin Console</a>
         }
-        <a routerLink="/auth" class="btn btn--ghost-light btn--sm">Switch Role</a>
+        <button type="button" class="btn btn--ghost-light btn--sm" (click)="logout()">
+          Log Out
+        </button>
       </div>
     </div>
 
