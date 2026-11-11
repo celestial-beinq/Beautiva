@@ -1,10 +1,7 @@
-<!-- 01 | EDITORIAL HERO (CLEAN SCISSOR PROPORTIONS) -->
+<!-- 01 | EDITORIAL HERO (NATURAL ASPECT RATIO, ZERO STRETCH) -->
 <section class="hero">
-  <img src="images/hero-salon.jpg" alt="Sunlit beauty studio interior" class="hero-bg" />
-  <div class="hero-scrim" aria-hidden="true"></div>
-
-  <div class="container hero-inner">
-    <div class="hero-main">
+  <div class="container hero-grid">
+    <div class="hero-left">
       <div class="hero-pill">
         <span class="hero-pill-num">01</span>
         <span>Beauty &amp; Care · Lagos &amp; Abuja</span>
@@ -24,21 +21,51 @@
         <a routerLink="/vendors" class="btn btn--white">Explore vendors →</a>
         <a href="#service-menu" class="btn btn--ghost-light">Explore services →</a>
       </div>
+
+      <a routerLink="/business/glamour-studio" class="hero-highlight">
+        <img
+          src="images/cat-hairdressers.jpg"
+          alt="Glamour Studio Knotless Braids"
+          class="highlight-thumb"
+        />
+        <div class="highlight-meta">
+          <span class="highlight-label">Most booked this week</span>
+          <strong class="highlight-title">Knotless Braids · Glamour Studio</strong>
+          <span class="highlight-sub">3 hrs, from ₦25,000</span>
+        </div>
+        <span class="highlight-arrow" aria-hidden="true">↗</span>
+      </a>
     </div>
 
-    <a routerLink="/business/glamour-studio" class="hero-highlight">
-      <img
-        src="images/cat-hairdressers.jpg"
-        alt="Glamour Studio Knotless Braids"
-        class="highlight-thumb"
-      />
-      <div class="highlight-meta">
-        <span class="highlight-label">Most booked this week</span>
-        <strong class="highlight-title">Knotless Braids · Glamour Studio</strong>
-        <span class="highlight-sub">3 hrs, from ₦25,000</span>
+    <div class="hero-media">
+      <figure class="hero-frame hero-frame--main">
+        <img
+          src="images/hero-salon.jpg"
+          alt="Nigerian hair salon with arched LED mirrors"
+          width="736"
+          height="981"
+        />
+      </figure>
+
+      <div class="hero-frame-stack">
+        <figure class="hero-frame">
+          <img
+            src="images/hero-pedicure.jpg"
+            alt="Nigerian nail and pedicure studio lounge"
+            width="720"
+            height="888"
+          />
+        </figure>
+        <figure class="hero-frame">
+          <img
+            src="images/hero-barber-studio.jpg"
+            alt="Nigerian barbershop and grooming studio"
+            width="720"
+            height="720"
+          />
+        </figure>
       </div>
-      <span class="highlight-arrow" aria-hidden="true">↗</span>
-    </a>
+    </div>
   </div>
 </section>
 

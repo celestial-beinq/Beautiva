@@ -1,5 +1,6 @@
-import { Component, HostListener, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -9,6 +10,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   styleUrl: './navbar.component.css',
 })
 export class NavbarComponent {
+  readonly auth = inject(AuthService);
   readonly mobileOpen = signal(false);
 
   toggleMobile(): void {

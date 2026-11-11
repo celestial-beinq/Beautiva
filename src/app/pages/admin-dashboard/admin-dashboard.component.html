@@ -5,55 +5,66 @@
       <div>
         <div class="section-index section-index--light">
           <span class="section-index-num">01</span>
-          <span>Super Admin Console · Beautiva Marketplace</span>
+          <span>Super Admin Console · Platform Owner</span>
         </div>
-        <h1 class="admin-title">Platform Operations &amp; Ledger</h1>
+        <h1 class="admin-title">Platform Operations &amp; Governance</h1>
         <p class="admin-sub">
-          Verify studios, curate homepage highlights, audit Paystack settlements, and moderate
-          client feedback across Lagos &amp; Abuja.
+          Full platform control over vendors, categories, bookings, Paystack settlements,
+          commissions, customers, and site configuration.
         </p>
+        <div class="admin-status-row">
+          @if (marketplace.backendConnected()) {
+            <span class="badge badge--success">Live Supabase Synced</span>
+          } @else if (marketplace.supabaseConfigured) {
+            <span class="badge badge--warning">Supabase Configured · Fallback Cache Active</span>
+          } @else {
+            <span class="badge badge--bronze">Local Fallback · Add .env keys for Supabase</span>
+          }
+          <span class="badge badge--bronze">Commission: {{ platformMetrics().commissionRate }}%</span>
+        </div>
       </div>
 
       <div class="admin-head-actions">
         <a routerLink="/vendor" class="btn btn--ghost-light btn--sm">Vendor Console</a>
         <a routerLink="/businesses" class="btn btn--white btn--sm">Public Directory ↗</a>
+        <a routerLink="/auth" class="btn btn--ghost-light btn--sm">Switch Role</a>
       </div>
     </div>
 
     <div class="admin-kpis">
       <div class="kpi-cell">
-        <span class="kpi-label">Gross Booking Value</span>
+        <span class="kpi-label">Registered Businesses</span>
+        <strong class="kpi-value">{{ platformMetrics().totalStudios }}</strong>
+        <span class="kpi-sub">
+          {{ platformMetrics().activeStudios }} active ·
+          {{ platformMetrics().pendingStudios }} pending applications
+        </span>
+      </div>
+
+      <div class="kpi-cell">
+        <span class="kpi-label">Total Customers</span>
+        <strong class="kpi-value">{{ platformMetrics().totalCustomers }}</strong>
+        <span class="kpi-sub">{{ platformMetrics().totalBookings }} total platform bookings</span>
+      </div>
+
+      <div class="kpi-cell">
+        <span class="kpi-label">Total Revenue (GMV)</span>
         <strong class="kpi-value">
           {{ marketplace.formatNaira(platformMetrics().grossBookingValue) }}
         </strong>
-        <span class="kpi-sub">{{ platformMetrics().validBookingsCount }} active bookings</span>
-      </div>
-
-      <div class="kpi-cell">
-        <span class="kpi-label">Paystack Settled Online</span>
-        <strong class="kpi-value">
-          {{ marketplace.formatNaira(platformMetrics().paystackCollected) }}
-        </strong>
         <span class="kpi-sub">
-          Est. 10% fee: {{ marketplace.formatNaira(platformMetrics().platformCommission) }}
+          Settled online: {{ marketplace.formatNaira(platformMetrics().paystackCollected) }}
         </span>
       </div>
 
       <div class="kpi-cell">
-        <span class="kpi-label">Registered Studios</span>
-        <strong class="kpi-value">{{ platformMetrics().totalStudios }}</strong>
-        <span class="kpi-sub">
-          {{ platformMetrics().verifiedStudios }} verified ·
-          {{ platformMetrics().suspendedStudios }} suspended
-        </span>
-      </div>
-
-      <div class="kpi-cell">
-        <span class="kpi-label">Balance Due at Studios</span>
+        <span class="kpi-label">Platform Commissions ({{ platformMetrics().commissionRate }}%)</span>
         <strong class="kpi-value">
-          {{ marketplace.formatNaira(platformMetrics().balanceAtStudios) }}
+          {{ marketplace.formatNaira(platformMetrics().platformCommission) }}
         </strong>
-        <span class="kpi-sub">{{ platformMetrics().featuredStudios }} featured on homepage</span>
+        <span class="kpi-sub">
+          {{ platformMetrics().successTxCount }} paid · {{ platformMetrics().failedTxCount }} failed tx
+        </span>
       </div>
     </div>
   </div>
@@ -69,42 +80,62 @@
         [class.is-active]="activeTab() === 'overview'"
         (click)="activeTab.set('overview')"
       >
-        01 · Overview &amp; Analytics
+        01 · Dashboard Overview
       </button>
       <button
         type="button"
         class="admin-tab"
-        [class.is-active]="activeTab() === 'studios'"
-        (click)="activeTab.set('studios')"
+        [class.is-active]="activeTab() === 'vendors'"
+        (click)="activeTab.set('vendors')"
       >
-        02 · Studios &amp; Approvals ({{ businesses().length }})
+        02 · Vendor Management ({{ businesses().length }})
       </button>
       <button
         type="button"
         class="admin-tab"
-        [class.is-active]="activeTab() === 'ledger'"
-        (click)="activeTab.set('ledger')"
+        [class.is-active]="activeTab() === 'categories'"
+        (click)="activeTab.set('categories')"
       >
-        03 · Paystack &amp; Booking Ledger ({{ bookings().length }})
+        03 · Categories ({{ categories().length }})
       </button>
       <button
         type="button"
         class="admin-tab"
-        [class.is-active]="activeTab() === 'reviews'"
-        (click)="activeTab.set('reviews')"
+        [class.is-active]="activeTab() === 'bookings'"
+        (click)="activeTab.set('bookings')"
       >
-        04 · Reviews Moderation ({{ allReviews().length }})
+        04 · Bookings ({{ bookings().length }})
+      </button>
+      <button
+        type="button"
+        class="admin-tab"
+        [class.is-active]="activeTab() === 'payments'"
+        (click)="activeTab.set('payments')"
+      >
+        05 · Payments &amp; Commissions ({{ transactions().length }})
+      </button>
+      <button
+        type="button"
+        class="admin-tab"
+        [class.is-active]="activeTab() === 'settings'"
+        (click)="activeTab.set('settings')"
+      >
+        06 · Platform Settings &amp; Users
       </button>
     </div>
 
-    <!-- TAB 1: OVERVIEW & ANALYTICS -->
+    @if (toast()) {
+      <div class="toast-bar">{{ toast() }}</div>
+    }
+
+    <!-- TAB 1: DASHBOARD OVERVIEW -->
     @if (activeTab() === 'overview') {
       <div class="analytics-grid">
         <div class="panel-card">
           <div class="panel-head">
             <div>
-              <h2>Category Volume &amp; Supply</h2>
-              <p>Booking volume (₦) and active studios across all 6 disciplines.</p>
+              <h2>Most Popular Categories</h2>
+              <p>Ranked by booking demand and total service volume across Beautiva.</p>
             </div>
           </div>
 
@@ -129,32 +160,51 @@
 
         <div class="side-stack">
           <div class="panel-card">
-            <h2>Payment Checkout Mix</h2>
-            <div class="split-rows">
-              <div class="split-row">
-                <span>Paystack Full Payment</span>
-                <strong>{{ platformMetrics().fullCount }} bookings</strong>
+            <h2>Pending Vendor Applications</h2>
+            @if (platformMetrics().pendingStudios === 0) {
+              <p class="muted-note">No pending applications right now.</p>
+            } @else {
+              <div class="split-rows">
+                @for (biz of businesses(); track biz.id) {
+                  @if (biz.status === 'pending') {
+                    <div class="split-row">
+                      <div>
+                        <strong>{{ biz.name }}</strong>
+                        <div class="cell-sub">{{ biz.categoryLabel }} · {{ biz.location }}</div>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn--primary btn--sm"
+                        (click)="approveVendor(biz.slug)"
+                      >
+                        Approve
+                      </button>
+                    </div>
+                  }
+                }
               </div>
-              <div class="split-row">
-                <span>Paystack 30% Deposit</span>
-                <strong>{{ platformMetrics().depositCount }} bookings</strong>
-              </div>
-              <div class="split-row">
-                <span>Pay at Studio</span>
-                <strong>{{ platformMetrics().venueCount }} bookings</strong>
-              </div>
-            </div>
+            }
           </div>
 
           <div class="panel-card">
-            <h2>City Footprint</h2>
+            <h2>Marketplace Health</h2>
             <div class="split-rows">
-              @for (c of cityBreakdown(); track c.city) {
-                <div class="split-row">
-                  <span>{{ c.city }}</span>
-                  <strong>{{ c.count }} {{ c.count === 1 ? 'studio' : 'studios' }}</strong>
-                </div>
-              }
+              <div class="split-row">
+                <span>Active Businesses</span>
+                <strong>{{ platformMetrics().activeStudios }}</strong>
+              </div>
+              <div class="split-row">
+                <span>Suspended Businesses</span>
+                <strong>{{ platformMetrics().suspendedStudios }}</strong>
+              </div>
+              <div class="split-row">
+                <span>Pending Invitations</span>
+                <strong>{{ invitations().length }}</strong>
+              </div>
+              <div class="split-row">
+                <span>Balance Due at Studios</span>
+                <strong>{{ marketplace.formatNaira(platformMetrics().balanceAtStudios) }}</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -164,15 +214,15 @@
         <div class="panel-head">
           <div>
             <h2>Latest Platform Bookings</h2>
-            <p>Live stream across all registered studios.</p>
+            <p>Live stream across all registered businesses.</p>
           </div>
-          <button type="button" class="btn btn--outline btn--sm" (click)="activeTab.set('ledger')">
-            Open full ledger →
+          <button type="button" class="btn btn--outline btn--sm" (click)="activeTab.set('bookings')">
+            Manage all bookings →
           </button>
         </div>
 
         <div class="mini-ledger">
-          @for (b of bookings().slice(0, 5); track b.bookingReference) {
+          @for (b of bookings().slice(0, 6); track b.bookingReference) {
             <div class="mini-row">
               <a routerLink="/track" [queryParams]="{ ref: b.bookingReference }" class="ref-link">
                 {{ b.bookingReference }}
@@ -195,15 +245,117 @@
       </div>
     }
 
-    <!-- TAB 2: STUDIOS & VERIFICATION -->
-    @if (activeTab() === 'studios') {
+    <!-- TAB 2: VENDOR MANAGEMENT -->
+    @if (activeTab() === 'vendors') {
+      <div class="action-bar">
+        <div class="action-bar-buttons">
+          <button
+            type="button"
+            class="btn btn--primary btn--sm"
+            (click)="showCreateVendor.set(!showCreateVendor()); showInviteVendor.set(false)"
+          >
+            + Create Vendor Account
+          </button>
+          <button
+            type="button"
+            class="btn btn--outline btn--sm"
+            (click)="showInviteVendor.set(!showInviteVendor()); showCreateVendor.set(false)"
+          >
+            ✉ Invite New Vendor
+          </button>
+        </div>
+      </div>
+
+      @if (showCreateVendor()) {
+        <div class="panel-card form-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Create Vendor Account &amp; Studio</h2>
+              <p>Provisions a vendor studio and Auth account (when service role key is set in .env).</p>
+            </div>
+          </div>
+          <div class="form-grid-3">
+            <input class="input" [(ngModel)]="newVendor.businessName" placeholder="Business Name *" />
+            <input class="input" [(ngModel)]="newVendor.fullName" placeholder="Owner Full Name" />
+            <input class="input" [(ngModel)]="newVendor.email" type="email" placeholder="Vendor Email *" />
+            <input class="input" [(ngModel)]="newVendor.password" type="password" placeholder="Temporary Password" />
+            <input class="input" [(ngModel)]="newVendor.phone" placeholder="Phone (+234...)" />
+            <select class="select" [(ngModel)]="newVendor.categorySlug">
+              @for (cat of categories(); track cat.slug) {
+                <option [value]="cat.slug">{{ cat.name }}</option>
+              }
+            </select>
+            <input class="input" [(ngModel)]="newVendor.city" placeholder="City (e.g. Lagos)" />
+            <input class="input" [(ngModel)]="newVendor.location" placeholder="Area / Location" />
+            <button type="button" class="btn btn--primary" (click)="submitCreateVendor()">
+              Provision Vendor →
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (showInviteVendor()) {
+        <div class="panel-card form-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Invite New Vendor</h2>
+              <p>Generates an onboarding invitation link for a business owner to sign up.</p>
+            </div>
+          </div>
+          <div class="form-grid-3">
+            <input class="input" [(ngModel)]="inviteForm.businessName" placeholder="Studio Name *" />
+            <input class="input" [(ngModel)]="inviteForm.email" type="email" placeholder="Founder Email *" />
+            <select class="select" [(ngModel)]="inviteForm.categorySlug">
+              @for (cat of categories(); track cat.slug) {
+                <option [value]="cat.slug">{{ cat.name }}</option>
+              }
+            </select>
+            <input class="input" [(ngModel)]="inviteForm.city" placeholder="City" />
+            <button type="button" class="btn btn--primary" (click)="submitInviteVendor()">
+              Generate Invite Link →
+            </button>
+          </div>
+
+          @if (invitations().length > 0) {
+            <div class="invite-list">
+              @for (inv of invitations(); track inv.id) {
+                <div class="invite-row">
+                  <div>
+                    <strong>{{ inv.businessName }}</strong> · {{ inv.email }} ({{ inv.city }})
+                    <span class="badge badge--bronze">{{ inv.status }}</span>
+                  </div>
+                  <div class="table-actions">
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="copyInviteLink(inv.inviteToken)"
+                    >
+                      Copy Invite URL
+                    </button>
+                    @if (inv.status === 'pending') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="marketplace.revokeInvitation(inv.id)"
+                      >
+                        Revoke
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
       <div class="toolbar-row">
         <input
           type="text"
           class="input toolbar-search"
           [ngModel]="studioSearch()"
           (ngModelChange)="studioSearch.set($event)"
-          placeholder="Search studio name, area, or slug..."
+          placeholder="Search vendor name, area, email, or slug..."
         />
 
         <select
@@ -211,7 +363,7 @@
           [ngModel]="studioCategoryFilter()"
           (ngModelChange)="studioCategoryFilter.set($event)"
         >
-          <option value="all">All 6 Categories</option>
+          <option value="all">All Categories</option>
           @for (cat of categories(); track cat.slug) {
             <option [value]="cat.slug">{{ cat.name }}</option>
           }
@@ -224,97 +376,263 @@
         >
           <option value="all">All Statuses</option>
           <option value="active">Active</option>
-          <option value="pending">Pending</option>
+          <option value="pending">Pending Applications</option>
           <option value="suspended">Suspended</option>
         </select>
       </div>
 
       <div class="studio-admin-list">
         @for (biz of filteredStudios(); track biz.id) {
-          <div class="studio-admin-row" [class.is-suspended]="biz.status === 'suspended'">
-            <div class="studio-admin-id">
-              <img [src]="biz.coverImage" [alt]="biz.name" class="studio-thumb" />
-              <div>
-                <div class="studio-badges-inline">
-                  <strong>{{ biz.name }}</strong>
-                  @if (biz.verified) {
-                    <span class="badge badge--success">Verified</span>
-                  }
-                  @if (biz.featured) {
-                    <span class="badge badge--bronze">Featured</span>
-                  }
-                  @if (biz.status === 'suspended') {
-                    <span class="badge badge--danger">Suspended</span>
-                  }
+          <div class="studio-admin-card">
+            <div class="studio-admin-row" [class.is-suspended]="biz.status === 'suspended'">
+              <div class="studio-admin-id">
+                <img [src]="biz.coverImage" [alt]="biz.name" class="studio-thumb" />
+                <div>
+                  <div class="studio-badges-inline">
+                    <strong>{{ biz.name }}</strong>
+                    @if (biz.status === 'pending') {
+                      <span class="badge badge--warning">Pending Approval</span>
+                    }
+                    @if (biz.verified) {
+                      <span class="badge badge--success">Verified</span>
+                    }
+                    @if (biz.featured) {
+                      <span class="badge badge--bronze">Featured</span>
+                    }
+                    @if (biz.status === 'suspended') {
+                      <span class="badge badge--danger">Suspended</span>
+                    }
+                  </div>
+                  <p>
+                    {{ biz.categoryLabel }} · {{ biz.location }} · {{ biz.contact.email }}
+                  </p>
+                  <code>/business/{{ biz.slug }}</code>
                 </div>
-                <p>
-                  {{ biz.categoryLabel }} · {{ biz.location }} · from
-                  {{ marketplace.formatNaira(marketplace.getStartingPrice(biz)) }}
-                </p>
-                <code>/business/{{ biz.slug }}</code>
+              </div>
+
+              <div class="studio-admin-stats">
+                <div>
+                  <span>Bookings</span>
+                  <strong>{{ studioStatsMap().get(biz.slug)?.bookings || 0 }}</strong>
+                </div>
+                <div>
+                  <span>Settled</span>
+                  <strong>
+                    {{ marketplace.formatNaira(studioStatsMap().get(biz.slug)?.revenue || 0) }}
+                  </strong>
+                </div>
+                <div>
+                  <span>Rating</span>
+                  <strong>★ {{ biz.rating.toFixed(1) }}</strong>
+                </div>
+              </div>
+
+              <div class="studio-admin-actions">
+                @if (biz.status === 'pending') {
+                  <button
+                    type="button"
+                    class="btn btn--primary btn--sm"
+                    (click)="approveVendor(biz.slug)"
+                  >
+                    Approve
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="btn btn--outline btn--sm"
+                  (click)="startEditVendor(biz)"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--outline btn--sm"
+                  (click)="toggleVerified(biz.slug)"
+                >
+                  {{ biz.verified ? 'Unverify' : 'Verify' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--outline btn--sm"
+                  (click)="toggleFeatured(biz.slug)"
+                >
+                  {{ biz.featured ? 'Unfeature' : 'Feature' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--sm"
+                  [class.btn--outline]="biz.status !== 'suspended'"
+                  [class.btn--primary]="biz.status === 'suspended'"
+                  (click)="toggleSuspend(biz.slug, biz.status)"
+                >
+                  {{ biz.status === 'suspended' ? 'Restore' : 'Suspend' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--outline btn--sm btn-danger-outline"
+                  (click)="deleteVendor(biz.slug, biz.name)"
+                >
+                  Delete
+                </button>
               </div>
             </div>
 
-            <div class="studio-admin-stats">
-              <div>
-                <span>Bookings</span>
-                <strong>{{ studioStatsMap().get(biz.slug)?.bookings || 0 }}</strong>
+            @if (editingVendorSlug() === biz.slug) {
+              <div class="inline-editor">
+                <div class="form-grid-3">
+                  <input class="input" [(ngModel)]="editVendorForm.name" placeholder="Business Name" />
+                  <select class="select" [(ngModel)]="editVendorForm.categorySlug">
+                    @for (cat of categories(); track cat.slug) {
+                      <option [value]="cat.slug">{{ cat.name }}</option>
+                    }
+                  </select>
+                  <input class="input" [(ngModel)]="editVendorForm.city" placeholder="City" />
+                  <input class="input" [(ngModel)]="editVendorForm.location" placeholder="Area / Location" />
+                  <input class="input" [(ngModel)]="editVendorForm.address" placeholder="Street Address" />
+                  <input class="input" [(ngModel)]="editVendorForm.phone" placeholder="Phone" />
+                  <input class="input" [(ngModel)]="editVendorForm.email" placeholder="Email" />
+                  <input class="input" [(ngModel)]="editVendorForm.tagline" placeholder="Tagline" />
+                  <div class="table-actions">
+                    <button type="button" class="btn btn--primary btn--sm" (click)="saveVendorEdit(biz)">
+                      Save Changes
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="editingVendorSlug.set(null)"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span>Settled</span>
-                <strong>
-                  {{ marketplace.formatNaira(studioStatsMap().get(biz.slug)?.revenue || 0) }}
-                </strong>
-              </div>
-              <div>
-                <span>Rating</span>
-                <strong>★ {{ biz.rating.toFixed(1) }}</strong>
-              </div>
-            </div>
-
-            <div class="studio-admin-actions">
-              <button
-                type="button"
-                class="btn btn--outline btn--sm"
-                (click)="toggleVerified(biz.slug)"
-              >
-                {{ biz.verified ? 'Unverify' : 'Verify' }}
-              </button>
-              <button
-                type="button"
-                class="btn btn--outline btn--sm"
-                (click)="toggleFeatured(biz.slug)"
-              >
-                {{ biz.featured ? 'Unfeature' : 'Feature' }}
-              </button>
-              <button
-                type="button"
-                class="btn btn--sm"
-                [class.btn--outline]="biz.status !== 'suspended'"
-                [class.btn--primary]="biz.status === 'suspended'"
-                (click)="toggleSuspend(biz.slug, biz.status)"
-              >
-                {{ biz.status === 'suspended' ? 'Restore' : 'Suspend' }}
-              </button>
-              <a [routerLink]="['/business', biz.slug]" class="btn btn--primary btn--sm">
-                Site ↗
-              </a>
-            </div>
+            }
           </div>
         }
       </div>
     }
 
-    <!-- TAB 3: GLOBAL PAYSTACK & BOOKING LEDGER -->
-    @if (activeTab() === 'ledger') {
+    <!-- TAB 3: CATEGORY MANAGEMENT -->
+    @if (activeTab() === 'categories') {
+      <div class="analytics-grid">
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>{{ editingCategorySlug() ? 'Edit Category' : 'Create New Category' }}</h2>
+              <p>Manage service categories, descriptions, tags, and cover images.</p>
+            </div>
+            @if (editingCategorySlug()) {
+              <button type="button" class="btn btn--outline btn--sm" (click)="resetCategoryForm()">
+                Cancel Edit
+              </button>
+            }
+          </div>
+
+          <div class="stack-form">
+            <div class="form-grid-2">
+              <input class="input" [(ngModel)]="categoryForm.name" placeholder="Category Name *" />
+              <input class="input" [(ngModel)]="categoryForm.shortName" placeholder="Short Label (e.g. Nail Techs)" />
+              <input
+                class="input"
+                [(ngModel)]="categoryForm.slug"
+                [disabled]="!!editingCategorySlug()"
+                placeholder="URL Slug (auto if blank)"
+              />
+              <input class="input" [(ngModel)]="categoryForm.tagline" placeholder="Short Tagline" />
+            </div>
+
+            <textarea
+              class="textarea"
+              rows="3"
+              [(ngModel)]="categoryForm.description"
+              placeholder="Category description shown on marketplace pages..."
+            ></textarea>
+
+            <input
+              class="input"
+              [(ngModel)]="categoryForm.tagsText"
+              placeholder="Popular tags (comma separated: Knotless Braids, Silk Press...)"
+            />
+
+            <div class="upload-row">
+              <img [src]="categoryForm.coverImage" alt="Category cover" class="cat-thumb" />
+              <div class="upload-controls">
+                <input
+                  class="input"
+                  [(ngModel)]="categoryForm.coverImage"
+                  placeholder="Image path or URL"
+                />
+                <input type="file" accept="image/*" (change)="onCategoryImageSelected($event)" />
+              </div>
+            </div>
+
+            <button type="button" class="btn btn--primary" (click)="saveCategory()">
+              {{ editingCategorySlug() ? 'Update Category' : '+ Create Category' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h2>Active Categories ({{ categories().length }})</h2>
+          <div class="cat-list">
+            @for (cat of categories(); track cat.slug) {
+              <div class="cat-item">
+                <img [src]="cat.coverImage" [alt]="cat.name" class="cat-item-img" />
+                <div class="cat-item-info">
+                  <strong>{{ cat.name }}</strong>
+                  <span>/{{ cat.slug }} · {{ cat.tagline }}</span>
+                </div>
+                <div class="table-actions">
+                  <button type="button" class="btn btn--outline btn--sm" (click)="editCategory(cat)">
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn--outline btn--sm btn-danger-outline"
+                    (click)="removeCategory(cat.slug)"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 4: BOOKING MANAGEMENT -->
+    @if (activeTab() === 'bookings') {
       <div class="toolbar-row">
         <input
           type="text"
           class="input toolbar-search"
           [ngModel]="ledgerSearch()"
           (ngModelChange)="ledgerSearch.set($event)"
-          placeholder="Search BK-2026-..., PSK_..., studio, or customer..."
+          placeholder="Search BK-2026-..., PSK_..., studio, service, or customer..."
         />
+
+        <select
+          class="select toolbar-select"
+          [ngModel]="ledgerCategoryFilter()"
+          (ngModelChange)="ledgerCategoryFilter.set($event)"
+        >
+          <option value="all">All Categories</option>
+          @for (cat of categories(); track cat.slug) {
+            <option [value]="cat.slug">{{ cat.name }}</option>
+          }
+        </select>
+
+        <select
+          class="select toolbar-select"
+          [ngModel]="ledgerBusinessFilter()"
+          (ngModelChange)="ledgerBusinessFilter.set($event)"
+        >
+          <option value="all">All Businesses</option>
+          @for (biz of businesses(); track biz.slug) {
+            <option [value]="biz.slug">{{ biz.name }}</option>
+          }
+        </select>
 
         <div class="status-pills">
           @for (st of ['all', 'Confirmed', 'Pending', 'Completed', 'Cancelled']; track st) {
@@ -338,10 +656,10 @@
               <th>Studio</th>
               <th>Customer &amp; Service</th>
               <th>Schedule</th>
-              <th>Paystack Ref</th>
+              <th>Payment Status</th>
               <th>Paid / Total</th>
               <th>Status</th>
-              <th>Override</th>
+              <th>Activity Control</th>
             </tr>
           </thead>
           <tbody>
@@ -370,13 +688,12 @@
                   <div class="cell-sub">{{ b.time }}</div>
                 </td>
                 <td>
-                  <code>{{ b.paystackReference || 'At Studio' }}</code>
+                  <span class="badge badge--bronze">{{ b.paymentStatus }}</span>
+                  <div class="cell-sub"><code>{{ b.paystackReference || 'At Studio' }}</code></div>
                 </td>
                 <td>
                   <strong>{{ marketplace.formatNaira(b.amountPaid) }}</strong>
-                  <div class="cell-sub">
-                    of {{ marketplace.formatNaira(b.servicePrice) }} ({{ b.paymentStatus }})
-                  </div>
+                  <div class="cell-sub">of {{ marketplace.formatNaira(b.servicePrice) }}</div>
                 </td>
                 <td>
                   <span
@@ -397,6 +714,15 @@
                         (click)="markBookingPaid(b.bookingReference)"
                       >
                         Mark Paid
+                      </button>
+                    }
+                    @if (b.status === 'Pending') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="setBookingStatus(b.bookingReference, 'Confirmed')"
+                      >
+                        Confirm
                       </button>
                     }
                     @if (b.status === 'Confirmed') {
@@ -426,34 +752,272 @@
       </div>
     }
 
-    <!-- TAB 4: REVIEWS MODERATION -->
-    @if (activeTab() === 'reviews') {
-      <div class="reviews-mod-list">
-        @for (rev of allReviews(); track rev.id) {
-          <div class="review-mod-row">
-            <div>
-              <div class="review-mod-head">
-                <strong>{{ rev.author }}</strong>
-                <span class="badge badge--bronze">★ {{ rev.rating }}.0</span>
-                <a [routerLink]="['/business', rev.businessSlug]" class="studio-link">
-                  {{ rev.businessName }}
-                </a>
-                <span class="cell-sub">· {{ rev.serviceName }} · {{ rev.dateLabel }}</span>
-              </div>
-              <p class="review-mod-comment">“{{ rev.comment }}”</p>
-            </div>
+    <!-- TAB 5: PAYMENT MANAGEMENT -->
+    @if (activeTab() === 'payments') {
+      <div class="payment-summary-grid">
+        <div class="panel-card">
+          <span class="kpi-label-dark">Successful Payments</span>
+          <strong class="metric-big">
+            {{ marketplace.formatNaira(platformMetrics().successTxVolume) }}
+          </strong>
+          <span class="cell-sub">{{ platformMetrics().successTxCount }} verified transactions</span>
+        </div>
+        <div class="panel-card">
+          <span class="kpi-label-dark">Failed Payments</span>
+          <strong class="metric-big text-danger">
+            {{ marketplace.formatNaira(platformMetrics().failedTxVolume) }}
+          </strong>
+          <span class="cell-sub">{{ platformMetrics().failedTxCount }} failed attempts tracked</span>
+        </div>
+        <div class="panel-card">
+          <span class="kpi-label-dark">Platform Commissions ({{ platformMetrics().commissionRate }}%)</span>
+          <strong class="metric-big">
+            {{ marketplace.formatNaira(platformMetrics().platformCommission) }}
+          </strong>
+          <span class="cell-sub">Adjustable in Platform Settings</span>
+        </div>
+      </div>
 
+      <div class="toolbar-row">
+        <input
+          type="text"
+          class="input toolbar-search"
+          [ngModel]="paymentSearch()"
+          (ngModelChange)="paymentSearch.set($event)"
+          placeholder="Search gateway ref, booking ID, business, or customer..."
+        />
+        <div class="status-pills">
+          @for (st of ['all', 'success', 'failed', 'refunded']; track st) {
             <button
               type="button"
-              class="btn btn--outline btn--sm"
-              (click)="removeReview(rev.businessSlug, rev.id)"
+              class="filter-pill"
+              [class.is-active]="paymentFilter() === st"
+              (click)="paymentFilter.set($any(st))"
             >
-              Remove review
+              {{ st === 'all' ? 'All Transactions' : st }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="ledger-table-wrap">
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th>Gateway Ref</th>
+              <th>Booking Ref</th>
+              <th>Business</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Commission</th>
+              <th>Vendor Net</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (tx of filteredTransactions(); track tx.id) {
+              <tr>
+                <td><code>{{ tx.gatewayReference || '—' }}</code></td>
+                <td>{{ tx.bookingReference }}</td>
+                <td>{{ tx.businessName }}</td>
+                <td>
+                  <strong>{{ tx.customerName }}</strong>
+                  <div class="cell-sub">{{ tx.customerEmail }}</div>
+                </td>
+                <td><strong>{{ marketplace.formatNaira(tx.amount) }}</strong></td>
+                <td>
+                  {{ marketplace.formatNaira(tx.platformCommissionAmount) }}
+                  <span class="cell-sub">({{ tx.platformCommissionRate }}%)</span>
+                </td>
+                <td>{{ marketplace.formatNaira(tx.vendorNetAmount) }}</td>
+                <td>
+                  <span
+                    class="badge"
+                    [class.badge--success]="tx.status === 'success'"
+                    [class.badge--danger]="tx.status === 'failed'"
+                    [class.badge--warning]="tx.status === 'pending' || tx.status === 'refunded'"
+                  >
+                    {{ tx.status }}
+                  </span>
+                  @if (tx.failureReason) {
+                    <div class="cell-sub text-danger">{{ tx.failureReason }}</div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- TAB 6: PLATFORM SETTINGS, CUSTOMERS & REVIEWS -->
+    @if (activeTab() === 'settings') {
+      <div class="analytics-grid">
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Commission, Website Content &amp; Notifications</h2>
+              <p>Platform-wide configuration stored in Supabase <code>platform_settings</code>.</p>
+            </div>
+          </div>
+
+          <div class="stack-form">
+            <div class="form-grid-2">
+              <div class="field">
+                <label class="field-label">Platform Commission (%)</label>
+                <input
+                  type="number"
+                  class="input"
+                  min="0"
+                  max="50"
+                  [(ngModel)]="settingsDraft.commissionRate"
+                />
+              </div>
+              <div class="field">
+                <label class="field-label">Platform Name</label>
+                <input class="input" [(ngModel)]="settingsDraft.siteName" />
+              </div>
+              <div class="field">
+                <label class="field-label">Support Email</label>
+                <input class="input" [(ngModel)]="settingsDraft.supportEmail" />
+              </div>
+              <div class="field">
+                <label class="field-label">Support Phone</label>
+                <input class="input" [(ngModel)]="settingsDraft.supportPhone" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Homepage Hero Headline</label>
+              <input class="input" [(ngModel)]="settingsDraft.heroHeadline" />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Homepage Subheadline</label>
+              <textarea class="textarea" rows="2" [(ngModel)]="settingsDraft.heroSubheadline"></textarea>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Announcement Banner (optional)</label>
+              <input
+                class="input"
+                [(ngModel)]="settingsDraft.announcementBanner"
+                placeholder="e.g. Zero booking fees on Lagos & Abuja salons this weekend"
+              />
+            </div>
+
+            <div class="notif-checks">
+              <label class="policy-check">
+                <input type="checkbox" [(ngModel)]="settingsDraft.notifyNewBooking" />
+                <span>Notify Super Admin &amp; Vendor on new bookings</span>
+              </label>
+              <label class="policy-check">
+                <input type="checkbox" [(ngModel)]="settingsDraft.notifyPaymentFailed" />
+                <span>Alert operations on failed Paystack transactions</span>
+              </label>
+              <label class="policy-check">
+                <input type="checkbox" [(ngModel)]="settingsDraft.notifyVendorApplication" />
+                <span>Notify on new vendor registration applications</span>
+              </label>
+              <label class="policy-check">
+                <input type="checkbox" [(ngModel)]="settingsDraft.notifyBookingReminders" />
+                <span>Send automated client appointment reminders</span>
+              </label>
+            </div>
+
+            <button type="button" class="btn btn--primary" (click)="savePlatformSettings()">
+              Save Platform Settings
             </button>
           </div>
-        }
+        </div>
+
+        <div class="side-stack">
+          <div class="panel-card">
+            <div class="panel-head">
+              <div>
+                <h2>Customer Accounts ({{ uniqueCustomers().length }})</h2>
+                <p>Manage registered and booking customers.</p>
+              </div>
+            </div>
+            <input
+              type="text"
+              class="input"
+              style="margin-bottom: 12px"
+              [ngModel]="customerSearch()"
+              (ngModelChange)="customerSearch.set($event)"
+              placeholder="Search customer name, email, or phone..."
+            />
+            <div class="customer-list">
+              @for (cust of filteredCustomers(); track cust.email) {
+                <div class="customer-row">
+                  <div>
+                    <strong>{{ cust.fullName }}</strong>
+                    <div class="cell-sub">
+                      {{ cust.email }} · {{ cust.phone || 'No phone' }} ·
+                      {{ cust.bookings }} bookings
+                    </div>
+                  </div>
+                  <div class="table-actions">
+                    <span
+                      class="badge"
+                      [class.badge--success]="cust.status === 'active'"
+                      [class.badge--danger]="cust.status === 'suspended'"
+                    >
+                      {{ cust.status }}
+                    </span>
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="toggleCustomerStatus(cust.id, cust.status)"
+                    >
+                      {{ cust.status === 'suspended' ? 'Activate' : 'Suspend' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <div class="panel-head">
+              <div>
+                <h2>Reviews Moderation ({{ allReviews().length }})</h2>
+                <p>Hide or delete inappropriate client feedback.</p>
+              </div>
+            </div>
+            <div class="reviews-mod-list">
+              @for (rev of allReviews(); track rev.id) {
+                <div class="review-mod-row">
+                  <div>
+                    <div class="review-mod-head">
+                      <strong>{{ rev.author }}</strong>
+                      <span class="badge badge--bronze">★ {{ rev.rating }}.0</span>
+                      <span class="cell-sub">{{ rev.businessName }} · {{ rev.status }}</span>
+                    </div>
+                    <p class="review-mod-comment">“{{ rev.comment }}”</p>
+                  </div>
+                  <div class="table-actions">
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="toggleReviewVisibility(rev.businessSlug, rev.id, rev.status)"
+                    >
+                      {{ rev.status === 'hidden' ? 'Publish' : 'Hide' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm btn-danger-outline"
+                      (click)="removeReview(rev.businessSlug, rev.id)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
       </div>
     }
   </div>
 </section>
-

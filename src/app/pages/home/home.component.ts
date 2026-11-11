@@ -1,5 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { BusinessCardComponent } from '../../components/business-card/business-card.component';
@@ -37,24 +36,6 @@ interface FaqItem {
 export class HomeComponent {
   readonly marketplace = inject(MarketplaceService);
   private readonly router = inject(Router);
-  private readonly platformId = inject(PLATFORM_ID);
-  private readonly destroyRef = inject(DestroyRef);
-
-  readonly heroSlides = [
-    { src: 'images/hero-salon.jpg', alt: 'Nigerian hair salon with arched LED mirrors' },
-    { src: 'images/hero-pedicure.jpg', alt: 'Nigerian nail and pedicure studio lounge' },
-    { src: 'images/hero-barber-studio.jpg', alt: 'Nigerian barbershop and grooming studio' },
-  ];
-  readonly activeHeroSlide = signal(0);
-
-  constructor() {
-    if (isPlatformBrowser(this.platformId)) {
-      const id = window.setInterval(() => {
-        this.activeHeroSlide.update((i) => (i + 1) % this.heroSlides.length);
-      }, 5500);
-      this.destroyRef.onDestroy(() => window.clearInterval(id));
-    }
-  }
 
   readonly categories = this.marketplace.categories;
   readonly featuredBusinesses = computed(() => this.marketplace.featuredBusinesses().slice(0, 6));

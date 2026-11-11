@@ -17,12 +17,14 @@ export class TrackBookingComponent {
 
   readonly referenceInput = signal('BK-2026-000124');
   readonly searchedRef = signal('BK-2026-000124');
+  readonly remoteMatch = signal<BookingRecord | undefined>(undefined);
 
   readonly recentBookings = computed(() => this.marketplace.bookings().slice(0, 5));
 
   readonly foundBooking = computed<BookingRecord | undefined>(() => {
     const ref = this.searchedRef().trim();
-    return ref ? this.marketplace.findBookingByReference(ref) : undefined;
+    if (!ref) return undefined;
+    return this.marketplace.findBookingByReference(ref) ?? this.remoteMatch();
   });
 
   constructor() {
@@ -31,21 +33,33 @@ export class TrackBookingComponent {
       if (ref) {
         this.referenceInput.set(ref);
         this.searchedRef.set(ref);
+        void this.fetchRemoteIfNeeded(ref);
       }
     });
   }
 
   lookupBooking(): void {
-    this.searchedRef.set(this.referenceInput().trim());
+    const ref = this.referenceInput().trim();
+    this.searchedRef.set(ref);
+    void this.fetchRemoteIfNeeded(ref);
   }
 
   selectSample(ref: string): void {
     this.referenceInput.set(ref);
     this.searchedRef.set(ref);
+    this.remoteMatch.set(undefined);
   }
 
   cancelBooking(ref: string): void {
     this.marketplace.updateBookingStatus(ref, 'Cancelled');
   }
-}
 
+  private async fetchRemoteIfNeeded(ref: string): Promise<void> {
+    if (!ref || this.marketplace.findBookingByReference(ref)) {
+      this.remoteMatch.set(undefined);
+      return;
+    }
+    const found = await this.marketplace.lookupBookingRemote(ref);
+    this.remoteMatch.set(found);
+  }
+}

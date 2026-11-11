@@ -1,0 +1,248 @@
+<section class="auth-hero section--dark">
+  <div class="container">
+    <div class="section-index section-index--light">
+      <span class="section-index-num">01</span>
+      <span>Beautiva Access &amp; Role Portal</span>
+    </div>
+    <h1 class="auth-title">Sign In to Beautiva</h1>
+    <p class="auth-sub">
+      Access your Super Admin console, Vendor Studio dashboard, or Customer booking profile.
+    </p>
+    <div class="conn-pill-row">
+      @if (marketplace.supabaseConfigured) {
+        <span class="badge badge--success">Supabase Backend Configured (.env)</span>
+      } @else {
+        <span class="badge badge--warning">Demo / Local Mode — Add .env keys for live Supabase</span>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="auth-body">
+  <div class="container auth-grid">
+    <!-- LEFT: REAL SUPABASE AUTH FORM -->
+    <div class="panel-card">
+      @if (auth.currentUser(); as user) {
+        <div class="active-session-box">
+          <span class="badge badge--bronze">
+            {{ auth.authMode() === 'supabase' ? 'Supabase Auth Session' : 'Demo Session Active' }}
+          </span>
+          <h2>{{ user.fullName }}</h2>
+          <p>{{ user.email }} · Role: <strong>{{ user.role }}</strong></p>
+
+          <div class="session-actions">
+            @if (auth.isSuperAdmin()) {
+              <a routerLink="/admin" class="btn btn--primary">Open Super Admin Console →</a>
+            }
+            @if (auth.isVendor() || auth.isSuperAdmin()) {
+              <a routerLink="/vendor" class="btn btn--primary">Open Vendor Dashboard →</a>
+            }
+            <a routerLink="/vendors" class="btn btn--outline">Browse Marketplace</a>
+            <button type="button" class="btn btn--outline" (click)="logout()">Sign Out</button>
+          </div>
+        </div>
+      } @else {
+        <div class="auth-tabs">
+          <button
+            type="button"
+            class="auth-tab"
+            [class.is-active]="mode() === 'signin'"
+            (click)="mode.set('signin'); errorMsg.set('')"
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            class="auth-tab"
+            [class.is-active]="mode() === 'signup'"
+            (click)="mode.set('signup'); errorMsg.set('')"
+          >
+            Create Account
+          </button>
+        </div>
+
+        @if (inviteBusinessName()) {
+          <div class="invite-banner">
+            Invited to manage <strong>{{ inviteBusinessName() }}</strong> on Beautiva.
+          </div>
+        }
+
+        @if (errorMsg()) {
+          <div class="alert-error">{{ errorMsg() }}</div>
+        }
+        @if (successMsg()) {
+          <div class="alert-success">{{ successMsg() }}</div>
+        }
+
+        @if (mode() === 'signin') {
+          <form (ngSubmit)="submitSignIn()" class="auth-form">
+            <div class="field">
+              <label class="field-label">Email Address</label>
+              <input
+                type="email"
+                class="input"
+                [(ngModel)]="email"
+                name="email"
+                placeholder="you@beautiva.ng"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Password</label>
+              <input
+                type="password"
+                class="input"
+                [(ngModel)]="password"
+                name="password"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn--primary btn--lg full-btn"
+              [disabled]="auth.loading()"
+            >
+              {{ auth.loading() ? 'Signing in...' : 'Sign In with Email' }}
+            </button>
+          </form>
+        } @else {
+          <form (ngSubmit)="submitSignUp()" class="auth-form">
+            <div class="field">
+              <label class="field-label">Account Type</label>
+              <div class="role-toggle">
+                <button
+                  type="button"
+                  class="filter-pill"
+                  [class.is-active]="requestedRole() === 'customer'"
+                  (click)="requestedRole.set('customer')"
+                >
+                  Customer
+                </button>
+                <button
+                  type="button"
+                  class="filter-pill"
+                  [class.is-active]="requestedRole() === 'vendor'"
+                  (click)="requestedRole.set('vendor')"
+                >
+                  Vendor / Business Owner
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Full Name</label>
+              <input
+                type="text"
+                class="input"
+                [(ngModel)]="fullName"
+                name="fullName"
+                placeholder="e.g. Tolu Adeyemi"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Email Address</label>
+              <input
+                type="email"
+                class="input"
+                [(ngModel)]="email"
+                name="signupEmail"
+                placeholder="you@studio.ng"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Phone Number</label>
+              <input
+                type="tel"
+                class="input"
+                [(ngModel)]="phone"
+                name="phone"
+                placeholder="+234 809 000 0000"
+              />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Password (min 6 chars)</label>
+              <input
+                type="password"
+                class="input"
+                [(ngModel)]="password"
+                name="signupPassword"
+                placeholder="Create a secure password"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn--primary btn--lg full-btn"
+              [disabled]="auth.loading()"
+            >
+              {{ auth.loading() ? 'Creating account...' : 'Register Account' }}
+            </button>
+          </form>
+        }
+      }
+    </div>
+
+    <!-- RIGHT: DEMO QUICK-SWITCH PANEL -->
+    <aside class="panel-card demo-card">
+      <span class="badge badge--bronze">Instant Role Switcher</span>
+      <h2>Demo Quick-Switch</h2>
+      <p class="demo-sub">
+        Preview any Beautiva role immediately without waiting for email verification, or connect
+        Supabase Auth in <code>.env</code> for production sign-in.
+      </p>
+
+      <div class="demo-role-list">
+        <div class="demo-role-item">
+          <div>
+            <strong>Super Admin (Platform Owner)</strong>
+            <span>Platform KPIs, Vendor Approvals, Categories, Payments &amp; Settings</span>
+          </div>
+          <button type="button" class="btn btn--primary btn--sm" (click)="quickSwitch('super_admin')">
+            Enter Admin →
+          </button>
+        </div>
+
+        <div class="demo-role-item demo-role-item--col">
+          <div class="demo-vendor-top">
+            <div>
+              <strong>Vendor Admin (Business Owner)</strong>
+              <span>Appointments, Services, Availability, Analytics &amp; Customers</span>
+            </div>
+            <button type="button" class="btn btn--outline btn--sm" (click)="quickSwitch('vendor')">
+              Enter Vendor →
+            </button>
+          </div>
+          <select
+            class="select"
+            [ngModel]="demoStudioSlug()"
+            (ngModelChange)="demoStudioSlug.set($event)"
+          >
+            @for (b of marketplace.businesses(); track b.id) {
+              <option [value]="b.slug">{{ b.name }} ({{ b.city }})</option>
+            }
+          </select>
+        </div>
+
+        <div class="demo-role-item">
+          <div>
+            <strong>Customer</strong>
+            <span>Discover studios, book appointments &amp; track reservations</span>
+          </div>
+          <button type="button" class="btn btn--outline btn--sm" (click)="quickSwitch('customer')">
+            Enter Customer →
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+

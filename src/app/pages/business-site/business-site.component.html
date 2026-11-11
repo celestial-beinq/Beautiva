@@ -90,7 +90,7 @@
           <h2 class="block-title">Services & Transparent Pricing</h2>
 
           <div class="catalogue-list">
-            @for (srv of biz.services; track srv.id) {
+            @for (srv of marketplace.getActiveServices(biz); track srv.id) {
               <div class="catalogue-item card">
                 <div class="catalogue-info">
                   <div class="catalogue-top">

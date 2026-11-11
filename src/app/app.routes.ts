@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { superAdminGuard, vendorGuard } from './guards/role.guard';
 import { BookingComponent } from './pages/booking/booking.component';
 import { BusinessSiteComponent } from './pages/business-site/business-site.component';
 import { CategoryComponent } from './pages/category/category.component';
@@ -24,13 +25,20 @@ export const routes: Routes = [
     title: 'Contact Concierge — Beautiva',
   },
   {
+    path: 'auth',
+    loadComponent: () => import('./pages/auth/auth.component').then((m) => m.AuthComponent),
+    title: 'Sign In & Role Access — Beautiva',
+  },
+  {
     path: 'vendor',
+    canActivate: [vendorGuard],
     loadComponent: () =>
       import('./pages/vendor-studio/vendor-studio.component').then((m) => m.VendorStudioComponent),
     title: 'Vendor Dashboard — Beautiva',
   },
   {
     path: 'admin',
+    canActivate: [superAdminGuard],
     loadComponent: () =>
       import('./pages/admin-dashboard/admin-dashboard.component').then(
         (m) => m.AdminDashboardComponent,

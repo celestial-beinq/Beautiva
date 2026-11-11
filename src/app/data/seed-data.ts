@@ -297,9 +297,9 @@ export const SEED_BUSINESSES: BusinessProfile[] = [
     coverImage: 'images/cat-barbers.jpg',
     gallery: [
       'images/cat-barbers.jpg',
+      'images/hero-barber-studio.jpg',
       'images/barber-fade-2.jpg',
       'images/barber-fade-3.jpg',
-      'images/barber-fade-4.jpg',
     ],
     rating: 4.9,
     reviewCount: 214,
@@ -457,9 +457,9 @@ export const SEED_BUSINESSES: BusinessProfile[] = [
     coverImage: 'images/cat-nails.jpg',
     gallery: [
       'images/cat-nails.jpg',
+      'images/hero-pedicure.jpg',
       'images/nails-nude-2.jpg',
       'images/nails-nude-3.jpg',
-      'images/studio-lounge.jpg',
     ],
     rating: 4.9,
     reviewCount: 165,

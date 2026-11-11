@@ -38,7 +38,16 @@ export class BookingComponent {
   readonly business = computed(() => this.marketplace.getBusinessBySlug(this.slug()));
 
   readonly dateOptions: DateChip[] = this.buildDateOptions();
-  readonly timeSlots = ALL_SLOTS;
+  readonly timeSlots = computed(() =>
+    this.marketplace.getEnabledSlotsForBusiness(this.business(), this.selectedDate()),
+  );
+  readonly activeServices = computed(() => {
+    const biz = this.business();
+    return biz ? this.marketplace.getActiveServices(biz) : [];
+  });
+  readonly isSelectedDateBlocked = computed(() =>
+    this.marketplace.isDateBlocked(this.business(), this.selectedDate()),
+  );
 
   readonly selectedServiceId = signal<string>('');
   readonly selectedDate = signal<string>(this.dateOptions[0].iso);
@@ -57,9 +66,9 @@ export class BookingComponent {
   readonly copiedRef = signal(false);
 
   readonly selectedService = computed(() => {
-    const biz = this.business();
-    if (!biz) return undefined;
-    return biz.services.find((s) => s.id === this.selectedServiceId()) ?? biz.services[0];
+    const list = this.activeServices();
+    if (!list.length) return undefined;
+    return list.find((s) => s.id === this.selectedServiceId()) ?? list[0];
   });
 
   readonly bookedSlots = computed(() =>
@@ -116,16 +125,25 @@ export class BookingComponent {
 
   selectDate(iso: string): void {
     this.selectedDate.set(iso);
-    if (this.isSlotBooked(this.selectedTime())) {
-      const free = this.timeSlots.find((t) => !this.isSlotBooked(t));
+    const slots = this.timeSlots();
+    if (slots.length > 0 && (this.isSlotBooked(this.selectedTime()) || !slots.includes(this.selectedTime()))) {
+      const free = slots.find((t) => !this.isSlotBooked(t));
       if (free) this.selectedTime.set(free);
     }
+  }
+
+  isDateUnavailable(iso: string): boolean {
+    return this.marketplace.isDateBlocked(this.business(), iso);
   }
 
   proceedToCheckout(): void {
     this.validationError.set('');
     if (!this.selectedService()) {
       this.validationError.set('Please select a service to continue.');
+      return;
+    }
+    if (this.isSelectedDateBlocked() || this.timeSlots().length === 0) {
+      this.validationError.set('The studio is unavailable on this date. Please select another day.');
       return;
     }
     if (this.isSlotBooked(this.selectedTime())) {

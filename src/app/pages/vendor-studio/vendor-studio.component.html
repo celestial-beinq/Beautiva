@@ -1,11 +1,11 @@
-<!-- DARK ESPRESSO CONSOLE HEADER -->
+<!-- DARK ESPRESSO VENDOR ADMIN HEADER -->
 <section class="console-hero section--dark">
   <div class="container">
     <div class="console-top">
       <div>
         <div class="section-index section-index--light">
           <span class="section-index-num">01</span>
-          <span>Vendor Dashboard</span>
+          <span>Vendor Admin Dashboard · Business Owner</span>
         </div>
         @if (activeStudio(); as studio) {
           <h1 class="console-title">{{ studio.name }}</h1>
@@ -15,6 +15,9 @@
             <span>{{ studio.location }}</span>
             <span>·</span>
             <code>beautiva.ng/business/{{ studio.slug }}</code>
+            @if (marketplace.backendConnected()) {
+              <span class="badge badge--success">Supabase Live</span>
+            }
           </div>
         }
       </div>
@@ -27,7 +30,7 @@
             [ngModel]="selectedStudioSlug()"
             (ngModelChange)="selectStudio($event)"
           >
-            @for (b of businesses(); track b.id) {
+            @for (b of availableStudios(); track b.id) {
               <option [value]="b.slug">{{ b.name }} ({{ b.city }})</option>
             }
           </select>
@@ -38,34 +41,49 @@
             Open live site ↗
           </a>
         }
-        <a routerLink="/admin" class="btn btn--ghost-light btn--sm">Super Admin Console</a>
+        @if (auth.isSuperAdmin()) {
+          <a routerLink="/admin" class="btn btn--ghost-light btn--sm">Super Admin Console</a>
+        }
+        <a routerLink="/auth" class="btn btn--ghost-light btn--sm">Switch Role</a>
       </div>
     </div>
 
-    <!-- KPI Strip -->
+    <!-- BUSINESS OVERVIEW KPI STRIP -->
     @if (activeStudio(); as studio) {
-      <div class="kpi-strip">
+      <div class="kpi-strip kpi-strip--six">
         <div class="kpi-cell">
-          <span class="kpi-label">Collected via Paystack</span>
-          <strong class="kpi-value">{{ marketplace.formatNaira(studioMetrics().collected) }}</strong>
-          <span class="kpi-sub">{{ studioMetrics().totalCount }} total bookings</span>
+          <span class="kpi-label">Total Bookings</span>
+          <strong class="kpi-value">{{ studioMetrics().totalBookings }}</strong>
+          <span class="kpi-sub">★ {{ studio.rating.toFixed(1) }} ({{ studio.reviewCount }} reviews)</span>
         </div>
         <div class="kpi-cell">
-          <span class="kpi-label">Balance Due at Studio</span>
+          <span class="kpi-label">Today’s Appointments</span>
+          <strong class="kpi-value">{{ studioMetrics().todayCount }}</strong>
+          <span class="kpi-sub">Scheduled today</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Upcoming</span>
+          <strong class="kpi-value">{{ studioMetrics().upcomingCount }}</strong>
+          <span class="kpi-sub">Confirmed &amp; pending</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Completed</span>
+          <strong class="kpi-value">{{ studioMetrics().completedCount }}</strong>
+          <span class="kpi-sub">Finished visits</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Cancelled</span>
+          <strong class="kpi-value">{{ studioMetrics().cancelledCount }}</strong>
+          <span class="kpi-sub">{{ analyticsMetrics().cancellationRate }}% rate</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Total Earnings</span>
           <strong class="kpi-value">
-            {{ marketplace.formatNaira(studioMetrics().pendingBalance) }}
+            {{ marketplace.formatNaira(studioMetrics().totalEarnings) }}
           </strong>
-          <span class="kpi-sub">Deposits &amp; pay-at-studio</span>
-        </div>
-        <div class="kpi-cell">
-          <span class="kpi-label">Upcoming &amp; Pending</span>
-          <strong class="kpi-value">{{ studioMetrics().activeCount }}</strong>
-          <span class="kpi-sub">{{ studioMetrics().completedCount }} completed visits</span>
-        </div>
-        <div class="kpi-cell">
-          <span class="kpi-label">Client Rating</span>
-          <strong class="kpi-value">★ {{ studio.rating.toFixed(1) }}</strong>
-          <span class="kpi-sub">{{ studio.reviewCount }} verified reviews</span>
+          <span class="kpi-sub">
+            Due at studio: {{ marketplace.formatNaira(studioMetrics().pendingBalance) }}
+          </span>
         </div>
       </div>
     }
@@ -87,18 +105,42 @@
       <button
         type="button"
         class="console-tab"
-        [class.is-active]="activeTab() === 'menu'"
-        (click)="activeTab.set('menu')"
+        [class.is-active]="activeTab() === 'profile'"
+        (click)="activeTab.set('profile')"
       >
-        02 · Menu &amp; Team
+        02 · Business Profile
       </button>
       <button
         type="button"
         class="console-tab"
-        [class.is-active]="activeTab() === 'hours'"
-        (click)="activeTab.set('hours')"
+        [class.is-active]="activeTab() === 'menu'"
+        (click)="activeTab.set('menu')"
       >
-        03 · Hours &amp; Paystack Rules
+        03 · Services &amp; Team
+      </button>
+      <button
+        type="button"
+        class="console-tab"
+        [class.is-active]="activeTab() === 'availability'"
+        (click)="activeTab.set('availability')"
+      >
+        04 · Availability &amp; Paystack
+      </button>
+      <button
+        type="button"
+        class="console-tab"
+        [class.is-active]="activeTab() === 'analytics'"
+        (click)="activeTab.set('analytics')"
+      >
+        05 · Business Analytics
+      </button>
+      <button
+        type="button"
+        class="console-tab"
+        [class.is-active]="activeTab() === 'customers'"
+        (click)="activeTab.set('customers')"
+      >
+        06 · Customers ({{ vendorCustomers().length }})
       </button>
       <button
         type="button"
@@ -106,7 +148,7 @@
         [class.is-active]="activeTab() === 'builder'"
         (click)="activeTab.set('builder')"
       >
-        04 · + Launch New Studio Site
+        07 · + Launch Studio Site
       </button>
     </div>
 
@@ -114,7 +156,7 @@
       <div class="toast-bar">{{ saveToast() }}</div>
     }
 
-    <!-- TAB 1: STUDIO APPOINTMENTS -->
+    <!-- TAB 1: APPOINTMENT MANAGEMENT -->
     @if (activeTab() === 'bookings') {
       <div class="toolbar-row">
         <input
@@ -122,11 +164,11 @@
           class="input toolbar-search"
           [ngModel]="bookingSearch()"
           (ngModelChange)="bookingSearch.set($event)"
-          placeholder="Search booking ID (BK-2026-...), client, or service..."
+          placeholder="Search booking ID (BK-2026-...), client, phone, or service..."
         />
 
         <div class="status-pills">
-          @for (st of ['all', 'Confirmed', 'Pending', 'Completed', 'Cancelled']; track st) {
+          @for (st of ['all', 'Pending', 'Confirmed', 'Completed', 'Cancelled']; track st) {
             <button
               type="button"
               class="filter-pill"
@@ -142,86 +184,133 @@
       @if (filteredStudioBookings().length > 0) {
         <div class="ledger-list">
           @for (b of filteredStudioBookings(); track b.bookingReference) {
-            <div class="ledger-card">
-              <div class="ledger-main">
-                <div class="ledger-top-line">
-                  <a
-                    routerLink="/track"
-                    [queryParams]="{ ref: b.bookingReference }"
-                    class="ref-link"
-                  >
-                    {{ b.bookingReference }}
-                  </a>
-                  <span
-                    class="badge"
-                    [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
-                    [class.badge--warning]="b.status === 'Pending'"
-                    [class.badge--danger]="b.status === 'Cancelled'"
-                  >
-                    {{ b.status }}
-                  </span>
-                  <span class="badge badge--bronze">{{ b.paymentStatus }}</span>
+            <div class="ledger-card-wrap">
+              <div class="ledger-card">
+                <div class="ledger-main">
+                  <div class="ledger-top-line">
+                    <a
+                      routerLink="/track"
+                      [queryParams]="{ ref: b.bookingReference }"
+                      class="ref-link"
+                    >
+                      {{ b.bookingReference }}
+                    </a>
+                    <span
+                      class="badge"
+                      [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
+                      [class.badge--warning]="b.status === 'Pending'"
+                      [class.badge--danger]="b.status === 'Cancelled'"
+                    >
+                      {{ b.status }}
+                    </span>
+                    <span class="badge badge--bronze">{{ b.paymentStatus }}</span>
+                  </div>
+
+                  <h3>{{ b.serviceName }} · {{ b.customerName }}</h3>
+                  <p class="ledger-sub">
+                    {{ b.dateDisplay }} at {{ b.time }} · Specialist: {{ b.staffName }} ·
+                    {{ b.customerPhone }} ({{ b.customerEmail }})
+                  </p>
+                  @if (b.rescheduledFrom) {
+                    <p class="ledger-note">Rescheduled from: {{ b.rescheduledFrom }}</p>
+                  }
+                  @if (b.notes) {
+                    <p class="ledger-note">Client note: “{{ b.notes }}”</p>
+                  }
                 </div>
 
-                <h3>{{ b.serviceName }} · {{ b.customerName }}</h3>
-                <p class="ledger-sub">
-                  {{ b.dateDisplay }} at {{ b.time }} · Specialist: {{ b.staffName }} ·
-                  {{ b.customerPhone }} ({{ b.customerEmail }})
-                </p>
-                @if (b.notes) {
-                  <p class="ledger-note">Client note: “{{ b.notes }}”</p>
-                }
+                <div class="ledger-right">
+                  <div class="ledger-amounts">
+                    <strong>Paid: {{ marketplace.formatNaira(b.amountPaid) }}</strong>
+                    @if (b.balanceDue > 0) {
+                      <span>Balance at studio: {{ marketplace.formatNaira(b.balanceDue) }}</span>
+                    } @else {
+                      <span>Settled in full</span>
+                    }
+                  </div>
+
+                  <div class="ledger-actions">
+                    @if (b.status === 'Pending') {
+                      <button
+                        type="button"
+                        class="btn btn--primary btn--sm"
+                        (click)="setStatus(b.bookingReference, 'Confirmed')"
+                      >
+                        Accept &amp; Confirm
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="setStatus(b.bookingReference, 'Cancelled')"
+                      >
+                        Reject
+                      </button>
+                    }
+                    @if (b.balanceDue > 0 && b.status !== 'Cancelled') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="markPaid(b.bookingReference)"
+                      >
+                        Mark Paid
+                      </button>
+                    }
+                    @if (b.status !== 'Completed' && b.status !== 'Cancelled') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="openReschedule(b.bookingReference, b.date, b.time)"
+                      >
+                        Reschedule
+                      </button>
+                    }
+                    @if (b.status === 'Confirmed') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="setStatus(b.bookingReference, 'Completed')"
+                      >
+                        Mark Completed
+                      </button>
+                    }
+                    @if (b.status === 'Confirmed') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="setStatus(b.bookingReference, 'Cancelled')"
+                      >
+                        Cancel
+                      </button>
+                    }
+                  </div>
+                </div>
               </div>
 
-              <div class="ledger-right">
-                <div class="ledger-amounts">
-                  <strong>Paid: {{ marketplace.formatNaira(b.amountPaid) }}</strong>
-                  @if (b.balanceDue > 0) {
-                    <span>Balance at studio: {{ marketplace.formatNaira(b.balanceDue) }}</span>
-                  } @else {
-                    <span>Settled in full</span>
-                  }
+              @if (reschedulingRef() === b.bookingReference) {
+                <div class="reschedule-bar">
+                  <strong>Reschedule {{ b.bookingReference }}</strong>
+                  <input type="date" class="input" [(ngModel)]="rescheduleDate" />
+                  <select class="select" [(ngModel)]="rescheduleTime">
+                    @for (slot of editAvailability.enabledSlots; track slot) {
+                      <option [value]="slot">{{ slot }}</option>
+                    }
+                  </select>
+                  <button
+                    type="button"
+                    class="btn btn--primary btn--sm"
+                    (click)="confirmReschedule(b.bookingReference)"
+                  >
+                    Save New Slot
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn--outline btn--sm"
+                    (click)="reschedulingRef.set(null)"
+                  >
+                    Cancel
+                  </button>
                 </div>
-
-                <div class="ledger-actions">
-                  @if (b.status === 'Pending') {
-                    <button
-                      type="button"
-                      class="btn btn--primary btn--sm"
-                      (click)="setStatus(b.bookingReference, 'Confirmed')"
-                    >
-                      Confirm
-                    </button>
-                  }
-                  @if (b.balanceDue > 0 && b.status !== 'Cancelled') {
-                    <button
-                      type="button"
-                      class="btn btn--outline btn--sm"
-                      (click)="markPaid(b.bookingReference)"
-                    >
-                      Mark Paid
-                    </button>
-                  }
-                  @if (b.status === 'Confirmed') {
-                    <button
-                      type="button"
-                      class="btn btn--outline btn--sm"
-                      (click)="setStatus(b.bookingReference, 'Completed')"
-                    >
-                      Complete
-                    </button>
-                  }
-                  @if (b.status !== 'Cancelled' && b.status !== 'Completed') {
-                    <button
-                      type="button"
-                      class="btn btn--outline btn--sm"
-                      (click)="setStatus(b.bookingReference, 'Cancelled')"
-                    >
-                      Cancel
-                    </button>
-                  }
-                </div>
-              </div>
+              }
             </div>
           }
         </div>
@@ -233,14 +322,132 @@
       }
     }
 
-    <!-- TAB 2: EDIT SERVICES & TEAM -->
+    <!-- TAB 2: BUSINESS PROFILE MANAGEMENT -->
+    @if (activeTab() === 'profile') {
+      <div class="panel-grid">
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Identity, Branding &amp; Description</h2>
+              <p>Upload logo &amp; cover image and update your public studio details.</p>
+            </div>
+          </div>
+
+          <div class="stack-form">
+            <div class="field">
+              <label class="field-label">Business Name</label>
+              <input class="input" [(ngModel)]="profileForm.name" />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Tagline</label>
+              <input class="input" [(ngModel)]="profileForm.tagline" />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Business Description</label>
+              <textarea class="textarea" rows="3" [(ngModel)]="profileForm.about"></textarea>
+            </div>
+
+            <div class="form-three">
+              <div class="field">
+                <label class="field-label">City</label>
+                <input class="input" [(ngModel)]="profileForm.city" />
+              </div>
+              <div class="field">
+                <label class="field-label">Area / Location</label>
+                <input class="input" [(ngModel)]="profileForm.location" />
+              </div>
+              <div class="field">
+                <label class="field-label">Street Address</label>
+                <input class="input" [(ngModel)]="profileForm.address" />
+              </div>
+            </div>
+
+            <div class="media-upload-grid">
+              <div class="media-box">
+                <label class="field-label">Business Logo</label>
+                @if (profileForm.logoImage) {
+                  <img [src]="profileForm.logoImage" alt="Business logo" class="logo-preview" />
+                }
+                <input
+                  class="input"
+                  [(ngModel)]="profileForm.logoImage"
+                  placeholder="Logo image URL (optional)"
+                />
+                <input type="file" accept="image/*" (change)="onProfileLogoSelected($event)" />
+              </div>
+
+              <div class="media-box">
+                <label class="field-label">Cover Image</label>
+                <img [src]="profileForm.coverImage" alt="Cover" class="cover-preview-thumb" />
+                <input
+                  class="input"
+                  [(ngModel)]="profileForm.coverImage"
+                  placeholder="Cover image path or URL"
+                />
+                <input type="file" accept="image/*" (change)="onProfileCoverSelected($event)" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Contact &amp; Social Media Links</h2>
+              <p>Displayed on your studio page and booking confirmations.</p>
+            </div>
+          </div>
+
+          <div class="stack-form">
+            <div class="form-two">
+              <div class="field">
+                <label class="field-label">Phone Number</label>
+                <input class="input" [(ngModel)]="profileForm.phone" placeholder="+234..." />
+              </div>
+              <div class="field">
+                <label class="field-label">Email Address</label>
+                <input class="input" [(ngModel)]="profileForm.email" placeholder="hello@studio.ng" />
+              </div>
+              <div class="field">
+                <label class="field-label">Instagram</label>
+                <input class="input" [(ngModel)]="profileForm.instagram" placeholder="@studio" />
+              </div>
+              <div class="field">
+                <label class="field-label">TikTok</label>
+                <input class="input" [(ngModel)]="profileForm.tiktok" placeholder="@studio.tiktok" />
+              </div>
+              <div class="field">
+                <label class="field-label">Facebook</label>
+                <input class="input" [(ngModel)]="profileForm.facebook" placeholder="facebook.com/..." />
+              </div>
+              <div class="field">
+                <label class="field-label">Website</label>
+                <input class="input" [(ngModel)]="profileForm.website" placeholder="https://..." />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="btn btn--primary btn--lg save-btn"
+              (click)="saveBusinessProfile()"
+            >
+              Save Business Profile →
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 3: SERVICE MANAGEMENT & TEAM -->
     @if (activeTab() === 'menu') {
       <div class="panel-grid">
         <div class="panel-card">
           <div class="panel-head">
             <div>
-              <h2>Service Menu (₦)</h2>
-              <p>Updates immediately on your studio’s public website.</p>
+              <h2>Service Management (₦)</h2>
+              <p>Add, edit, upload images, delete, or activate/deactivate services.</p>
             </div>
             <button type="button" class="btn btn--outline btn--sm" (click)="addEditService()">
               + Add service
@@ -249,7 +456,23 @@
 
           <div class="dynamic-list">
             @for (srv of editServices; track srv.id; let i = $index) {
-              <div class="dynamic-item">
+              <div class="dynamic-item" [class.is-inactive]="srv.isActive === false">
+                <div class="service-top-bar">
+                  <label class="active-switch">
+                    <input type="checkbox" [(ngModel)]="srv.isActive" />
+                    <span>{{ srv.isActive !== false ? 'Active on Storefront' : 'Deactivated' }}</span>
+                  </label>
+                  @if (editServices.length > 1) {
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="removeEditService(i)"
+                    >
+                      Delete Service
+                    </button>
+                  }
+                </div>
+
                 <div class="form-three">
                   <div class="field">
                     <label class="field-label">Service Name</label>
@@ -261,29 +484,26 @@
                   </div>
                   <div class="field">
                     <label class="field-label">Duration (mins)</label>
-                    <input
-                      class="input"
-                      type="number"
-                      [(ngModel)]="srv.durationMinutes"
-                      min="15"
-                    />
+                    <input class="input" type="number" [(ngModel)]="srv.durationMinutes" min="15" />
                   </div>
                 </div>
-                <div class="srv-desc-row">
+
+                <input
+                  class="input"
+                  [(ngModel)]="srv.description"
+                  placeholder="Service description..."
+                />
+
+                <div class="srv-img-row">
+                  @if (srv.imageUrl) {
+                    <img [src]="srv.imageUrl" [alt]="srv.name" class="srv-thumb" />
+                  }
                   <input
                     class="input"
-                    [(ngModel)]="srv.description"
-                    placeholder="Service description..."
+                    [(ngModel)]="srv.imageUrl"
+                    placeholder="Service image URL (optional)"
                   />
-                  @if (editServices.length > 1) {
-                    <button
-                      type="button"
-                      class="btn btn--outline btn--sm"
-                      (click)="removeEditService(i)"
-                    >
-                      Remove
-                    </button>
-                  }
+                  <input type="file" accept="image/*" (change)="onServiceImageSelected($event, srv)" />
                 </div>
               </div>
             }
@@ -323,20 +543,20 @@
           </div>
 
           <button type="button" class="btn btn--primary btn--lg save-btn" (click)="saveMenuAndTeam()">
-            Save Menu &amp; Team Live
+            Save Services &amp; Team Live
           </button>
         </div>
       </div>
     }
 
-    <!-- TAB 3: WORKING HOURS & PAYSTACK RULES -->
-    @if (activeTab() === 'hours') {
+    <!-- TAB 4: AVAILABILITY MANAGEMENT & PAYSTACK RULES -->
+    @if (activeTab() === 'availability') {
       <div class="panel-grid">
         <div class="panel-card">
           <div class="panel-head">
             <div>
-              <h2>Opening Hours</h2>
-              <p>Displayed in the Hours &amp; Location section of your studio site.</p>
+              <h2>Working Days &amp; Opening/Closing Times</h2>
+              <p>Control open days, hours, and booking slot duration.</p>
             </div>
           </div>
 
@@ -353,67 +573,294 @@
               </div>
             }
           </div>
-        </div>
 
-        <div class="panel-card">
-          <div class="panel-head">
-            <div>
-              <h2>Paystack &amp; Deposit Policy</h2>
-              <p>Control how customers pay when booking your studio.</p>
+          <div class="avail-subblock">
+            <h3>Booking Duration &amp; Buffer</h3>
+            <div class="form-two">
+              <div class="field">
+                <label class="field-label">Default Slot Duration (mins)</label>
+                <input
+                  type="number"
+                  class="input"
+                  min="15"
+                  step="15"
+                  [(ngModel)]="editAvailability.slotDurationMinutes"
+                />
+              </div>
+              <div class="field">
+                <label class="field-label">Turnover Buffer (mins)</label>
+                <input
+                  type="number"
+                  class="input"
+                  min="0"
+                  step="5"
+                  [(ngModel)]="editAvailability.bufferMinutes"
+                />
+              </div>
             </div>
           </div>
 
-          <div class="policy-stack">
-            <label class="policy-check">
-              <input type="checkbox" [(ngModel)]="editPolicy.allowFull" />
-              <div>
-                <strong>Full Online Payment (Paystack)</strong>
-                <span>Customers settle 100% via Card, Bank Transfer, or USSD.</span>
-              </div>
-            </label>
+          <div class="avail-subblock">
+            <h3>Available Appointment Slots</h3>
+            <div class="slot-toggle-grid">
+              @for (slot of allSlotChoices; track slot) {
+                <button
+                  type="button"
+                  class="filter-pill"
+                  [class.is-active]="editAvailability.enabledSlots.includes(slot)"
+                  (click)="toggleSlot(slot)"
+                >
+                  {{ slot }}
+                </button>
+              }
+            </div>
+            <div class="inline-add-row">
+              <input
+                class="input"
+                [(ngModel)]="newCustomSlot"
+                placeholder="Add custom slot (e.g. 07:00 PM)"
+              />
+              <button type="button" class="btn btn--outline btn--sm" (click)="addCustomSlot()">
+                + Add Slot
+              </button>
+            </div>
+          </div>
+        </div>
 
-            <label class="policy-check">
-              <input type="checkbox" [(ngModel)]="editPolicy.allowDeposit" />
+        <div class="side-stack">
+          <div class="panel-card">
+            <div class="panel-head">
               <div>
-                <strong>Upfront Deposit Option</strong>
-                <span>Lock slot with partial Paystack payment; balance paid at studio.</span>
+                <h2>Blocked Dates &amp; Studio Breaks</h2>
+                <p>Block holidays/unavailable dates and configure daily breaks.</p>
               </div>
-            </label>
+            </div>
 
-            @if (editPolicy.allowDeposit) {
-              <div class="field deposit-field">
-                <label class="field-label">Deposit Percentage (%)</label>
-                <input
-                  class="input"
-                  type="number"
-                  min="10"
-                  max="80"
-                  [(ngModel)]="editPolicy.depositPercent"
-                />
+            <div class="inline-add-row">
+              <input type="date" class="input" [(ngModel)]="newBlockedDate" />
+              <button type="button" class="btn btn--outline btn--sm" (click)="addBlockedDate()">
+                Block Date
+              </button>
+            </div>
+
+            @if (editAvailability.blockedDates.length > 0) {
+              <div class="blocked-chips">
+                @for (d of editAvailability.blockedDates; track d) {
+                  <span class="badge badge--danger">
+                    {{ d }}
+                    <button type="button" class="chip-x" (click)="removeBlockedDate(d)">×</button>
+                  </span>
+                }
               </div>
             }
 
-            <label class="policy-check">
-              <input type="checkbox" [(ngModel)]="editPolicy.allowPayAtBusiness" />
-              <div>
-                <strong>Allow Pay at Business</strong>
-                <span>Customers can reserve without upfront payment and settle on arrival.</span>
+            <div class="avail-subblock">
+              <h3>Breaks</h3>
+              <div class="form-three">
+                <input class="input" [(ngModel)]="newBreak.day" placeholder="Day (All Days)" />
+                <input class="input" [(ngModel)]="newBreak.start" placeholder="01:00 PM" />
+                <input class="input" [(ngModel)]="newBreak.end" placeholder="02:00 PM" />
               </div>
-            </label>
+              <div class="inline-add-row" style="margin-top: 8px">
+                <input class="input" [(ngModel)]="newBreak.label" placeholder="Break label" />
+                <button type="button" class="btn btn--outline btn--sm" (click)="addBreakWindow()">
+                  + Add Break
+                </button>
+              </div>
+
+              <div class="break-list">
+                @for (br of editAvailability.breaks; track br.id) {
+                  <div class="break-row">
+                    <span>
+                      <strong>{{ br.label }}</strong> · {{ br.day }} ({{ br.start }} – {{ br.end }})
+                    </span>
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="removeBreakWindow(br.id)"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
 
-          <button
-            type="button"
-            class="btn btn--primary btn--lg save-btn"
-            (click)="saveHoursAndPolicy()"
-          >
-            Save Hours &amp; Payment Rules
-          </button>
+          <div class="panel-card">
+            <div class="panel-head">
+              <div>
+                <h2>Paystack &amp; Deposit Policy</h2>
+                <p>Control how customers pay when booking your studio.</p>
+              </div>
+            </div>
+
+            <div class="policy-stack">
+              <label class="policy-check">
+                <input type="checkbox" [(ngModel)]="editPolicy.allowFull" />
+                <div>
+                  <strong>Full Online Payment (Paystack)</strong>
+                  <span>Customers settle 100% via Card, Bank Transfer, or USSD.</span>
+                </div>
+              </label>
+
+              <label class="policy-check">
+                <input type="checkbox" [(ngModel)]="editPolicy.allowDeposit" />
+                <div>
+                  <strong>Upfront Deposit Option</strong>
+                  <span>Lock slot with partial Paystack payment; balance paid at studio.</span>
+                </div>
+              </label>
+
+              @if (editPolicy.allowDeposit) {
+                <div class="field deposit-field">
+                  <label class="field-label">Deposit Percentage (%)</label>
+                  <input
+                    class="input"
+                    type="number"
+                    min="10"
+                    max="80"
+                    [(ngModel)]="editPolicy.depositPercent"
+                  />
+                </div>
+              }
+
+              <label class="policy-check">
+                <input type="checkbox" [(ngModel)]="editPolicy.allowPayAtBusiness" />
+                <div>
+                  <strong>Allow Pay at Business</strong>
+                  <span>Customers can reserve without upfront payment and settle on arrival.</span>
+                </div>
+              </label>
+            </div>
+
+            <button
+              type="button"
+              class="btn btn--primary btn--lg save-btn"
+              (click)="saveHoursAndPolicy()"
+            >
+              Save Availability, Hours &amp; Payment Rules
+            </button>
+          </div>
         </div>
       </div>
     }
 
-    <!-- TAB 4: LAUNCH NEW STUDIO WEBSITE -->
+    <!-- TAB 5: BUSINESS ANALYTICS -->
+    @if (activeTab() === 'analytics') {
+      <div class="analytics-kpi-grid">
+        <div class="panel-card">
+          <span class="kpi-label-dark">Daily Bookings (Today)</span>
+          <strong class="metric-big">{{ analyticsMetrics().dailyBookings }}</strong>
+          <span class="cell-sub">Active bookings scheduled today</span>
+        </div>
+        <div class="panel-card">
+          <span class="kpi-label-dark">Weekly Bookings (7d)</span>
+          <strong class="metric-big">{{ analyticsMetrics().weeklyBookings }}</strong>
+          <span class="cell-sub">Confirmed &amp; completed</span>
+        </div>
+        <div class="panel-card">
+          <span class="kpi-label-dark">Monthly Bookings</span>
+          <strong class="metric-big">{{ analyticsMetrics().monthlyBookings }}</strong>
+          <span class="cell-sub">Current calendar month</span>
+        </div>
+        <div class="panel-card">
+          <span class="kpi-label-dark">Monthly Revenue</span>
+          <strong class="metric-big">
+            {{ marketplace.formatNaira(analyticsMetrics().monthlyRevenue) }}
+          </strong>
+          <span class="cell-sub">Settled this month</span>
+        </div>
+        <div class="panel-card">
+          <span class="kpi-label-dark">Customer Retention</span>
+          <strong class="metric-big">{{ analyticsMetrics().retentionRate }}%</strong>
+          <span class="cell-sub">
+            {{ analyticsMetrics().repeatCustomers }} repeat of
+            {{ analyticsMetrics().totalCustomers }} clients
+          </span>
+        </div>
+        <div class="panel-card">
+          <span class="kpi-label-dark">Cancellation Rate</span>
+          <strong class="metric-big">{{ analyticsMetrics().cancellationRate }}%</strong>
+          <span class="cell-sub">{{ studioMetrics().cancelledCount }} cancelled appointments</span>
+        </div>
+      </div>
+
+      <div class="panel-card" style="margin-top: 1.5rem">
+        <div class="panel-head">
+          <div>
+            <h2>Most Booked Services</h2>
+            <p>Service demand and revenue ranking for {{ activeStudio()?.name }}.</p>
+          </div>
+        </div>
+
+        @if (analyticsMetrics().topServices.length === 0) {
+          <p class="cell-sub">No completed or confirmed bookings yet.</p>
+        } @else {
+          <div class="top-services-list">
+            @for (srv of analyticsMetrics().topServices; track srv.name) {
+              <div class="top-srv-row">
+                <strong>{{ srv.name }}</strong>
+                <span>{{ srv.count }} bookings</span>
+                <strong>{{ marketplace.formatNaira(srv.revenue) }}</strong>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- TAB 6: CUSTOMER MANAGEMENT -->
+    @if (activeTab() === 'customers') {
+      <div class="toolbar-row">
+        <input
+          type="text"
+          class="input toolbar-search"
+          [ngModel]="customerSearch()"
+          (ngModelChange)="customerSearch.set($event)"
+          placeholder="Search customer name, email, or phone..."
+        />
+      </div>
+
+      @if (filteredCustomers().length === 0) {
+        <div class="empty-box">
+          <h3>No customers yet for this studio</h3>
+          <p>Client contact details and booking history appear automatically after bookings.</p>
+        </div>
+      } @else {
+        <div class="customer-cards">
+          @for (cust of filteredCustomers(); track cust.email) {
+            <div class="panel-card customer-card">
+              <div class="customer-card-head">
+                <div>
+                  <h3>{{ cust.customerName }}</h3>
+                  <p class="cell-sub">
+                    {{ cust.customerEmail }} · {{ cust.customerPhone }}
+                  </p>
+                </div>
+                <div class="customer-card-stats">
+                  <span class="badge badge--bronze">{{ cust.totalBookings }} bookings</span>
+                  <strong>{{ marketplace.formatNaira(cust.totalSpent) }} spent</strong>
+                </div>
+              </div>
+
+              <div class="customer-history">
+                @for (bk of cust.bookings; track bk.bookingReference) {
+                  <div class="cust-bk-row">
+                    <code>{{ bk.bookingReference }}</code>
+                    <span>{{ bk.serviceName }}</span>
+                    <span>{{ bk.dateDisplay }} · {{ bk.time }}</span>
+                    <span class="badge">{{ bk.status }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- TAB 7: LAUNCH NEW STUDIO WEBSITE -->
     @if (activeTab() === 'builder') {
       @if (publishedSlug(); as slug) {
         <div class="publish-banner">

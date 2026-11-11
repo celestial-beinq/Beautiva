@@ -4,25 +4,145 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 import express from 'express';
 import { join } from 'node:path';
+
+dotenv.config();
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
+app.use(express.json());
 const angularApp = new AngularNodeAppEngine();
 
-/**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/{*splat}', (req, res) => {
- *   // Handle API request
- * });
- * ```
- */
+const supabaseUrl = (process.env['SUPABASE_URL'] || '').trim();
+const supabaseAnonKey = (process.env['SUPABASE_ANON_KEY'] || '').trim();
+const supabaseServiceKey = (process.env['SUPABASE_SERVICE_ROLE_KEY'] || '').trim();
+
+function getAdminClient(): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseServiceKey) return null;
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+app.get('/api/health', (_req, res) => {
+  res.json({
+    ok: true,
+    supabaseConfigured: Boolean(supabaseUrl && supabaseAnonKey),
+    serviceRoleConfigured: Boolean(supabaseUrl && supabaseServiceKey),
+  });
+});
+
+// Guest booking tracking lookup by exact reference (no full-table exposure)
+app.get('/api/public/track/:reference', async (req, res) => {
+  const admin = getAdminClient();
+  if (!admin) {
+    res.status(503).json({ error: 'Service role key not configured on SSR server' });
+    return;
+  }
+
+  const ref = String(req.params['reference'] || '').trim().toUpperCase();
+  if (!ref) {
+    res.status(400).json({ error: 'Booking reference is required' });
+    return;
+  }
+
+  const { data, error } = await admin
+    .from('bookings')
+    .select('*')
+    .ilike('booking_reference', ref)
+    .maybeSingle();
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+  if (!data) {
+    res.status(404).json({ error: 'Booking not found' });
+    return;
+  }
+  res.json({ booking: data });
+});
+
+// Super Admin: Provision real Supabase Auth vendor user + profile
+app.post('/api/admin/create-vendor-account', async (req, res) => {
+  const admin = getAdminClient();
+  if (!admin) {
+    res.status(503).json({
+      requiresServiceRole: true,
+      error: 'SUPABASE_SERVICE_ROLE_KEY is required on the server to provision auth users directly.',
+    });
+    return;
+  }
+
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) {
+    res.status(401).json({ error: 'Missing bearer token' });
+    return;
+  }
+
+  const { data: userData, error: userErr } = await admin.auth.getUser(token);
+  if (userErr || !userData?.user) {
+    res.status(401).json({ error: 'Invalid auth session' });
+    return;
+  }
+
+  const { data: callerProfile } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('id', userData.user.id)
+    .maybeSingle();
+
+  if (callerProfile?.role !== 'super_admin') {
+    res.status(403).json({ error: 'Super Admin role required' });
+    return;
+  }
+
+  const { email, password, fullName, phone } = req.body as {
+    email?: string;
+    password?: string;
+    fullName?: string;
+    phone?: string;
+  };
+
+  if (!email || !password) {
+    res.status(400).json({ error: 'Email and temporary password are required' });
+    return;
+  }
+
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email: email.trim().toLowerCase(),
+    password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName || email.split('@')[0],
+      phone: phone || '',
+      requested_role: 'vendor',
+    },
+  });
+
+  if (createErr || !created.user) {
+    res.status(400).json({ error: createErr?.message || 'Failed to create vendor account' });
+    return;
+  }
+
+  await admin
+    .from('profiles')
+    .upsert({
+      id: created.user.id,
+      email: email.trim().toLowerCase(),
+      full_name: fullName || email.split('@')[0],
+      phone: phone || '',
+      role: 'vendor',
+      status: 'active',
+    });
+
+  res.status(201).json({ userId: created.user.id, email: created.user.email });
+});
 
 /**
  * Serve static files from /browser

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
+import { AuthService } from './services/auth.service';
 import { MarketplaceService } from './services/marketplace.service';
 
 describe('App & MarketplaceService', () => {
@@ -69,5 +70,70 @@ describe('App & MarketplaceService', () => {
     const beforeVerified = service.getBusinessBySlug('glamour-studio')?.verified;
     service.toggleBusinessVerified('glamour-studio');
     expect(service.getBusinessBySlug('glamour-studio')?.verified).toBe(!beforeVerified);
+  });
+
+  it('should support category CRUD, platform commission settings, and failed payment logging', () => {
+    const service = TestBed.inject(MarketplaceService);
+    const initialCats = service.categories().length;
+
+    const created = service.upsertCategory({
+      slug: 'spa-wellness',
+      name: 'Spa & Wellness',
+      shortName: 'Spa',
+      tagline: 'Holistic body treatments',
+      description: 'Relaxing spa sessions',
+      coverImage: 'images/hero-salon.jpg',
+      popularTags: ['Facial', 'Massage'],
+    });
+    expect(service.categories().length).toBe(initialCats + 1);
+    expect(created.slug).toBe('spa-wellness');
+
+    service.deleteCategory('spa-wellness');
+    expect(service.categories().length).toBe(initialCats);
+
+    service.updatePlatformSettings({ commissionRate: 15 });
+    expect(service.platformSettings().commissionRate).toBe(15);
+
+    const tx = service.recordFailedPayment({
+      businessSlug: 'glamour-studio',
+      customerName: 'Test Fail',
+      customerEmail: 'fail@beautiva.ng',
+      amount: 12000,
+      reason: 'Card declined',
+    });
+    expect(tx.status).toBe('failed');
+  });
+
+  it('should support vendor availability blocking, booking rescheduling, and demo role switching', () => {
+    const service = TestBed.inject(MarketplaceService);
+    const auth = TestBed.inject(AuthService);
+
+    const user = auth.switchDemoRole('super_admin');
+    expect(user.role).toBe('super_admin');
+    expect(auth.isSuperAdmin()).toBe(true);
+
+    const biz = service.getBusinessBySlug('glamour-studio')!;
+    service.updateStudioConfiguration('glamour-studio', {
+      availabilitySettings: {
+        slotDurationMinutes: 60,
+        bufferMinutes: 15,
+        blockedDates: ['2026-12-25'],
+        breaks: [],
+        enabledSlots: ['10:00 AM', '02:30 PM'],
+      },
+    });
+
+    const updatedBiz = service.getBusinessBySlug('glamour-studio')!;
+    expect(service.isDateBlocked(updatedBiz, '2026-12-25')).toBe(true);
+    expect(service.getEnabledSlotsForBusiness(updatedBiz, '2026-12-25')).toEqual([]);
+    expect(service.getEnabledSlotsForBusiness(updatedBiz, '2026-12-26')).toEqual([
+      '10:00 AM',
+      '02:30 PM',
+    ]);
+
+    const rescheduled = service.rescheduleBooking('BK-2026-000124', '2026-12-26', '26 December 2026', '02:30 PM');
+    expect(rescheduled?.time).toBe('02:30 PM');
+    expect(rescheduled?.rescheduledFrom).toBeTruthy();
+    expect(biz.slug).toBe('glamour-studio');
   });
 });

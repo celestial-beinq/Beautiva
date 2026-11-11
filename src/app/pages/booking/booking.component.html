@@ -100,7 +100,7 @@
             <div class="book-card card">
               <h2>1. Select Preferred Service</h2>
               <div class="service-radio-list">
-                @for (srv of biz.services; track srv.id) {
+                @for (srv of activeServices(); track srv.id) {
                   <label
                     class="service-option"
                     [class.selected]="selectedServiceId() === srv.id"
@@ -144,22 +144,28 @@
               </div>
 
               <div class="slots-label">Available times for {{ selectedDateDisplay() }}</div>
-              <div class="slot-grid">
-                @for (slot of timeSlots; track slot) {
-                  <button
-                    type="button"
-                    class="slot-btn"
-                    [class.selected]="selectedTime() === slot"
-                    [disabled]="isSlotBooked(slot)"
-                    (click)="selectedTime.set(slot)"
-                  >
-                    {{ slot }}
-                    @if (isSlotBooked(slot)) {
-                      <small>Booked</small>
-                    }
-                  </button>
-                }
-              </div>
+              @if (isSelectedDateBlocked() || timeSlots().length === 0) {
+                <p class="form-error">
+                  This date is blocked or the studio is closed. Please pick another date above.
+                </p>
+              } @else {
+                <div class="slot-grid">
+                  @for (slot of timeSlots(); track slot) {
+                    <button
+                      type="button"
+                      class="slot-btn"
+                      [class.selected]="selectedTime() === slot"
+                      [disabled]="isSlotBooked(slot)"
+                      (click)="selectedTime.set(slot)"
+                    >
+                      {{ slot }}
+                      @if (isSlotBooked(slot)) {
+                        <small>Booked</small>
+                      }
+                    </button>
+                  }
+                </div>
+              }
             </div>
 
             <!-- 3. Optional Staff Member -->
