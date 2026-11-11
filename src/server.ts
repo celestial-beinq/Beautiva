@@ -190,7 +190,7 @@ async function writeServerActivityLog(
 async function verifySuperAdmin(
   req: express.Request,
   res: express.Response,
-): Promise<{ admin: SupabaseClient; userId: string } | null> {
+): Promise<{ admin: SupabaseClient; userId: string; email?: string } | null> {
   const admin = getAdminClient();
   if (!admin) {
     res.status(503).json({
@@ -229,7 +229,35 @@ async function verifySuperAdmin(
     return null;
   }
 
-  return { admin, userId: userData.user.id };
+  return { admin, userId: userData.user.id, email: userEmail || undefined };
+}
+
+async function upsertVendorCredential(
+  admin: SupabaseClient,
+  input: {
+    businessId?: string | null;
+    businessSlug: string;
+    email: string;
+    tempPassword: string;
+  },
+): Promise<void> {
+  const slug = input.businessSlug.trim().toLowerCase();
+  const normalizedEmail = input.email.trim().toLowerCase();
+  if (!slug || !normalizedEmail || !input.tempPassword) return;
+  try {
+    await admin.from('vendor_credentials').upsert(
+      {
+        business_id: input.businessId || null,
+        business_slug: slug,
+        email: normalizedEmail,
+        temp_password: input.tempPassword,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'business_slug' },
+    );
+  } catch {
+    // Table may not exist yet before running 005_vendor_credentials.sql
+  }
 }
 
 // Super Admin: Provision real Supabase Auth vendor user + profile
@@ -238,11 +266,12 @@ app.post('/api/admin/create-vendor-account', async (req, res) => {
   if (!authCtx) return;
   const { admin } = authCtx;
 
-  const { email, password, fullName, phone } = req.body as {
+  const { email, password, fullName, phone, businessSlug } = req.body as {
     email?: string;
     password?: string;
     fullName?: string;
     phone?: string;
+    businessSlug?: string;
   };
 
   if (!email || !password) {
@@ -250,12 +279,13 @@ app.post('/api/admin/create-vendor-account', async (req, res) => {
     return;
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
-    email: email.trim().toLowerCase(),
+    email: normalizedEmail,
     password,
     email_confirm: true,
     user_metadata: {
-      full_name: fullName || email.split('@')[0],
+      full_name: fullName || normalizedEmail.split('@')[0],
       phone: phone || '',
       requested_role: 'vendor',
     },
@@ -266,18 +296,176 @@ app.post('/api/admin/create-vendor-account', async (req, res) => {
     return;
   }
 
-  await admin
-    .from('profiles')
-    .upsert({
-      id: created.user.id,
-      email: email.trim().toLowerCase(),
-      full_name: fullName || email.split('@')[0],
+  await admin.from('profiles').upsert({
+    id: created.user.id,
+    email: normalizedEmail,
+    full_name: fullName || normalizedEmail.split('@')[0],
+    phone: phone || '',
+    role: 'vendor',
+    status: 'active',
+  });
+
+  if (businessSlug) {
+    await upsertVendorCredential(admin, {
+      businessSlug,
+      email: normalizedEmail,
+      tempPassword: password,
+    });
+  }
+
+  res.status(201).json({ userId: created.user.id, email: created.user.email });
+});
+
+// Super Admin: Set or reset a vendor's login password in Supabase Auth & credential vault
+app.post('/api/admin/reset-vendor-password', async (req, res) => {
+  const authCtx = await verifySuperAdmin(req, res);
+  if (!authCtx) return;
+  const { admin } = authCtx;
+
+  const { businessSlug, email, newPassword, fullName, phone } = req.body as {
+    businessSlug?: string;
+    email?: string;
+    newPassword?: string;
+    fullName?: string;
+    phone?: string;
+  };
+
+  const slug = String(businessSlug || '').trim().toLowerCase();
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const password = String(newPassword || '');
+
+  if (!slug || !normalizedEmail || password.length < 6) {
+    res.status(400).json({
+      error: 'businessSlug, vendor email, and a password of at least 6 characters are required.',
+    });
+    return;
+  }
+
+  const { data: bizRow } = await admin
+    .from('businesses')
+    .select('id, owner_id, name, contact')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  let userId: string | null = bizRow?.owner_id ? String(bizRow.owner_id) : null;
+
+  if (!userId) {
+    const { data: existingProfile } = await admin
+      .from('profiles')
+      .select('id')
+      .ilike('email', normalizedEmail)
+      .maybeSingle();
+    if (existingProfile?.id) {
+      userId = String(existingProfile.id);
+    }
+  }
+
+  if (userId) {
+    const { error: updErr } = await admin.auth.admin.updateUserById(userId, {
+      password,
+      email: normalizedEmail,
+      email_confirm: true,
+    });
+    if (updErr) {
+      res.status(400).json({ error: updErr.message || 'Failed to update vendor Auth password.' });
+      return;
+    }
+  } else {
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: normalizedEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName || bizRow?.name || normalizedEmail.split('@')[0],
+        phone: phone || '',
+        requested_role: 'vendor',
+      },
+    });
+    if (createErr || !created.user) {
+      // Fallback: look up user via Auth admin list in case account already exists without profile row
+      const { data: usersPage } = await admin.auth.admin.listUsers({ perPage: 200 });
+      const matched = usersPage?.users?.find(
+        (u) => (u.email || '').trim().toLowerCase() === normalizedEmail,
+      );
+      if (!matched) {
+        res.status(400).json({ error: createErr?.message || 'Unable to provision vendor login.' });
+        return;
+      }
+      userId = matched.id;
+      const { error: fallbackUpdErr } = await admin.auth.admin.updateUserById(userId, {
+        password,
+        email_confirm: true,
+      });
+      if (fallbackUpdErr) {
+        res.status(400).json({ error: fallbackUpdErr.message });
+        return;
+      }
+    } else {
+      userId = created.user.id;
+    }
+  }
+
+  if (userId) {
+    await admin.from('profiles').upsert({
+      id: userId,
+      email: normalizedEmail,
+      full_name: fullName || bizRow?.name || normalizedEmail.split('@')[0],
       phone: phone || '',
       role: 'vendor',
       status: 'active',
     });
 
-  res.status(201).json({ userId: created.user.id, email: created.user.email });
+    if (bizRow?.id) {
+      const updatedContact = {
+        ...((bizRow.contact as Record<string, unknown>) || {}),
+        email: normalizedEmail,
+      };
+      await admin
+        .from('businesses')
+        .update({ owner_id: userId, contact: updatedContact })
+        .eq('id', bizRow.id);
+    }
+  }
+
+  await upsertVendorCredential(admin, {
+    businessId: bizRow?.id ? String(bizRow.id) : null,
+    businessSlug: slug,
+    email: normalizedEmail,
+    tempPassword: password,
+  });
+
+  await admin
+    .from('vendor_applications')
+    .update({
+      issued_login_email: normalizedEmail,
+      issued_temp_password: password,
+    })
+    .eq('live_business_slug', slug);
+
+  await writeServerActivityLog(admin, {
+    eventType: 'vendor.password_updated',
+    category: 'vendor',
+    actorName: authCtx.email || 'Super Admin',
+    actorEmail: authCtx.email || undefined,
+    actorRole: 'super_admin',
+    entityType: 'business',
+    entityId: slug,
+    entityName: bizRow?.name || slug,
+    summary: `Super Admin set/reset login credentials for studio "${bizRow?.name || slug}" (${normalizedEmail}).`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.status(200).json({
+    ok: true,
+    userId,
+    credential: {
+      businessId: bizRow?.id || undefined,
+      businessSlug: slug,
+      email: normalizedEmail,
+      tempPassword: password,
+      updatedAt: new Date().toISOString(),
+    },
+  });
 });
 
 // Public: Submit a new vendor application
@@ -725,6 +913,13 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
     .ilike('application_number', appNum)
     .select('*')
     .maybeSingle();
+
+  await upsertVendorCredential(admin, {
+    businessId: String(bizRow['id']),
+    businessSlug: String(bizRow['slug']),
+    email: normalizedEmail,
+    tempPassword,
+  });
 
   res.status(200).json({
     ok: true,

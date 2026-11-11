@@ -400,6 +400,45 @@
   vertical-align: middle;
 }
 
+.cred-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cred-email-row,
+.cred-pass-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.cred-email-row span {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-primary);
+}
+
+.cred-code {
+  display: inline-block;
+  padding: 0.16rem 0.45rem;
+  border-radius: 4px;
+  background: var(--bg-sand);
+  border: 1px solid var(--border-linen);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  letter-spacing: 0.02em;
+}
+
+.btn-xs {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
 .completed-notice-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1090,6 +1129,36 @@
 .seg-btn.is-active {
   background: var(--dark-bg);
   color: var(--bg-ivory);
+}
+
+.custom-date-bar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-xs);
+  background: var(--bg-sand);
+  border: 1px solid var(--border-linen);
+}
+
+.custom-date-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.custom-date-input {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  background: #ffffff;
+  color: var(--ink-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.22rem 0.4rem;
 }
 
 .live-summary-strip {

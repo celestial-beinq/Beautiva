@@ -156,6 +156,19 @@ export class AuthService {
     }
   }
 
+  getLocalVendorCredential(
+    studioSlug: string,
+    fallbackEmail?: string,
+  ): LocalVendorCredential | undefined {
+    const slug = (studioSlug || '').trim().toLowerCase();
+    const email = (fallbackEmail || '').trim().toLowerCase();
+    return this.loadLocalVendorCredentials().find(
+      (c) =>
+        (slug && (c.studioSlug || '').toLowerCase() === slug) ||
+        (email && c.email.toLowerCase() === email),
+    );
+  }
+
   private findLocalVendorCredential(
     email: string,
     password: string,

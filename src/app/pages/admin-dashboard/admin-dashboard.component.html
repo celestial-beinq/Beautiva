@@ -97,7 +97,7 @@
       </div>
 
       <div class="kpi-cell">
-        <span class="kpi-label">Platform Commissions ({{ platformMetrics().commissionRate }}%)</span>
+        <span class="kpi-label">Commissions ({{ platformMetrics().commissionRate }}%)</span>
         <strong class="kpi-value">
           {{ marketplace.formatNaira(platformMetrics().platformCommission) }}
         </strong>
@@ -143,7 +143,7 @@
         [class.is-active]="activeTab() === 'payments'"
         (click)="activeTab.set('payments')"
       >
-        04 · Payments &amp; Commissions ({{ transactions().length }})
+        04 · Payments ({{ transactions().length }})
       </button>
       <button
         type="button"
@@ -151,7 +151,7 @@
         [class.is-active]="activeTab() === 'settings'"
         (click)="activeTab.set('settings')"
       >
-        05 · Platform Settings &amp; Users
+        05 · Settings &amp; Users
       </button>
       <button
         type="button"
@@ -167,19 +167,19 @@
       <div class="toast-bar">{{ toast() }}</div>
     }
 
-    @if (completedApplications().length > 0 && !dismissedCompletedNotice()) {
+    @if (unseenCompletedApplications().length > 0) {
       <div class="completed-notice-bar" role="status">
         <div>
           <span class="badge badge--success">Completed Onboarding</span>
           <strong>
-            {{ completedApplications()[0].businessName }}
-            ({{ completedApplications()[0].applicationNumber }})
+            {{ unseenCompletedApplications()[0].businessName }}
+            ({{ unseenCompletedApplications()[0].applicationNumber }})
           </strong>
           <span>
-            completed Paystack onboarding ({{ marketplace.formatNaira(completedApplications()[0].onboardingFee) }})
+            completed Paystack onboarding ({{ marketplace.formatNaira(unseenCompletedApplications()[0].onboardingFee) }})
             and is now live
-            @if (completedApplications().length > 1) {
-              · +{{ completedApplications().length - 1 }} more completed
+            @if (unseenCompletedApplications().length > 1) {
+              · +{{ unseenCompletedApplications().length - 1 }} more completed
             }
           </span>
         </div>
@@ -194,7 +194,7 @@
           <button
             type="button"
             class="btn btn--outline btn--sm"
-            (click)="dismissedCompletedNotice.set(true)"
+            (click)="dismissCompletedNotice()"
           >
             Dismiss
           </button>
@@ -217,7 +217,7 @@
             </div>
             <p>
               Real-time payment volume, commissions, booking velocity, and studio onboardings across
-              the last {{ analyticsRange() }} days.
+              {{ liveChart().rangeDescription }}.
             </p>
           </div>
 
@@ -242,17 +242,48 @@
             </div>
 
             <div class="segmented-group" role="group" aria-label="Timeframe">
-              @for (days of [7, 14, 30]; track days) {
+              @for (
+                opt of [
+                  { id: 'daily', label: 'Daily' },
+                  { id: 'weekly', label: 'Weekly' },
+                  { id: 'monthly', label: 'Monthly' },
+                  { id: 'custom', label: 'Custom' }
+                ];
+                track opt.id
+              ) {
                 <button
                   type="button"
                   class="seg-btn"
-                  [class.is-active]="analyticsRange() === days"
-                  (click)="analyticsRange.set($any(days))"
+                  [class.is-active]="analyticsPeriod() === opt.id"
+                  (click)="setAnalyticsPeriod($any(opt.id))"
                 >
-                  {{ days }}D
+                  {{ opt.label }}
                 </button>
               }
             </div>
+
+            @if (analyticsPeriod() === 'custom') {
+              <div class="custom-date-bar" role="group" aria-label="Custom date range">
+                <label class="custom-date-field">
+                  <span>From</span>
+                  <input
+                    type="date"
+                    class="custom-date-input"
+                    [ngModel]="customStartDate()"
+                    (ngModelChange)="customStartDate.set($event); hoveredDayIndex.set(null)"
+                  />
+                </label>
+                <label class="custom-date-field">
+                  <span>To</span>
+                  <input
+                    type="date"
+                    class="custom-date-input"
+                    [ngModel]="customEndDate()"
+                    (ngModelChange)="customEndDate.set($event); hoveredDayIndex.set(null)"
+                  />
+                </label>
+              </div>
+            }
 
             <button
               type="button"
@@ -274,7 +305,7 @@
 
         <div class="live-summary-strip">
           <div class="live-stat">
-            <span class="live-stat-label">{{ analyticsRange() }}-Day Volume</span>
+            <span class="live-stat-label">{{ liveChart().periodLabel }} Volume</span>
             <strong class="live-stat-val">
               {{ marketplace.formatNaira(liveChart().summary.periodVolume) }}
             </strong>
@@ -284,7 +315,7 @@
             </span>
           </div>
           <div class="live-stat">
-            <span class="live-stat-label">{{ analyticsRange() }}-Day Commission</span>
+            <span class="live-stat-label">{{ liveChart().periodLabel }} Commission</span>
             <strong class="live-stat-val">
               {{ marketplace.formatNaira(liveChart().summary.periodCommission) }}
             </strong>
@@ -293,7 +324,7 @@
             </span>
           </div>
           <div class="live-stat">
-            <span class="live-stat-label">{{ analyticsRange() }}-Day Bookings</span>
+            <span class="live-stat-label">{{ liveChart().periodLabel }} Bookings</span>
             <strong class="live-stat-val">{{ liveChart().summary.periodBookings }}</strong>
             <span class="live-stat-sub">
               {{ liveChart().summary.periodOnboardings }} vendor/app updates
@@ -698,6 +729,7 @@
                   <th>Application #</th>
                   <th>Studio</th>
                   <th>Owner &amp; Contact</th>
+                  <th>Login &amp; Password</th>
                   <th>Category &amp; City</th>
                   <th>Fee Paid</th>
                   <th>Paystack Ref</th>
@@ -714,6 +746,36 @@
                     <td>
                       <strong>{{ app.ownerName }}</strong>
                       <div class="cell-sub">{{ app.email }} · {{ app.phone }}</div>
+                    </td>
+                    <td>
+                      <div class="cred-cell">
+                        <div class="cell-sub">{{ app.issuedLoginEmail || app.email }}</div>
+                        @if (app.issuedTempPassword) {
+                          <div class="cred-pass-row">
+                            <code class="cred-code">{{
+                              isPasswordRevealed(app.applicationNumber)
+                                ? app.issuedTempPassword
+                                : '••••••••'
+                            }}</code>
+                            <button
+                              type="button"
+                              class="btn btn--outline btn-xs"
+                              (click)="toggleRevealPassword(app.applicationNumber)"
+                            >
+                              {{ isPasswordRevealed(app.applicationNumber) ? 'Hide' : 'Show' }}
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn--outline btn-xs"
+                              (click)="copyCredentialText(app.issuedTempPassword, app.businessName + ' password')"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        } @else {
+                          <span class="cell-sub">—</span>
+                        }
+                      </div>
                     </td>
                     <td>
                       <span>{{ app.categoryLabel }}</span>
@@ -1174,12 +1236,14 @@
               <tr>
                 <th>Studio</th>
                 <th>Category &amp; City</th>
+                <th>Vendor Login &amp; Password</th>
                 <th>Rating</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               @for (biz of filteredStudios(); track biz.id) {
+                @let creds = getVendorCreds(biz);
                 <tr [class.is-suspended]="biz.status === 'suspended'">
                   <td>
                     <div class="studio-admin-id">
@@ -1207,6 +1271,59 @@
                   <td>
                     <span>{{ biz.categoryLabel }}</span>
                     <div class="cell-sub">{{ biz.location }}</div>
+                  </td>
+                  <td>
+                    <div class="cred-cell">
+                      <div class="cred-email-row">
+                        <span>{{ creds.email || 'No email set' }}</span>
+                        @if (creds.email) {
+                          <button
+                            type="button"
+                            class="btn btn--outline btn-xs"
+                            (click)="copyCredentialText(creds.email, biz.name + ' login email')"
+                          >
+                            Copy Email
+                          </button>
+                        }
+                      </div>
+                      <div class="cred-pass-row">
+                        @if (creds.tempPassword) {
+                          <code class="cred-code">{{
+                            isPasswordRevealed(biz.slug) ? creds.tempPassword : '••••••••'
+                          }}</code>
+                          <button
+                            type="button"
+                            class="btn btn--outline btn-xs"
+                            (click)="toggleRevealPassword(biz.slug)"
+                          >
+                            {{ isPasswordRevealed(biz.slug) ? 'Hide' : 'Show' }}
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn--outline btn-xs"
+                            (click)="copyCredentialText(creds.tempPassword, biz.name + ' password')"
+                          >
+                            Copy
+                          </button>
+                        } @else {
+                          <span class="badge badge--bronze">Password Not Set</span>
+                        }
+                        <button
+                          type="button"
+                          class="btn btn--outline btn-xs"
+                          [disabled]="busyStudioSlug() === biz.slug"
+                          (click)="openSetPassword(biz)"
+                        >
+                          {{
+                            settingPasswordSlug() === biz.slug
+                              ? 'Close'
+                              : creds.tempPassword
+                                ? 'Reset'
+                                : 'Set Password'
+                          }}
+                        </button>
+                      </div>
+                    </div>
                   </td>
                   <td>
                     <strong>★ {{ biz.rating.toFixed(1) }}</strong>
@@ -1269,9 +1386,54 @@
                   </td>
                 </tr>
 
+                @if (settingPasswordSlug() === biz.slug) {
+                  <tr class="inline-editor-row">
+                    <td colspan="5" class="inline-editor-cell">
+                      <div class="inline-editor">
+                        <div class="form-grid-3">
+                          <input
+                            class="input"
+                            [(ngModel)]="passwordResetForm.email"
+                            type="email"
+                            placeholder="Vendor Login Email *"
+                          />
+                          <input
+                            class="input"
+                            [(ngModel)]="passwordResetForm.newPassword"
+                            type="text"
+                            placeholder="New Password (min 6 chars) *"
+                          />
+                          <div class="table-actions">
+                            <button
+                              type="button"
+                              class="btn btn--primary btn--sm"
+                              [disabled]="busyStudioSlug() === biz.slug"
+                              (click)="saveVendorPassword(biz)"
+                            >
+                              {{
+                                busyStudioSlug() === biz.slug
+                                  ? 'Updating...'
+                                  : 'Save Vendor Password'
+                              }}
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn--outline btn--sm"
+                              [disabled]="busyStudioSlug() === biz.slug"
+                              (click)="settingPasswordSlug.set(null)"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+
                 @if (editingVendorSlug() === biz.slug) {
                   <tr class="inline-editor-row">
-                    <td colspan="4" class="inline-editor-cell">
+                    <td colspan="5" class="inline-editor-cell">
                       <div class="inline-editor">
                         <div class="form-grid-3">
                           <input class="input" [(ngModel)]="editVendorForm.name" placeholder="Business Name" />
@@ -1527,7 +1689,7 @@
           <div class="stack-form">
             <div class="form-grid-2">
               <div class="field">
-                <label class="field-label">Platform Commission (%)</label>
+                <label class="field-label">Commission (%)</label>
                 <input
                   type="number"
                   class="input"
@@ -1547,7 +1709,7 @@
                 />
               </div>
               <div class="field">
-                <label class="field-label">Platform Name</label>
+                <label class="field-label">Business Name</label>
                 <input class="input" [(ngModel)]="settingsDraft.siteName" />
               </div>
               <div class="field">

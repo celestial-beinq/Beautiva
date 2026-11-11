@@ -344,4 +344,38 @@ describe('App & MarketplaceService', () => {
     expect(service.activityLogs().some((l) => l.eventType === 'payment.balance_settled')).toBe(true);
     expect(service.activityLogs().some((l) => l.eventType === 'booking.status_updated')).toBe(true);
   });
+
+  it('should store, retrieve, and reset managed vendor passwords for admin display', async () => {
+    const service = TestBed.inject(MarketplaceService);
+    const auth = TestBed.inject(AuthService);
+    seedAdminTestStudio(service);
+
+    const created = await service.createVendorAccount({
+      fullName: 'Shola Ade',
+      email: 'shola@beautiva.ng',
+      password: 'InitPass!99',
+      phone: '08122345778',
+      businessName: 'Hair By Shola',
+      categorySlug: 'hairdressers',
+      city: 'Lagos',
+      location: 'Lagos',
+    });
+
+    expect(created.ok).toBe(true);
+    const initialCred = service.getVendorCredential(created.business.slug);
+    expect(initialCred.email).toBe('shola@beautiva.ng');
+    expect(initialCred.tempPassword).toBe('InitPass!99');
+
+    const reset = await service.setVendorPassword(
+      created.business.slug,
+      'shola@beautiva.ng',
+      'NewPass!2026',
+    );
+    expect(reset.ok).toBe(true);
+    expect(service.getVendorCredential(created.business.slug).tempPassword).toBe('NewPass!2026');
+
+    const login = await auth.signIn('shola@beautiva.ng', 'NewPass!2026');
+    expect(login.ok).toBe(true);
+    expect(login.profile?.role).toBe('vendor');
+  });
 });

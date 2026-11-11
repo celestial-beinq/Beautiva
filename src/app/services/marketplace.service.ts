@@ -25,6 +25,7 @@ import {
   UserProfile,
   VendorApplication,
   VendorApplicationStatus,
+  VendorCredentialRecord,
   VendorInvitation,
   WorkingHours,
 } from '../models/marketplace.models';
@@ -40,6 +41,7 @@ const SETTINGS_STORAGE_KEY = 'beautiva_settings_v2';
 const CUSTOMERS_STORAGE_KEY = 'beautiva_customers_v2';
 const APPLICATIONS_STORAGE_KEY = 'beautiva_vendor_applications_v2';
 const ACTIVITY_LOGS_STORAGE_KEY = 'beautiva_activity_logs_v2';
+const VENDOR_CREDS_STORAGE_KEY = 'beautiva_vendor_creds_v1';
 
 const LEGACY_STORAGE_KEYS = [
   'beautiva_businesses_v1',
@@ -138,6 +140,7 @@ export class MarketplaceService {
   readonly customerAccounts = signal<UserProfile[]>(this.loadCustomerAccounts());
   readonly vendorApplications = signal<VendorApplication[]>(this.loadApplications());
   readonly activityLogs = signal<ActivityLogRecord[]>(this.loadActivityLogs());
+  readonly vendorCredentials = signal<VendorCredentialRecord[]>(this.loadVendorCredentials());
 
   readonly bookedSlotsExternal = signal<
     Array<{ businessSlug: string; bookingDate: string; bookingTime: string; status: string }>
@@ -469,6 +472,26 @@ export class MarketplaceService {
             }
           } catch {
             // Activity logs table optional until 004_activity_logs.sql is applied
+          }
+
+          try {
+            const { data: credRows, error: credErr } = await this.sb.client
+              .from('vendor_credentials')
+              .select('*')
+              .order('updated_at', { ascending: false });
+            if (!credErr && credRows) {
+              const mappedCreds: VendorCredentialRecord[] = credRows.map((c: any) => ({
+                businessId: c.business_id || undefined,
+                businessSlug: String(c.business_slug || '').toLowerCase(),
+                email: String(c.email || '').toLowerCase(),
+                tempPassword: String(c.temp_password || ''),
+                updatedAt: c.updated_at || undefined,
+              }));
+              this.vendorCredentials.set(mappedCreds);
+              this.saveVendorCredentials(mappedCreds);
+            }
+          } catch {
+            // Vendor credentials table optional until 005_vendor_credentials.sql is applied
           }
         }
       }
@@ -1675,6 +1698,10 @@ export class MarketplaceService {
     let authProvisioned = false;
     let message = `Studio "${input.businessName}" created and ready.`;
 
+    const cat = this.getCategoryBySlug(input.categorySlug);
+    const slug = this.slugify(input.businessName) || `studio-${Date.now()}`;
+    const normalizedEmail = input.email.trim().toLowerCase();
+
     const token = this.auth.accessToken();
     if (this.isBrowser && input.password && token) {
       try {
@@ -1685,17 +1712,18 @@ export class MarketplaceService {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            email: input.email,
+            email: normalizedEmail,
             password: input.password,
             fullName: input.fullName,
             phone: input.phone,
+            businessSlug: slug,
           }),
         });
         if (resp.ok) {
           const data = await resp.json();
           ownerId = data.userId;
           authProvisioned = true;
-          message = `Vendor login (${input.email.toLowerCase()}) & studio "${input.businessName}" created. The vendor can now sign in at /auth.`;
+          message = `Vendor login (${normalizedEmail}) & studio "${input.businessName}" created. The vendor can now sign in at /auth.`;
         } else {
           const errJson = await resp.json().catch(() => ({}));
           if (errJson?.error) {
@@ -1711,15 +1739,13 @@ export class MarketplaceService {
 
     if (!authProvisioned) {
       this.inviteVendor({
-        email: input.email,
+        email: normalizedEmail,
         businessName: input.businessName,
         categorySlug: input.categorySlug,
         city: input.city,
       });
     }
 
-    const cat = this.getCategoryBySlug(input.categorySlug);
-    const slug = this.slugify(input.businessName) || `studio-${Date.now()}`;
     const words = input.businessName.trim().split(/\s+/);
     const logoText =
       words.length >= 2
@@ -1778,13 +1804,32 @@ export class MarketplaceService {
       },
     });
 
+    if (input.password) {
+      this.recordVendorCredential({
+        businessId: business.id,
+        businessSlug: business.slug,
+        email: normalizedEmail,
+        tempPassword: input.password,
+        updatedAt: new Date().toISOString(),
+      });
+      if (!authProvisioned) {
+        this.auth.registerLocalVendorCredentials({
+          email: normalizedEmail,
+          password: input.password,
+          fullName: input.fullName.trim() || business.name,
+          phone: input.phone.trim(),
+          studioSlug: business.slug,
+        });
+      }
+    }
+
     this.logActivity({
       eventType: 'vendor.account_created',
       category: 'vendor',
       entityType: 'business',
       entityId: business.slug,
       entityName: business.name,
-      summary: `Created vendor account & studio "${business.name}" (${input.email.toLowerCase()}).`,
+      summary: `Created vendor account & studio "${business.name}" (${normalizedEmail}).`,
     });
 
     return { ok: true, business, authProvisioned, message };
@@ -2632,6 +2677,15 @@ export class MarketplaceService {
         this.saveApplications(nextApps);
 
         const syncedBiz = this.getBusinessBySlug(syncedApp.liveBusinessSlug || app.slug);
+        if (syncedApp.issuedTempPassword) {
+          this.recordVendorCredential({
+            businessId: syncedBiz?.id,
+            businessSlug: syncedApp.liveBusinessSlug || app.slug,
+            email: (syncedApp.issuedLoginEmail || app.email).toLowerCase(),
+            tempPassword: syncedApp.issuedTempPassword,
+            updatedAt: syncedApp.paidAt || paidAt,
+          });
+        }
         return { ok: true, application: syncedApp, business: syncedBiz };
       } catch {
         // Fall through to local fallback when server endpoint is unavailable
@@ -2743,6 +2797,14 @@ export class MarketplaceService {
     this.vendorApplications.set(nextApps);
     this.saveApplications(nextApps);
 
+    this.recordVendorCredential({
+      businessId: business.id,
+      businessSlug: business.slug,
+      email: app.email.toLowerCase(),
+      tempPassword,
+      updatedAt: paidAt,
+    });
+
     this.logActivity({
       eventType: 'payment.onboarding_success',
       category: 'transaction',
@@ -2836,11 +2898,180 @@ export class MarketplaceService {
     this.saveArrayToStorage(ACTIVITY_LOGS_STORAGE_KEY, list);
   }
 
+  getVendorCredential(
+    businessSlug: string,
+    fallbackEmail?: string,
+  ): { email: string; tempPassword: string | null; updatedAt?: string } {
+    const slug = (businessSlug || '').trim().toLowerCase();
+    const vaultMatch = this.vendorCredentials().find(
+      (c) => c.businessSlug.toLowerCase() === slug,
+    );
+    if (vaultMatch && vaultMatch.tempPassword) {
+      return {
+        email: vaultMatch.email || fallbackEmail || '',
+        tempPassword: vaultMatch.tempPassword,
+        updatedAt: vaultMatch.updatedAt,
+      };
+    }
+
+    const appMatch = this.vendorApplications().find(
+      (a) =>
+        (a.liveBusinessSlug || a.slug || '').toLowerCase() === slug &&
+        Boolean(a.issuedTempPassword),
+    );
+    if (appMatch?.issuedTempPassword) {
+      return {
+        email: appMatch.issuedLoginEmail || appMatch.email || fallbackEmail || '',
+        tempPassword: appMatch.issuedTempPassword,
+        updatedAt: appMatch.paidAt || appMatch.createdAt,
+      };
+    }
+
+    const localCreds = this.auth.getLocalVendorCredential(slug, fallbackEmail);
+    if (localCreds?.password) {
+      return {
+        email: localCreds.email,
+        tempPassword: localCreds.password,
+      };
+    }
+
+    return {
+      email: fallbackEmail || '',
+      tempPassword: null,
+    };
+  }
+
+  async setVendorPassword(
+    businessSlug: string,
+    email: string,
+    newPassword: string,
+  ): Promise<{ ok: boolean; error?: string; credential?: VendorCredentialRecord }> {
+    const slug = businessSlug.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+    const password = newPassword.trim();
+
+    if (!slug || !normalizedEmail || password.length < 6) {
+      return {
+        ok: false,
+        error: 'Vendor email and a password of at least 6 characters are required.',
+      };
+    }
+
+    const biz = this.getBusinessBySlug(slug);
+    const token = this.auth.accessToken();
+
+    if (this.isBrowser && this.sb.client && this.auth.authMode() === 'supabase') {
+      if (!token) {
+        return {
+          ok: false,
+          error: 'Sign in with a live Supabase Super Admin session to update vendor passwords.',
+        };
+      }
+      try {
+        const resp = await fetch('/api/admin/reset-vendor-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            businessSlug: slug,
+            email: normalizedEmail,
+            newPassword: password,
+            fullName: biz?.name,
+            phone: biz?.contact?.phone,
+          }),
+        });
+        const json = (await resp.json().catch(() => ({}))) as {
+          ok?: boolean;
+          error?: string;
+          credential?: VendorCredentialRecord;
+        };
+        if (!resp.ok) {
+          return { ok: false, error: json.error || `Server returned ${resp.status}` };
+        }
+
+        const cred: VendorCredentialRecord = json.credential || {
+          businessId: biz?.id,
+          businessSlug: slug,
+          email: normalizedEmail,
+          tempPassword: password,
+          updatedAt: new Date().toISOString(),
+        };
+        this.recordVendorCredential(cred);
+        this.syncApplicationCredential(slug, normalizedEmail, password);
+        return { ok: true, credential: cred };
+      } catch {
+        return { ok: false, error: 'Unable to reach SSR server to reset vendor Auth password.' };
+      }
+    }
+
+    const cred: VendorCredentialRecord = {
+      businessId: biz?.id,
+      businessSlug: slug,
+      email: normalizedEmail,
+      tempPassword: password,
+      updatedAt: new Date().toISOString(),
+    };
+    this.auth.registerLocalVendorCredentials({
+      email: normalizedEmail,
+      password,
+      fullName: biz?.name || normalizedEmail.split('@')[0],
+      phone: biz?.contact?.phone || '',
+      studioSlug: slug,
+    });
+    this.recordVendorCredential(cred);
+    this.syncApplicationCredential(slug, normalizedEmail, password);
+    this.logActivity({
+      eventType: 'vendor.password_updated',
+      category: 'vendor',
+      entityType: 'business',
+      entityId: slug,
+      entityName: biz?.name || slug,
+      summary: `Set/reset vendor login password for "${biz?.name || slug}" (${normalizedEmail}).`,
+    });
+    return { ok: true, credential: cred };
+  }
+
+  private recordVendorCredential(cred: VendorCredentialRecord): void {
+    const slug = cred.businessSlug.trim().toLowerCase();
+    const normalized: VendorCredentialRecord = {
+      ...cred,
+      businessSlug: slug,
+      email: cred.email.trim().toLowerCase(),
+      updatedAt: cred.updatedAt || new Date().toISOString(),
+    };
+    const next = [
+      normalized,
+      ...this.vendorCredentials().filter((c) => c.businessSlug.toLowerCase() !== slug),
+    ];
+    this.vendorCredentials.set(next);
+    this.saveVendorCredentials(next);
+  }
+
+  private syncApplicationCredential(slug: string, email: string, tempPassword: string): void {
+    const nextApps = this.vendorApplications().map((a) =>
+      (a.liveBusinessSlug || a.slug || '').toLowerCase() === slug
+        ? { ...a, issuedLoginEmail: email, issuedTempPassword: tempPassword }
+        : a,
+    );
+    this.vendorApplications.set(nextApps);
+    this.saveApplications(nextApps);
+  }
+
   private loadApplications(): VendorApplication[] {
     return this.loadArrayFromStorage<VendorApplication>(APPLICATIONS_STORAGE_KEY);
   }
 
   private saveApplications(list: VendorApplication[]): void {
     this.saveArrayToStorage(APPLICATIONS_STORAGE_KEY, list);
+  }
+
+  private loadVendorCredentials(): VendorCredentialRecord[] {
+    return this.loadArrayFromStorage<VendorCredentialRecord>(VENDOR_CREDS_STORAGE_KEY);
+  }
+
+  private saveVendorCredentials(list: VendorCredentialRecord[]): void {
+    this.saveArrayToStorage(VENDOR_CREDS_STORAGE_KEY, list);
   }
 }

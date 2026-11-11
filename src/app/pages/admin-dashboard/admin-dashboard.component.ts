@@ -44,7 +44,9 @@ export class AdminDashboardComponent {
   readonly activityLogs = this.marketplace.activityLogs;
 
   // Live analytics & chart state
-  readonly analyticsRange = signal<7 | 14 | 30>(14);
+  readonly analyticsPeriod = signal<'daily' | 'weekly' | 'monthly' | 'custom'>('weekly');
+  readonly customStartDate = signal<string>(this.offsetDateKey(-6));
+  readonly customEndDate = signal<string>(this.offsetDateKey(0));
   readonly chartMetric = signal<'revenue' | 'activity'>('revenue');
   readonly donutMode = signal<'payments' | 'bookings'>('payments');
   readonly liveAutoRefresh = signal(true);
@@ -61,7 +63,8 @@ export class AdminDashboardComponent {
   readonly applicationFilter = signal<'all' | 'pending' | 'approved' | 'declined'>('all');
   readonly viewingApplicationNum = signal<string | null>(null);
   readonly reviewingAppNum = signal<string | null>(null);
-  readonly dismissedCompletedNotice = signal(false);
+  private readonly dismissedOnboardingsKey = 'beautiva_dismissed_completed_onboardings_v1';
+  readonly dismissedOnboardingNumbers = signal<string[]>(this.loadDismissedOnboardings());
   applicationReviewNote = '';
 
   // Vendor Management filters & forms
@@ -71,8 +74,15 @@ export class AdminDashboardComponent {
   readonly showCreateVendor = signal(false);
   readonly showInviteVendor = signal(false);
   readonly editingVendorSlug = signal<string | null>(null);
+  readonly settingPasswordSlug = signal<string | null>(null);
+  readonly revealedPasswordSlugs = signal<Set<string>>(new Set());
   readonly busyStudioSlug = signal<string | null>(null);
   readonly viewingApplication = signal<BusinessProfile | null>(null);
+
+  passwordResetForm = {
+    email: '',
+    newPassword: '',
+  };
 
   newVendor = {
     fullName: '',
@@ -257,51 +267,179 @@ export class AdminDashboardComponent {
       .sort((a, b) => b.studioCount - a.studioCount);
   });
 
+  setAnalyticsPeriod(period: 'daily' | 'weekly' | 'monthly' | 'custom'): void {
+    this.analyticsPeriod.set(period);
+    this.hoveredDayIndex.set(null);
+  }
+
+  private offsetDateKey(daysDelta: number): string {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + daysDelta);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private parseLocalDate(key: string | undefined): Date | null {
+    if (!key) return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key.trim());
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    d.setHours(0, 0, 0, 0);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
   readonly liveChart = computed(() => {
-    const days = this.analyticsRange();
+    const period = this.analyticsPeriod();
     const metric = this.chartMetric();
     const rate = this.marketplace.platformSettings().commissionRate || 10;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const buckets = new Map<
-      string,
-      {
-        dateKey: string;
-        shortLabel: string;
-        fullLabel: string;
-        grossVolume: number;
-        commission: number;
-        txCount: number;
-        allTxCount: number;
-        bookingsCount: number;
-        onboardingCount: number;
-      }
-    >();
+    let startDate = new Date(today);
+    let endDate = new Date(today);
+    let periodLabel = '7-Day';
+    let rangeDescription = 'the last 7 days';
 
-    const orderedKeys: string[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      orderedKeys.push(key);
-      buckets.set(key, {
-        dateKey: key,
-        shortLabel: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        fullLabel: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-        grossVolume: 0,
-        commission: 0,
-        txCount: 0,
-        allTxCount: 0,
-        bookingsCount: 0,
-        onboardingCount: 0,
-      });
+    if (period === 'daily') {
+      periodLabel = 'Today';
+      rangeDescription = `today (${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, hourly)`;
+    } else if (period === 'weekly') {
+      startDate.setDate(today.getDate() - 6);
+      periodLabel = '7-Day';
+      rangeDescription = 'the last 7 days';
+    } else if (period === 'monthly') {
+      startDate.setDate(today.getDate() - 29);
+      periodLabel = '30-Day';
+      rangeDescription = 'the last 30 days';
+    } else {
+      const parsedStart = this.parseLocalDate(this.customStartDate()) ?? new Date(today);
+      const parsedEnd = this.parseLocalDate(this.customEndDate()) ?? new Date(today);
+      if (parsedStart.getTime() <= parsedEnd.getTime()) {
+        startDate = parsedStart;
+        endDate = parsedEnd;
+      } else {
+        startDate = parsedEnd;
+        endDate = parsedStart;
+      }
+      const startFmt = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endFmt = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      periodLabel = 'Custom';
+      rangeDescription =
+        startDate.getTime() === endDate.getTime()
+          ? `${endFmt} (hourly)`
+          : `${startFmt} – ${endFmt}`;
     }
 
+    const msPerDay = 86_400_000;
+    const spanDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / msPerDay) + 1);
+    const isHourly = spanDays === 1;
+    const isWeeklyGrouped = spanDays > 62;
+
+    interface BucketEntry {
+      dateKey: string;
+      shortLabel: string;
+      fullLabel: string;
+      grossVolume: number;
+      commission: number;
+      txCount: number;
+      allTxCount: number;
+      bookingsCount: number;
+      onboardingCount: number;
+    }
+
+    const buckets = new Map<string, BucketEntry>();
+    const orderedKeys: string[] = [];
+
+    if (isHourly) {
+      const dayKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      for (let h = 0; h < 24; h++) {
+        const key = `${dayKey}T${String(h).padStart(2, '0')}`;
+        const label = `${String(h).padStart(2, '0')}:00`;
+        orderedKeys.push(key);
+        buckets.set(key, {
+          dateKey: key,
+          shortLabel: label,
+          fullLabel: `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${label}`,
+          grossVolume: 0,
+          commission: 0,
+          txCount: 0,
+          allTxCount: 0,
+          bookingsCount: 0,
+          onboardingCount: 0,
+        });
+      }
+    } else if (isWeeklyGrouped) {
+      for (let offset = 0; offset < spanDays; offset += 7) {
+        const wStart = new Date(startDate);
+        wStart.setDate(startDate.getDate() + offset);
+        const wEnd = new Date(startDate);
+        wEnd.setDate(Math.min(startDate.getDate() + spanDays - 1, startDate.getDate() + offset + 6));
+        const key = `W-${offset}`;
+        const shortLabel = wStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const fullLabel = `${shortLabel} – ${wEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        orderedKeys.push(key);
+        buckets.set(key, {
+          dateKey: key,
+          shortLabel,
+          fullLabel,
+          grossVolume: 0,
+          commission: 0,
+          txCount: 0,
+          allTxCount: 0,
+          bookingsCount: 0,
+          onboardingCount: 0,
+        });
+      }
+    } else {
+      for (let i = 0; i < spanDays; i++) {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        orderedKeys.push(key);
+        buckets.set(key, {
+          dateKey: key,
+          shortLabel: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          fullLabel: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+          grossVolume: 0,
+          commission: 0,
+          txCount: 0,
+          allTxCount: 0,
+          bookingsCount: 0,
+          onboardingCount: 0,
+        });
+      }
+    }
+
+    const resolveBucket = (rawDate: string | undefined): BucketEntry | undefined => {
+      if (!rawDate) return undefined;
+      if (isHourly) {
+        const targetKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+          return rawDate === targetKey ? buckets.get(`${targetKey}T09`) : undefined;
+        }
+        const parsed = new Date(rawDate);
+        if (Number.isNaN(parsed.getTime())) return undefined;
+        const dKey = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+        if (dKey !== targetKey) return undefined;
+        return buckets.get(`${targetKey}T${String(parsed.getHours()).padStart(2, '0')}`);
+      }
+
+      const dayKey = this.toLocalDateKey(rawDate);
+      if (!dayKey) return undefined;
+      if (!isWeeklyGrouped) {
+        return buckets.get(dayKey);
+      }
+
+      const d = this.parseLocalDate(dayKey);
+      if (!d) return undefined;
+      const diff = Math.round((d.getTime() - startDate.getTime()) / msPerDay);
+      if (diff < 0 || diff >= spanDays) return undefined;
+      return buckets.get(`W-${Math.floor(diff / 7) * 7}`);
+    };
+
     for (const tx of this.transactions()) {
-      const key = this.toLocalDateKey(tx.paidAt || tx.createdAt);
-      const bucket = key ? buckets.get(key) : undefined;
+      const bucket = resolveBucket(tx.paidAt || tx.createdAt);
       if (!bucket) continue;
       bucket.allTxCount += 1;
       if (tx.status === 'success') {
@@ -313,24 +451,21 @@ export class AdminDashboardComponent {
     }
 
     for (const bk of this.bookings()) {
-      const key = this.toLocalDateKey(bk.createdAt || bk.date);
-      const bucket = key ? buckets.get(key) : undefined;
+      const bucket = resolveBucket(bk.createdAt || bk.date);
       if (bucket) {
         bucket.bookingsCount += 1;
       }
     }
 
     for (const app of this.vendorApplications()) {
-      const key = this.toLocalDateKey(app.createdAt);
-      const bucket = key ? buckets.get(key) : undefined;
+      const bucket = resolveBucket(app.createdAt);
       if (bucket) {
         bucket.onboardingCount += 1;
       }
     }
 
     for (const biz of this.businesses()) {
-      const key = this.toLocalDateKey(biz.createdAt);
-      const bucket = key ? buckets.get(key) : undefined;
+      const bucket = resolveBucket(biz.createdAt);
       if (bucket) {
         bucket.onboardingCount += 1;
       }
@@ -366,8 +501,15 @@ export class AdminDashboardComponent {
     const plotH = height - padTop - padBottom;
     const baseY = padTop + plotH;
 
-    const labelStep = days <= 7 ? 1 : days <= 14 ? 2 : 5;
-    const slotW = plotW / rawSeries.length;
+    const bucketCount = rawSeries.length;
+    const labelStep = isHourly
+      ? 3
+      : bucketCount <= 7
+        ? 1
+        : bucketCount <= 14
+          ? 2
+          : Math.max(1, Math.ceil(bucketCount / 7));
+    const slotW = plotW / Math.max(1, bucketCount);
 
     const points = rawSeries.map((d, i) => {
       const primaryVal = metric === 'revenue' ? d.grossVolume : d.bookingsCount;
@@ -422,6 +564,8 @@ export class AdminDashboardComponent {
       padRight,
       padTop,
       baseY,
+      periodLabel,
+      rangeDescription,
       points,
       primaryPath,
       primaryAreaPath,
@@ -602,6 +746,43 @@ export class AdminDashboardComponent {
   readonly completedApplications = computed(() =>
     this.vendorApplications().filter((a) => a.status === 'paid_live'),
   );
+
+  readonly unseenCompletedApplications = computed(() => {
+    const dismissed = new Set(this.dismissedOnboardingNumbers());
+    return this.completedApplications().filter(
+      (a) => !dismissed.has(a.applicationNumber),
+    );
+  });
+
+  dismissCompletedNotice(): void {
+    const next = Array.from(
+      new Set([
+        ...this.dismissedOnboardingNumbers(),
+        ...this.completedApplications().map((a) => a.applicationNumber),
+      ]),
+    );
+    this.dismissedOnboardingNumbers.set(next);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(this.dismissedOnboardingsKey, JSON.stringify(next));
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }
+
+  private loadDismissedOnboardings(): string[] {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(this.dismissedOnboardingsKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((v): v is string => typeof v === 'string')
+        : [];
+    } catch {
+      return [];
+    }
+  }
 
   readonly filteredApplications = computed(() => {
     const f = this.applicationFilter();
@@ -869,6 +1050,7 @@ export class AdminDashboardComponent {
       this.editingVendorSlug.set(null);
       return;
     }
+    this.settingPasswordSlug.set(null);
     this.editingVendorSlug.set(biz.slug);
     this.editVendorForm = {
       name: biz.name,
@@ -880,6 +1062,74 @@ export class AdminDashboardComponent {
       email: biz.contact.email,
       tagline: biz.tagline,
     };
+  }
+
+  getVendorCreds(biz: BusinessProfile): { email: string; tempPassword: string | null } {
+    const creds = this.marketplace.getVendorCredential(biz.slug, biz.contact?.email);
+    return {
+      email: creds.email || biz.contact?.email || '',
+      tempPassword: creds.tempPassword,
+    };
+  }
+
+  isPasswordRevealed(key: string): boolean {
+    return this.revealedPasswordSlugs().has((key || '').toLowerCase());
+  }
+
+  toggleRevealPassword(key: string): void {
+    const normalized = (key || '').toLowerCase();
+    const next = new Set(this.revealedPasswordSlugs());
+    if (next.has(normalized)) {
+      next.delete(normalized);
+    } else {
+      next.add(normalized);
+    }
+    this.revealedPasswordSlugs.set(next);
+  }
+
+  copyCredentialText(value: string, label: string): void {
+    if (!value || typeof window === 'undefined' || !navigator.clipboard) return;
+    void navigator.clipboard.writeText(value);
+    this.flash(`Copied ${label} to clipboard.`);
+  }
+
+  openSetPassword(biz: BusinessProfile): void {
+    if (this.settingPasswordSlug() === biz.slug) {
+      this.settingPasswordSlug.set(null);
+      return;
+    }
+    this.editingVendorSlug.set(null);
+    const creds = this.getVendorCreds(biz);
+    this.passwordResetForm = {
+      email: creds.email || biz.contact?.email || '',
+      newPassword: creds.tempPassword || '',
+    };
+    this.settingPasswordSlug.set(biz.slug);
+  }
+
+  async saveVendorPassword(biz: BusinessProfile): Promise<void> {
+    const email = this.passwordResetForm.email.trim().toLowerCase();
+    const newPassword = this.passwordResetForm.newPassword.trim();
+    if (!email || newPassword.length < 6) {
+      this.flash('Enter a valid vendor login email and a password of at least 6 characters.');
+      return;
+    }
+
+    this.busyStudioSlug.set(biz.slug);
+    try {
+      const res = await this.marketplace.setVendorPassword(biz.slug, email, newPassword);
+      if (!res.ok) {
+        this.flash(res.error || `Could not update login password for ${biz.name}.`);
+        return;
+      }
+      const next = new Set(this.revealedPasswordSlugs());
+      next.add(biz.slug.toLowerCase());
+      this.revealedPasswordSlugs.set(next);
+      this.settingPasswordSlug.set(null);
+      this.flash(`Updated login & password for ${biz.name} (${email}).`);
+    } finally {
+      this.busyStudioSlug.set(null);
+    }
   }
 
   async saveVendorEdit(biz: BusinessProfile): Promise<void> {

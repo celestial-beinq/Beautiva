@@ -283,6 +283,14 @@ export interface PlatformSettings {
   notifyBookingReminders: boolean;
 }
 
+export interface VendorCredentialRecord {
+  businessSlug: string;
+  businessId?: string;
+  email: string;
+  tempPassword: string;
+  updatedAt?: string;
+}
+
 export interface PopularServiceHighlight {
   businessSlug: string;
   businessName: string;
