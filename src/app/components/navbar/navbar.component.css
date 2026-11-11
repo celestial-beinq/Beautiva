@@ -8,20 +8,20 @@
 }
 
 .nav-shell--transparent {
-  background: linear-gradient(180deg, rgba(23, 20, 18, 0.55) 0%, rgba(23, 20, 18, 0) 100%);
-  color: #ffffff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(31, 28, 25, 0.72) 0%, rgba(31, 28, 25, 0) 100%);
+  color: var(--bg-ivory);
+  border-bottom: 1px solid rgba(247, 245, 240, 0.14);
 }
 
 .nav-shell--solid {
-  background: rgba(250, 247, 242, 0.94);
+  background: rgba(247, 245, 240, 0.94);
   backdrop-filter: blur(14px);
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-subtle);
+  color: var(--ink-primary);
+  border-bottom: 1px solid var(--border-linen);
 }
 
 .nav-inner {
-  height: 74px;
+  height: 76px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -31,34 +31,28 @@
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  font-size: 1rem;
-}
-
-.brand-mark {
-  font-size: 1.05rem;
-  color: var(--accent-bronze);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  font-size: 0.98rem;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.75rem;
+  gap: 2rem;
   font-size: 0.88rem;
   font-weight: 500;
 }
 
 .nav-links a {
-  opacity: 0.85;
+  opacity: 0.78;
   transition: opacity 0.15s ease;
 }
 
 .nav-links a:hover,
 .nav-links a.is-active {
   opacity: 1;
-  font-weight: 600;
 }
 
 .nav-actions {
@@ -75,7 +69,7 @@
   border-radius: var(--radius-xs);
   width: 38px;
   height: 38px;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   cursor: pointer;
 }
 
@@ -83,19 +77,20 @@
   display: none;
   flex-direction: column;
   padding: 1rem 1.5rem 1.5rem;
-  gap: 0.75rem;
-  background: var(--bg-alabaster);
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 0.25rem;
+  background: var(--bg-ivory);
+  color: var(--ink-primary);
+  border-bottom: 1px solid var(--border-linen);
 }
 
 .mobile-drawer a {
-  padding: 0.5rem 0;
+  padding: 0.65rem 0;
+  font-size: 0.95rem;
   font-weight: 500;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-linen);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .nav-links {
     display: none;
   }
@@ -111,3 +106,8 @@
   }
 }
 
+@media (max-width: 480px) {
+  .nav-cta {
+    display: none;
+  }
+}

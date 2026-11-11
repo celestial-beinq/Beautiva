@@ -1,12 +1,14 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DEFAULT_WORKING_HOURS } from '../../data/seed-data';
 import {
   BookingStatus,
   CategorySlug,
+  PaymentPolicy,
   ServiceItem,
   StaffMember,
+  WorkingHours,
 } from '../../models/marketplace.models';
 import { MarketplaceService } from '../../services/marketplace.service';
 
@@ -23,11 +25,26 @@ export class VendorStudioComponent {
   readonly businesses = this.marketplace.businesses;
   readonly bookings = this.marketplace.bookings;
 
-  readonly activeTab = signal<'builder' | 'bookings'>('builder');
+  readonly activeTab = signal<'bookings' | 'menu' | 'hours' | 'builder'>('bookings');
+  readonly selectedStudioSlug = signal<string>('glamour-studio');
+  readonly bookingStatusFilter = signal<'all' | BookingStatus>('all');
+  readonly bookingSearch = signal('');
+  readonly saveToast = signal('');
+
+  // Editable copies for active studio (Services, Team, Hours, Payment Policy)
+  editServices: ServiceItem[] = [];
+  editStaff: StaffMember[] = [];
+  editHours: WorkingHours[] = [];
+  editPolicy: PaymentPolicy = {
+    allowFull: true,
+    allowDeposit: true,
+    depositPercent: 30,
+    allowPayAtBusiness: true,
+  };
+
+  // New Studio Website Builder state
   readonly publishedSlug = signal<string | null>(null);
   readonly formError = signal('');
-
-  // Studio Builder Form Fields
   businessName = '';
   customSlug = '';
   categorySlug: CategorySlug = 'hairdressers';
@@ -64,21 +81,154 @@ export class VendorStudioComponent {
       name: 'Lead Specialist',
       role: 'Founder & Lead Artist',
       specialty: 'Signature Styling',
-      avatarColor: '#a67c52',
+      avatarColor: '#92745b',
     },
   ];
 
-  // Filter for bookings tab
-  readonly bookingsFilterSlug = signal<string>('all');
-
-  readonly filteredBookings = computed(() => {
-    const f = this.bookingsFilterSlug();
-    if (f === 'all') return this.bookings();
-    return this.bookings().filter((b) => b.businessSlug === f);
+  readonly activeStudio = computed(() => {
+    return (
+      this.marketplace.getBusinessBySlug(this.selectedStudioSlug()) ?? this.businesses()[0]
+    );
   });
+
+  readonly studioBookings = computed(() => {
+    const slug = this.activeStudio()?.slug;
+    if (!slug) return [];
+    return this.bookings().filter((b) => b.businessSlug === slug);
+  });
+
+  readonly filteredStudioBookings = computed(() => {
+    const status = this.bookingStatusFilter();
+    const q = this.bookingSearch().trim().toLowerCase();
+    return this.studioBookings().filter((b) => {
+      if (status !== 'all' && b.status !== status) return false;
+      if (!q) return true;
+      return (
+        b.bookingReference.toLowerCase().includes(q) ||
+        b.customerName.toLowerCase().includes(q) ||
+        b.serviceName.toLowerCase().includes(q)
+      );
+    });
+  });
+
+  readonly studioMetrics = computed(() => {
+    const list = this.studioBookings().filter((b) => b.status !== 'Cancelled');
+    const collected = list.reduce((sum, b) => sum + b.amountPaid, 0);
+    const pendingBalance = list.reduce((sum, b) => sum + b.balanceDue, 0);
+    const activeCount = list.filter(
+      (b) => b.status === 'Confirmed' || b.status === 'Pending',
+    ).length;
+    const completedCount = list.filter((b) => b.status === 'Completed').length;
+    return {
+      collected,
+      pendingBalance,
+      totalCount: this.studioBookings().length,
+      activeCount,
+      completedCount,
+    };
+  });
+
+  readonly galleryPresetOptions = [
+    { label: 'Braids (Hair)', path: 'images/cat-hairdressers.jpg' },
+    { label: 'Boho Knotless', path: 'images/hair-knotless-2.jpg' },
+    { label: 'Skin Fade (Barber)', path: 'images/cat-barbers.jpg' },
+    { label: 'Espresso Nails', path: 'images/cat-nails.jpg' },
+    { label: 'Wispy Lashes', path: 'images/lashes-client-2.jpg' },
+    { label: 'Soft Glam (MUA)', path: 'images/cat-makeup.jpg' },
+    { label: 'Fine-Line Ink', path: 'images/cat-tattoo.jpg' },
+    { label: 'Salon Interior', path: 'images/hero-salon.jpg' },
+  ];
+
+  constructor() {
+    effect(() => {
+      const studio = this.activeStudio();
+      if (!studio) return;
+      this.editServices = studio.services.map((s) => ({ ...s }));
+      this.editStaff = studio.staff.map((m) => ({ ...m }));
+      this.editHours = studio.workingHours.map((h) => ({ ...h }));
+      this.editPolicy = { ...studio.paymentPolicy };
+    });
+  }
 
   get previewSlug(): string {
     return this.marketplace.slugify(this.customSlug || this.businessName || 'your-studio');
+  }
+
+  selectStudio(slug: string): void {
+    this.selectedStudioSlug.set(slug);
+    this.saveToast.set('');
+  }
+
+  setStatus(ref: string, status: BookingStatus): void {
+    this.marketplace.updateBookingStatus(ref, status);
+  }
+
+  markPaid(ref: string): void {
+    this.marketplace.updateBookingStatus(ref, 'Confirmed', 'Paid');
+  }
+
+  addEditService(): void {
+    this.editServices.push({
+      id: `srv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name: '',
+      categoryLabel: 'Service',
+      price: 15000,
+      durationMinutes: 60,
+      description: '',
+    });
+  }
+
+  removeEditService(index: number): void {
+    if (this.editServices.length > 1) {
+      this.editServices.splice(index, 1);
+    }
+  }
+
+  addEditStaff(): void {
+    this.editStaff.push({
+      id: `stf-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name: '',
+      role: 'Specialist',
+      specialty: 'Studio Craft',
+      avatarColor: '#92745b',
+    });
+  }
+
+  removeEditStaff(index: number): void {
+    this.editStaff.splice(index, 1);
+  }
+
+  saveMenuAndTeam(): void {
+    const studio = this.activeStudio();
+    if (!studio) return;
+    const validServices = this.editServices
+      .filter((s) => s.name.trim() && s.price > 0)
+      .map((s) => ({
+        ...s,
+        name: s.name.trim(),
+        categoryLabel: s.categoryLabel.trim() || 'Service',
+        description: s.description.trim() || 'Studio appointment with consultation.',
+      }));
+    if (validServices.length === 0) return;
+
+    this.marketplace.updateStudioConfiguration(studio.slug, {
+      services: validServices,
+      staff: this.editStaff.filter((m) => m.name.trim()),
+    });
+    this.flashToast(`Saved menu & team changes to /business/${studio.slug}`);
+  }
+
+  saveHoursAndPolicy(): void {
+    const studio = this.activeStudio();
+    if (!studio) return;
+    this.marketplace.updateStudioConfiguration(studio.slug, {
+      workingHours: this.editHours.map((h) => ({ ...h })),
+      paymentPolicy: {
+        ...this.editPolicy,
+        depositPercent: Number(this.editPolicy.depositPercent) || 30,
+      },
+    });
+    this.flashToast(`Updated hours & Paystack rules for ${studio.name}`);
   }
 
   onCategoryChange(slug: CategorySlug): void {
@@ -115,7 +265,7 @@ export class VendorStudioComponent {
       name: '',
       role: 'Specialist',
       specialty: 'Client Care',
-      avatarColor: '#624834',
+      avatarColor: '#735a45',
     });
   }
 
@@ -141,17 +291,17 @@ export class VendorStudioComponent {
     this.businessName = 'Aurelia Hair & Scalp Spa';
     this.customSlug = 'aurelia-hair-spa';
     this.categorySlug = 'hairdressers';
-    this.tagline = 'Luxury botanical scalp rituals, boho braids & sleek press.';
+    this.tagline = 'Botanical scalp rituals, boho braids & silk press in Lekki.';
     this.about =
-      'Aurelia Hair & Scalp Spa blends holistic trichology with modern protective styling in Lekki. Enjoy private suites, organic oils, and transparent pricing.';
+      'Aurelia Hair & Scalp Spa blends trichology with tension-free protective styling in Lekki Phase 1. Private chairs, steam hydration, and clear pricing.';
     this.city = 'Lagos';
     this.location = 'Lekki Phase 1, Lagos';
     this.address = '22 Admiralty Road, Lekki Phase 1, Lagos';
     this.phone = '+234 809 555 2180';
     this.email = 'hello@aureliaspa.ng';
     this.instagram = '@aureliahairspa';
-    this.coverImage = 'images/cat-hairdressers.jpg';
-    this.galleryImages = ['images/cat-hairdressers.jpg', 'images/hero-salon.jpg'];
+    this.coverImage = 'images/hair-knotless-2.jpg';
+    this.galleryImages = ['images/hair-knotless-2.jpg', 'images/hero-salon.jpg'];
     this.services = [
       {
         id: 'srv-au-1',
@@ -176,7 +326,7 @@ export class VendorStudioComponent {
         name: 'Yewande Ajayi',
         role: 'Lead Stylist',
         specialty: 'Boho Braids & Scalp Spa',
-        avatarColor: '#a67c52',
+        avatarColor: '#92745b',
       },
     ];
   }
@@ -215,10 +365,11 @@ export class VendorStudioComponent {
       city: this.city.trim() || 'Lagos',
       address: this.address.trim() || this.location.trim(),
       logoText,
-      logoBg: '#2b2119',
+      logoBg: '#302c28',
       coverImage: this.coverImage,
       gallery: this.galleryImages.length ? this.galleryImages : [this.coverImage],
       featured: true,
+      status: 'active',
       services: validServices.map((s) => ({
         ...s,
         name: s.name.trim(),
@@ -240,14 +391,13 @@ export class VendorStudioComponent {
     });
 
     this.publishedSlug.set(saved.slug);
+    this.selectedStudioSlug.set(saved.slug);
   }
 
-  setStatus(ref: string, status: BookingStatus): void {
-    this.marketplace.updateBookingStatus(ref, status);
-  }
-
-  markPaid(ref: string): void {
-    this.marketplace.updateBookingStatus(ref, 'Confirmed', 'Paid');
+  private flashToast(msg: string): void {
+    this.saveToast.set(msg);
+    setTimeout(() => {
+      if (this.saveToast() === msg) this.saveToast.set('');
+    }, 3500);
   }
 }
-

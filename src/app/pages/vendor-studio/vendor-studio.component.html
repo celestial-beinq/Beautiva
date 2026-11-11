@@ -1,50 +1,431 @@
-<section class="vendor-shell section">
+<!-- DARK ESPRESSO CONSOLE HEADER -->
+<section class="console-hero section--dark">
   <div class="container">
-    <div class="vendor-header">
+    <div class="console-top">
       <div>
-        <span class="eyebrow">Vendor Platform</span>
-        <h1>Auto-Generated Business Website Builder</h1>
-        <p>
-          Upload your studio details, services, Naira prices, and photos — Beautiva instantly
-          publishes a standalone website at <code>/business/{{ previewSlug }}</code> with Paystack
-          bookings built in.
-        </p>
+        <div class="section-index section-index--light">
+          <span class="section-index-num">01</span>
+          <span>Vendor Dashboard</span>
+        </div>
+        @if (activeStudio(); as studio) {
+          <h1 class="console-title">{{ studio.name }}</h1>
+          <div class="console-meta">
+            <span>{{ studio.categoryLabel }}</span>
+            <span>·</span>
+            <span>{{ studio.location }}</span>
+            <span>·</span>
+            <code>beautiva.ng/business/{{ studio.slug }}</code>
+          </div>
+        }
       </div>
 
-      <div class="vendor-tabs">
-        <button
-          type="button"
-          class="tab-btn"
-          [class.active]="activeTab() === 'builder'"
-          (click)="activeTab.set('builder')"
-        >
-          Studio Website Builder
-        </button>
-        <button
-          type="button"
-          class="tab-btn"
-          [class.active]="activeTab() === 'bookings'"
-          (click)="activeTab.set('bookings')"
-        >
-          Bookings Manager ({{ bookings().length }})
-        </button>
+      <div class="console-controls">
+        <div class="studio-select-wrap">
+          <label for="vendor-studio-select">Active Studio</label>
+          <select
+            id="vendor-studio-select"
+            [ngModel]="selectedStudioSlug()"
+            (ngModelChange)="selectStudio($event)"
+          >
+            @for (b of businesses(); track b.id) {
+              <option [value]="b.slug">{{ b.name }} ({{ b.city }})</option>
+            }
+          </select>
+        </div>
+
+        @if (activeStudio(); as studio) {
+          <a [routerLink]="['/business', studio.slug]" class="btn btn--white btn--sm">
+            Open live site ↗
+          </a>
+        }
+        <a routerLink="/admin" class="btn btn--ghost-light btn--sm">Super Admin Console</a>
       </div>
     </div>
 
+    <!-- KPI Strip -->
+    @if (activeStudio(); as studio) {
+      <div class="kpi-strip">
+        <div class="kpi-cell">
+          <span class="kpi-label">Collected via Paystack</span>
+          <strong class="kpi-value">{{ marketplace.formatNaira(studioMetrics().collected) }}</strong>
+          <span class="kpi-sub">{{ studioMetrics().totalCount }} total bookings</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Balance Due at Studio</span>
+          <strong class="kpi-value">
+            {{ marketplace.formatNaira(studioMetrics().pendingBalance) }}
+          </strong>
+          <span class="kpi-sub">Deposits &amp; pay-at-studio</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Upcoming &amp; Pending</span>
+          <strong class="kpi-value">{{ studioMetrics().activeCount }}</strong>
+          <span class="kpi-sub">{{ studioMetrics().completedCount }} completed visits</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Client Rating</span>
+          <strong class="kpi-value">★ {{ studio.rating.toFixed(1) }}</strong>
+          <span class="kpi-sub">{{ studio.reviewCount }} verified reviews</span>
+        </div>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- WORKSPACE TABS & CONTENT -->
+<section class="console-body">
+  <div class="container">
+    <div class="console-tabs" role="tablist">
+      <button
+        type="button"
+        class="console-tab"
+        [class.is-active]="activeTab() === 'bookings'"
+        (click)="activeTab.set('bookings')"
+      >
+        01 · Appointments ({{ studioBookings().length }})
+      </button>
+      <button
+        type="button"
+        class="console-tab"
+        [class.is-active]="activeTab() === 'menu'"
+        (click)="activeTab.set('menu')"
+      >
+        02 · Menu &amp; Team
+      </button>
+      <button
+        type="button"
+        class="console-tab"
+        [class.is-active]="activeTab() === 'hours'"
+        (click)="activeTab.set('hours')"
+      >
+        03 · Hours &amp; Paystack Rules
+      </button>
+      <button
+        type="button"
+        class="console-tab"
+        [class.is-active]="activeTab() === 'builder'"
+        (click)="activeTab.set('builder')"
+      >
+        04 · + Launch New Studio Site
+      </button>
+    </div>
+
+    @if (saveToast()) {
+      <div class="toast-bar">{{ saveToast() }}</div>
+    }
+
+    <!-- TAB 1: STUDIO APPOINTMENTS -->
+    @if (activeTab() === 'bookings') {
+      <div class="toolbar-row">
+        <input
+          type="text"
+          class="input toolbar-search"
+          [ngModel]="bookingSearch()"
+          (ngModelChange)="bookingSearch.set($event)"
+          placeholder="Search booking ID (BK-2026-...), client, or service..."
+        />
+
+        <div class="status-pills">
+          @for (st of ['all', 'Confirmed', 'Pending', 'Completed', 'Cancelled']; track st) {
+            <button
+              type="button"
+              class="filter-pill"
+              [class.is-active]="bookingStatusFilter() === st"
+              (click)="bookingStatusFilter.set($any(st))"
+            >
+              {{ st === 'all' ? 'All' : st }}
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (filteredStudioBookings().length > 0) {
+        <div class="ledger-list">
+          @for (b of filteredStudioBookings(); track b.bookingReference) {
+            <div class="ledger-card">
+              <div class="ledger-main">
+                <div class="ledger-top-line">
+                  <a
+                    routerLink="/track"
+                    [queryParams]="{ ref: b.bookingReference }"
+                    class="ref-link"
+                  >
+                    {{ b.bookingReference }}
+                  </a>
+                  <span
+                    class="badge"
+                    [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
+                    [class.badge--warning]="b.status === 'Pending'"
+                    [class.badge--danger]="b.status === 'Cancelled'"
+                  >
+                    {{ b.status }}
+                  </span>
+                  <span class="badge badge--bronze">{{ b.paymentStatus }}</span>
+                </div>
+
+                <h3>{{ b.serviceName }} · {{ b.customerName }}</h3>
+                <p class="ledger-sub">
+                  {{ b.dateDisplay }} at {{ b.time }} · Specialist: {{ b.staffName }} ·
+                  {{ b.customerPhone }} ({{ b.customerEmail }})
+                </p>
+                @if (b.notes) {
+                  <p class="ledger-note">Client note: “{{ b.notes }}”</p>
+                }
+              </div>
+
+              <div class="ledger-right">
+                <div class="ledger-amounts">
+                  <strong>Paid: {{ marketplace.formatNaira(b.amountPaid) }}</strong>
+                  @if (b.balanceDue > 0) {
+                    <span>Balance at studio: {{ marketplace.formatNaira(b.balanceDue) }}</span>
+                  } @else {
+                    <span>Settled in full</span>
+                  }
+                </div>
+
+                <div class="ledger-actions">
+                  @if (b.status === 'Pending') {
+                    <button
+                      type="button"
+                      class="btn btn--primary btn--sm"
+                      (click)="setStatus(b.bookingReference, 'Confirmed')"
+                    >
+                      Confirm
+                    </button>
+                  }
+                  @if (b.balanceDue > 0 && b.status !== 'Cancelled') {
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="markPaid(b.bookingReference)"
+                    >
+                      Mark Paid
+                    </button>
+                  }
+                  @if (b.status === 'Confirmed') {
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="setStatus(b.bookingReference, 'Completed')"
+                    >
+                      Complete
+                    </button>
+                  }
+                  @if (b.status !== 'Cancelled' && b.status !== 'Completed') {
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="setStatus(b.bookingReference, 'Cancelled')"
+                    >
+                      Cancel
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-box">
+          <h3>No matching bookings for this studio</h3>
+          <p>Bookings made from your studio website or booking page appear here immediately.</p>
+        </div>
+      }
+    }
+
+    <!-- TAB 2: EDIT SERVICES & TEAM -->
+    @if (activeTab() === 'menu') {
+      <div class="panel-grid">
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Service Menu (₦)</h2>
+              <p>Updates immediately on your studio’s public website.</p>
+            </div>
+            <button type="button" class="btn btn--outline btn--sm" (click)="addEditService()">
+              + Add service
+            </button>
+          </div>
+
+          <div class="dynamic-list">
+            @for (srv of editServices; track srv.id; let i = $index) {
+              <div class="dynamic-item">
+                <div class="form-three">
+                  <div class="field">
+                    <label class="field-label">Service Name</label>
+                    <input class="input" [(ngModel)]="srv.name" />
+                  </div>
+                  <div class="field">
+                    <label class="field-label">Price (₦)</label>
+                    <input class="input" type="number" [(ngModel)]="srv.price" min="500" />
+                  </div>
+                  <div class="field">
+                    <label class="field-label">Duration (mins)</label>
+                    <input
+                      class="input"
+                      type="number"
+                      [(ngModel)]="srv.durationMinutes"
+                      min="15"
+                    />
+                  </div>
+                </div>
+                <div class="srv-desc-row">
+                  <input
+                    class="input"
+                    [(ngModel)]="srv.description"
+                    placeholder="Service description..."
+                  />
+                  @if (editServices.length > 1) {
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm"
+                      (click)="removeEditService(i)"
+                    >
+                      Remove
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Specialists &amp; Team</h2>
+              <p>Clients can select a specialist while booking.</p>
+            </div>
+            <button type="button" class="btn btn--outline btn--sm" (click)="addEditStaff()">
+              + Add specialist
+            </button>
+          </div>
+
+          <div class="dynamic-list">
+            @for (m of editStaff; track m.id; let i = $index) {
+              <div class="staff-edit-card">
+                <div class="form-two">
+                  <input class="input" [(ngModel)]="m.name" placeholder="Name" />
+                  <input class="input" [(ngModel)]="m.role" placeholder="Role" />
+                </div>
+                <div class="srv-desc-row">
+                  <input class="input" [(ngModel)]="m.specialty" placeholder="Specialty" />
+                  <button
+                    type="button"
+                    class="btn btn--outline btn--sm"
+                    (click)="removeEditStaff(i)"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <button type="button" class="btn btn--primary btn--lg save-btn" (click)="saveMenuAndTeam()">
+            Save Menu &amp; Team Live
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 3: WORKING HOURS & PAYSTACK RULES -->
+    @if (activeTab() === 'hours') {
+      <div class="panel-grid">
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Opening Hours</h2>
+              <p>Displayed in the Hours &amp; Location section of your studio site.</p>
+            </div>
+          </div>
+
+          <div class="hours-editor">
+            @for (h of editHours; track h.day) {
+              <div class="hours-edit-row">
+                <strong>{{ h.day }}</strong>
+                <input class="input" [(ngModel)]="h.open" [disabled]="!!h.closed" />
+                <input class="input" [(ngModel)]="h.close" [disabled]="!!h.closed" />
+                <label class="closed-toggle">
+                  <input type="checkbox" [(ngModel)]="h.closed" />
+                  <span>Closed</span>
+                </label>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Paystack &amp; Deposit Policy</h2>
+              <p>Control how customers pay when booking your studio.</p>
+            </div>
+          </div>
+
+          <div class="policy-stack">
+            <label class="policy-check">
+              <input type="checkbox" [(ngModel)]="editPolicy.allowFull" />
+              <div>
+                <strong>Full Online Payment (Paystack)</strong>
+                <span>Customers settle 100% via Card, Bank Transfer, or USSD.</span>
+              </div>
+            </label>
+
+            <label class="policy-check">
+              <input type="checkbox" [(ngModel)]="editPolicy.allowDeposit" />
+              <div>
+                <strong>Upfront Deposit Option</strong>
+                <span>Lock slot with partial Paystack payment; balance paid at studio.</span>
+              </div>
+            </label>
+
+            @if (editPolicy.allowDeposit) {
+              <div class="field deposit-field">
+                <label class="field-label">Deposit Percentage (%)</label>
+                <input
+                  class="input"
+                  type="number"
+                  min="10"
+                  max="80"
+                  [(ngModel)]="editPolicy.depositPercent"
+                />
+              </div>
+            }
+
+            <label class="policy-check">
+              <input type="checkbox" [(ngModel)]="editPolicy.allowPayAtBusiness" />
+              <div>
+                <strong>Allow Pay at Business</strong>
+                <span>Customers can reserve without upfront payment and settle on arrival.</span>
+              </div>
+            </label>
+          </div>
+
+          <button
+            type="button"
+            class="btn btn--primary btn--lg save-btn"
+            (click)="saveHoursAndPolicy()"
+          >
+            Save Hours &amp; Payment Rules
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 4: LAUNCH NEW STUDIO WEBSITE -->
     @if (activeTab() === 'builder') {
       @if (publishedSlug(); as slug) {
-        <div class="publish-banner card">
+        <div class="publish-banner">
           <div>
             <span class="badge badge--success">Website Published Live</span>
-            <h2>Your studio site is ready at <code>/business/{{ slug }}</code></h2>
-            <p>Customers can now discover your listing, explore your catalogue, and book with Paystack.</p>
+            <h2>Your studio site is live at <code>beautiva.ng/business/{{ slug }}</code></h2>
+            <p>Customers can discover your listing, browse services, and book with Paystack.</p>
           </div>
           <div class="publish-actions">
-            <a [routerLink]="['/business', slug]" class="btn btn--primary">
-              Visit Live Website →
-            </a>
+            <a [routerLink]="['/business', slug]" class="btn btn--primary">Visit Live Website →</a>
             <a [routerLink]="['/category', categorySlug]" class="btn btn--outline">
-              View in Category Listing
+              View in Category
             </a>
           </div>
         </div>
@@ -53,15 +434,14 @@
       <div class="builder-grid">
         <div class="builder-form-col">
           <div class="builder-toolbar">
-            <span>Fill in your studio details below, or prefill an example:</span>
+            <span>Fill in your studio details below or load a sample studio:</span>
             <button type="button" class="btn btn--outline btn--sm" (click)="loadDemoPreset()">
               Autofill Sample Studio
             </button>
           </div>
 
-          <!-- 1. Business Identity -->
-          <div class="form-card card">
-            <h2>1. Business Information</h2>
+          <div class="panel-card">
+            <h2>1. Studio Identity</h2>
             <div class="form-two">
               <div class="field">
                 <label class="field-label">Business Name *</label>
@@ -85,11 +465,7 @@
               </div>
               <div class="field">
                 <label class="field-label">Custom URL Slug</label>
-                <input
-                  class="input"
-                  [(ngModel)]="customSlug"
-                  [placeholder]="previewSlug"
-                />
+                <input class="input" [(ngModel)]="customSlug" [placeholder]="previewSlug" />
               </div>
               <div class="field">
                 <label class="field-label">City</label>
@@ -97,11 +473,7 @@
               </div>
               <div class="field">
                 <label class="field-label">Area / Location *</label>
-                <input
-                  class="input"
-                  [(ngModel)]="location"
-                  placeholder="e.g. Lekki Phase 1, Lagos"
-                />
+                <input class="input" [(ngModel)]="location" placeholder="e.g. Lekki Phase 1, Lagos" />
               </div>
               <div class="field">
                 <label class="field-label">Street Address</label>
@@ -115,11 +487,7 @@
 
             <div class="field">
               <label class="field-label">Tagline</label>
-              <input
-                class="input"
-                [(ngModel)]="tagline"
-                placeholder="One-line headline for your auto-generated website"
-              />
+              <input class="input" [(ngModel)]="tagline" placeholder="One-line studio headline" />
             </div>
 
             <div class="field">
@@ -133,13 +501,24 @@
             </div>
           </div>
 
-          <!-- 2. Photos & Contact -->
-          <div class="form-card card">
-            <h2>2. Cover Image & Contact Info</h2>
+          <div class="panel-card">
+            <h2>2. Cover Photo &amp; Contact</h2>
             <div class="cover-upload-row">
               <img [src]="coverImage" alt="Cover preview" class="cover-preview-thumb" />
               <div class="cover-upload-controls">
-                <label class="field-label">Upload Cover Photo (or keep category editorial photo)</label>
+                <label class="field-label">Pick a curated image or upload your own</label>
+                <div class="preset-chips">
+                  @for (opt of galleryPresetOptions; track opt.path) {
+                    <button
+                      type="button"
+                      class="filter-pill"
+                      [class.is-active]="coverImage === opt.path"
+                      (click)="coverImage = opt.path"
+                    >
+                      {{ opt.label }}
+                    </button>
+                  }
+                </div>
                 <input type="file" accept="image/*" (change)="onCoverFileSelected($event)" />
               </div>
             </div>
@@ -160,10 +539,9 @@
             </div>
           </div>
 
-          <!-- 3. Service Catalogue -->
-          <div class="form-card card">
-            <div class="card-head-row">
-              <h2>3. Service Catalogue & Prices (₦)</h2>
+          <div class="panel-card">
+            <div class="panel-head">
+              <h2>3. Services &amp; Paystack Policy</h2>
               <button type="button" class="btn btn--outline btn--sm" (click)="addService()">
                 + Add Service
               </button>
@@ -173,24 +551,15 @@
               @for (srv of services; track srv.id; let i = $index) {
                 <div class="dynamic-item">
                   <div class="form-three">
-                    <div class="field">
-                      <label class="field-label">Service Name</label>
-                      <input class="input" [(ngModel)]="srv.name" placeholder="e.g. Knotless Braids" />
-                    </div>
-                    <div class="field">
-                      <label class="field-label">Price (₦)</label>
-                      <input class="input" type="number" [(ngModel)]="srv.price" min="500" />
-                    </div>
-                    <div class="field">
-                      <label class="field-label">Duration (mins)</label>
-                      <input class="input" type="number" [(ngModel)]="srv.durationMinutes" min="15" />
-                    </div>
+                    <input class="input" [(ngModel)]="srv.name" placeholder="Service name" />
+                    <input class="input" type="number" [(ngModel)]="srv.price" min="500" />
+                    <input class="input" type="number" [(ngModel)]="srv.durationMinutes" min="15" />
                   </div>
                   <div class="srv-desc-row">
                     <input
                       class="input"
                       [(ngModel)]="srv.description"
-                      placeholder="Short service description..."
+                      placeholder="Short description..."
                     />
                     @if (services.length > 1) {
                       <button
@@ -205,165 +574,50 @@
                 </div>
               }
             </div>
-          </div>
-
-          <!-- 4. Staff & Payment Settings -->
-          <div class="form-card card">
-            <div class="card-head-row">
-              <h2>4. Team & Paystack Payment Policy</h2>
-              <button type="button" class="btn btn--outline btn--sm" (click)="addStaff()">
-                + Add Staff
-              </button>
-            </div>
-
-            <div class="dynamic-list">
-              @for (m of staff; track m.id; let i = $index) {
-                <div class="staff-row">
-                  <input class="input" [(ngModel)]="m.name" placeholder="Specialist name" />
-                  <input class="input" [(ngModel)]="m.role" placeholder="Role e.g. Senior Stylist" />
-                  <button
-                    type="button"
-                    class="btn btn--outline btn--sm"
-                    (click)="removeStaff(i)"
-                  >
-                    ✕
-                  </button>
-                </div>
-              }
-            </div>
 
             <div class="policy-toggles">
-              <label><input type="checkbox" [(ngModel)]="allowFull" /> Allow Full Payment (Paystack)</label>
-              <label><input type="checkbox" [(ngModel)]="allowDeposit" /> Allow 30% Deposit (Paystack)</label>
-              <label><input type="checkbox" [(ngModel)]="allowPayAtBusiness" /> Allow Pay at Business</label>
+              <label><input type="checkbox" [(ngModel)]="allowFull" /> Full Payment (Paystack)</label>
+              <label><input type="checkbox" [(ngModel)]="allowDeposit" /> 30% Deposit (Paystack)</label>
+              <label><input type="checkbox" [(ngModel)]="allowPayAtBusiness" /> Pay at Studio</label>
             </div>
           </div>
         </div>
 
-        <!-- Live Website Preview Card -->
         <aside class="preview-sidebar">
-          <div class="preview-card card">
+          <div class="preview-card">
             <div class="preview-browser-bar">
               <span></span><span></span><span></span>
-              <code>beautiva.app/business/{{ previewSlug }}</code>
+              <code>beautiva.ng/business/{{ previewSlug }}</code>
             </div>
             <img [src]="coverImage" alt="Preview" class="preview-cover" />
             <div class="preview-body">
-              <span class="badge badge--bronze">
-                {{ marketplace.getCategoryBySlug(categorySlug)?.shortName }}
-              </span>
-              <h3>{{ businessName || 'Your Business Name' }}</h3>
-              <p class="preview-loc">📍 {{ location || 'City, Neighbourhood' }}</p>
-              <p class="preview-tag">{{ tagline || 'Your studio tagline appears here.' }}</p>
+              <span class="badge badge--bronze">Live Auto-Generated Preview</span>
+              <h3>{{ businessName || 'Your Studio Name' }}</h3>
+              <p class="preview-loc">{{ location || 'Lekki Phase 1, Lagos' }}</p>
+              <p class="preview-tag">
+                {{ tagline || 'Your studio tagline appears here for discovering customers.' }}
+              </p>
 
-              <div class="preview-services">
+              <div class="preview-menu">
                 @for (srv of services.slice(0, 3); track srv.id) {
-                  <div>
-                    <span>{{ srv.name || 'Service' }}</span>
+                  <div class="preview-srv-row">
+                    <span>{{ srv.name || 'Service Name' }}</span>
                     <strong>{{ marketplace.formatNaira(srv.price || 0) }}</strong>
                   </div>
                 }
               </div>
 
               @if (formError()) {
-                <div class="form-error">{{ formError() }}</div>
+                <p class="form-error">{{ formError() }}</p>
               }
 
-              <button
-                type="button"
-                class="btn btn--primary btn--lg publish-btn"
-                (click)="publishStudio()"
-              >
+              <button type="button" class="btn btn--primary btn--lg publish-btn" (click)="publishStudio()">
                 Publish Studio Website →
               </button>
             </div>
           </div>
         </aside>
       </div>
-    } @else {
-      <!-- TAB 2: VENDOR BOOKINGS MANAGER -->
-      <div class="bookings-panel card">
-        <div class="bookings-toolbar">
-          <div>
-            <h2>Incoming Appointments</h2>
-            <p>Updating payment or booking status reflects immediately on the customer’s Track Booking page.</p>
-          </div>
-          <select
-            class="select studio-filter"
-            [ngModel]="bookingsFilterSlug()"
-            (ngModelChange)="bookingsFilterSlug.set($event)"
-          >
-            <option value="all">All Studios</option>
-            @for (biz of businesses(); track biz.id) {
-              <option [value]="biz.slug">{{ biz.name }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="bookings-table-wrap">
-          <table class="bookings-table">
-            <thead>
-              <tr>
-                <th>Reference</th>
-                <th>Business</th>
-                <th>Customer</th>
-                <th>Service & Slot</th>
-                <th>Payment</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (b of filteredBookings(); track b.bookingReference) {
-                <tr>
-                  <td>
-                    <a [routerLink]="['/track']" [queryParams]="{ ref: b.bookingReference }" class="ref-link">
-                      {{ b.bookingReference }}
-                    </a>
-                  </td>
-                  <td>{{ b.businessName }}</td>
-                  <td>
-                    <strong>{{ b.customerName }}</strong>
-                    <div class="sub-cell">{{ b.customerEmail }}</div>
-                  </td>
-                  <td>
-                    <strong>{{ b.serviceName }}</strong>
-                    <div class="sub-cell">{{ b.dateDisplay }} · {{ b.time }}</div>
-                  </td>
-                  <td>
-                    <span class="badge">{{ b.paymentStatus }}</span>
-                    <div class="sub-cell">Paid: {{ marketplace.formatNaira(b.amountPaid) }}</div>
-                  </td>
-                  <td>
-                    <span
-                      class="badge"
-                      [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
-                      [class.badge--danger]="b.status === 'Cancelled'"
-                    >
-                      {{ b.status }}
-                    </span>
-                  </td>
-                  <td>
-                    <div class="row-actions">
-                      @if (b.paymentStatus !== 'Paid') {
-                        <button type="button" class="btn btn--outline btn--sm" (click)="markPaid(b.bookingReference)">
-                          Mark Paid
-                        </button>
-                      }
-                      @if (b.status === 'Confirmed') {
-                        <button type="button" class="btn btn--primary btn--sm" (click)="setStatus(b.bookingReference, 'Completed')">
-                          Complete
-                        </button>
-                      }
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
     }
   </div>
 </section>
-

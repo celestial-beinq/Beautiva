@@ -1,39 +1,37 @@
-<!-- STEP 1: HERO SECTION (Inspired by Editorial Salon Reference) -->
+<!-- 01 | EDITORIAL HERO -->
 <section class="hero">
-  <img src="images/hero-salon.jpg" alt="Luxury beauty studio interior" class="hero-bg" />
+  <img src="images/hero-salon.jpg" alt="Sunlit beauty studio interior" class="hero-bg" />
   <div class="hero-scrim" aria-hidden="true"></div>
 
-  <div class="container hero-content">
+  <div class="container hero-inner">
     <div class="hero-main">
-      <div class="hero-tag">
-        <span class="hero-tag-num">01</span>
-        <span>Beauty & Personal Care Marketplace · Lagos & Abuja</span>
+      <div class="section-index section-index--light hero-tag">
+        <span class="section-index-num">01</span>
+        <span>Beauty &amp; Personal Care Marketplace · Lagos &amp; Abuja</span>
       </div>
 
       <h1 class="hero-title">
-        The art of<br />
-        effortless care.
+        Great hair,<br />
+        sharp fades,<br />
+        clean craft.
       </h1>
 
       <p class="hero-sub">
-        Discover vetted hair stylists, barbers, nail techs, lash artists, makeup studios, and
-        tattoo artists. Explore each studio’s instant website, book your slot, pay with Paystack,
-        and track your reference.
+        Hair stylists, barbers, nail ateliers, lash artists, makeup studios, and tattoo artists in
+        one place. Open any studio’s website, reserve your chair, pay via Paystack, and track your
+        booking reference.
       </p>
 
-      <!-- Search Bar -->
+      <!-- Search -->
       <form class="hero-search" (ngSubmit)="submitSearch()">
-        <div class="search-field">
-          <span class="search-icon" aria-hidden="true">⌕</span>
-          <input
-            type="text"
-            name="q"
-            [ngModel]="searchQuery()"
-            (ngModelChange)="searchQuery.set($event)"
-            placeholder="Search Knotless Braids, Skin Fade, Lekki..."
-            aria-label="Search beauty professionals or services"
-          />
-        </div>
+        <input
+          type="text"
+          name="q"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          placeholder="Search Knotless Braids, Skin Fade, Lekki..."
+          aria-label="Search beauty professionals or services"
+        />
 
         <select
           name="category"
@@ -51,80 +49,206 @@
       </form>
 
       <div class="hero-ctas">
-        <a routerLink="/businesses" class="btn btn--white btn--lg">Explore studios →</a>
-        <a href="#categories" class="btn btn--ghost-light btn--lg">Browse categories →</a>
+        <a routerLink="/businesses" class="btn btn--white btn--lg">Explore studios</a>
+        <a href="#categories" class="btn btn--ghost-light btn--lg">Browse categories</a>
       </div>
     </div>
 
-    <!-- Bottom-left Glassmorphic Floating Highlight Card -->
-    <a routerLink="/business/glamour-studio" class="hero-highlight-card">
-      <img
-        src="images/cat-hairdressers.jpg"
-        alt="Glamour Studio Knotless Braids"
-        class="highlight-thumb"
-      />
-      <div class="highlight-meta">
-        <span class="highlight-label">Most booked this week</span>
-        <strong class="highlight-title">Knotless Braids · Glamour Studio</strong>
-        <span class="highlight-sub">3 hrs · from ₦25,000 · Lekki Phase 1</span>
-      </div>
-      <span class="highlight-arrow" aria-hidden="true">↗</span>
-    </a>
+    <div class="hero-bottom-row">
+      <a routerLink="/business/glamour-studio" class="hero-highlight">
+        <img
+          src="images/cat-hairdressers.jpg"
+          alt="Glamour Studio Knotless Braids"
+          class="highlight-thumb"
+        />
+        <div class="highlight-meta">
+          <span class="highlight-label">Most booked this week</span>
+          <strong class="highlight-title">Knotless Braids · Glamour Studio</strong>
+          <span class="highlight-sub">3 hrs · from ₦25,000 · Lekki Phase 1</span>
+        </div>
+        <span class="highlight-arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a routerLink="/track" [queryParams]="{ ref: 'BK-2026-000124' }" class="hero-track-pill">
+        <span>Have a reference?</span>
+        <strong>Track BK-2026-000124 →</strong>
+      </a>
+    </div>
   </div>
-</section>
 
-<!-- BROWSE SERVICE CATEGORIES -->
-<section id="categories" class="section">
-  <div class="container">
-    <div class="section-header">
-      <div>
-        <span class="eyebrow">02 · Curated Disciplines</span>
-        <h2 class="section-title">Browse service categories</h2>
-        <p class="section-subtitle">
-          Six specialized beauty and personal care verticals — each with dedicated studio listings,
-          verified ratings, and transparent Naira pricing.
-        </p>
-      </div>
-      <a routerLink="/businesses" class="btn btn--outline">View all studios →</a>
-    </div>
-
-    <div class="cat-grid">
-      @for (cat of categories(); track cat.slug) {
-        <a [routerLink]="['/category', cat.slug]" class="cat-card">
-          <img [src]="cat.coverImage" [alt]="cat.name" class="cat-img" loading="lazy" />
-          <div class="cat-scrim"></div>
-          <div class="cat-body">
-            <span class="cat-count">
-              {{ categoryCountMap().get(cat.slug) || 0 }}
-              {{ (categoryCountMap().get(cat.slug) || 0) === 1 ? 'Studio' : 'Studios' }}
-            </span>
-            <h3 class="cat-name">{{ cat.name }}</h3>
-            <p class="cat-tagline">{{ cat.tagline }}</p>
-            <div class="cat-tags">
-              @for (tag of cat.popularTags.slice(0, 2); track tag) {
-                <span>{{ tag }}</span>
-              }
-            </div>
-          </div>
-        </a>
+  <!-- Scissor-Style Ticker Strip -->
+  <div class="marquee-strip" aria-hidden="true">
+    <div class="marquee-track">
+      @for (item of marqueeItems; track $index) {
+        <span class="marquee-item">{{ item }}</span>
+        <span class="marquee-sep">·</span>
+      }
+      @for (item of marqueeItems; track $index) {
+        <span class="marquee-item">{{ item }}</span>
+        <span class="marquee-sep">·</span>
       }
     </div>
   </div>
 </section>
 
-<!-- FEATURED BUSINESSES -->
-<section class="section section--stone">
+<!-- 02 | SIX CRAFTS (INTERACTIVE EDITORIAL SHOWCASE) -->
+<section id="categories" class="section">
+  <div class="container">
+    <div class="split-intro">
+      <div>
+        <div class="section-index">
+          <span class="section-index-num">02</span>
+          <span>Six disciplines</span>
+        </div>
+        <h2 class="section-title split-heading">
+          Braids and fades,<br />
+          nails and bridal glam.
+        </h2>
+      </div>
+
+      <div class="split-aside">
+        <div class="rating-summary">
+          <strong>4.9</strong>
+          <span>from 1,400+ Nigerian bookings across Lagos &amp; Abuja</span>
+        </div>
+        <p class="split-copy">
+          Every listed professional gets a live website with transparent Naira pricing, real studio
+          work, and instant slot availability before you pay.
+        </p>
+        <a routerLink="/businesses" class="btn btn--outline">View all studios</a>
+      </div>
+    </div>
+
+    <div class="crafts-grid">
+      <div class="crafts-list">
+        @for (cat of categories(); track cat.slug; let i = $index) {
+          <a
+            [routerLink]="['/category', cat.slug]"
+            class="craft-row"
+            [class.is-active]="activeCategoryIndex() === i"
+            (mouseenter)="activeCategoryIndex.set(i)"
+            (focus)="activeCategoryIndex.set(i)"
+          >
+            <span class="craft-num">0{{ i + 1 }}</span>
+            <div class="craft-text">
+              <div class="craft-title-line">
+                <strong>{{ cat.name }}</strong>
+                <span class="craft-count">
+                  {{ categoryCountMap().get(cat.slug) || 0 }}
+                  {{ (categoryCountMap().get(cat.slug) || 0) === 1 ? 'studio' : 'studios' }}
+                </span>
+              </div>
+              <p>{{ cat.tagline }}</p>
+            </div>
+            <span class="craft-arrow" aria-hidden="true">→</span>
+          </a>
+        }
+      </div>
+
+      @if (activeCategory(); as currentCat) {
+        <div class="craft-preview">
+          <div class="craft-image-frame">
+            <img [src]="currentCat.coverImage" [alt]="currentCat.name" />
+          </div>
+          <div class="craft-preview-foot">
+            <div>
+              <span class="craft-preview-label">{{ currentCat.name }}</span>
+              <p class="craft-preview-desc">{{ currentCat.description }}</p>
+              <div class="craft-tags">
+                @for (tag of currentCat.popularTags; track tag) {
+                  <span>{{ tag }}</span>
+                }
+              </div>
+            </div>
+            <a [routerLink]="['/category', currentCat.slug]" class="btn btn--primary">
+              Browse {{ currentCat.shortName }}
+            </a>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- 03 | SERVICE MENU (SCISSOR TABBED LIST) -->
+<section class="section section--sand">
+  <div class="container menu-layout">
+    <div class="menu-sidebar">
+      <div class="section-index">
+        <span class="section-index-num">03</span>
+        <span>Service menu</span>
+      </div>
+      <h2 class="section-title">One menu across six crafts.</h2>
+      <p class="section-subtitle">
+        Compare real starting prices in Naira and jump straight into scheduling with Paystack or
+        studio checkout.
+      </p>
+
+      <div class="menu-tabs" role="tablist" aria-label="Service disciplines">
+        @for (grp of menuGroups; track grp.id; let i = $index) {
+          <button
+            type="button"
+            class="menu-tab"
+            [class.is-active]="activeMenuGroupIndex() === i"
+            (click)="activeMenuGroupIndex.set(i)"
+          >
+            <span class="menu-tab-num">{{ grp.num }}</span>
+            <span>{{ grp.label }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="menu-list-col">
+      <p class="menu-group-tagline">{{ activeMenuGroup().tagline }}</p>
+
+      <div class="menu-rows">
+        @for (srv of activeMenuServices(); track srv.serviceId) {
+          <div class="menu-row">
+            <div class="menu-row-info">
+              <div class="menu-row-head">
+                <h3>{{ srv.name }}</h3>
+                <span class="menu-row-studio">{{ srv.businessName }} · {{ srv.location }}</span>
+              </div>
+              <p>{{ srv.description }}</p>
+            </div>
+
+            <div class="menu-row-meta">
+              <div class="menu-price-col">
+                <strong>from {{ marketplace.formatNaira(srv.price) }}</strong>
+                <span>{{ marketplace.formatDuration(srv.durationMinutes) }}</span>
+              </div>
+              <a
+                [routerLink]="['/book', srv.businessSlug]"
+                [queryParams]="{ service: srv.serviceId }"
+                class="btn btn--outline btn--sm"
+              >
+                Book
+              </a>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 | FEATURED STUDIOS -->
+<section class="section">
   <div class="container">
     <div class="section-header">
       <div>
-        <span class="eyebrow">03 · Handpicked Professionals</span>
-        <h2 class="section-title">Featured businesses</h2>
+        <div class="section-index">
+          <span class="section-index-num">04</span>
+          <span>Featured studios</span>
+        </div>
+        <h2 class="section-title">Studios open for booking</h2>
         <p class="section-subtitle">
-          Every listed vendor gets an automatically generated website with their catalogue, gallery,
-          working hours, and instant booking engine.
+          Every studio has an auto-generated website with its full menu, work gallery, working
+          hours, and live booking engine.
         </p>
       </div>
-      <a routerLink="/businesses" class="btn btn--outline">Explore directory →</a>
+      <a routerLink="/businesses" class="btn btn--outline">Explore directory</a>
     </div>
 
     <div class="biz-grid">
@@ -135,37 +259,225 @@
   </div>
 </section>
 
-<!-- POPULAR SERVICES -->
+<!-- 05 | AUTO-GENERATED STUDIO WEBSITES (DARK ESPRESSO SHOWCASE) -->
+<section class="section section--dark">
+  <div class="container showcase-grid">
+    <div class="showcase-left">
+      <div class="section-index section-index--light">
+        <span class="section-index-num">05</span>
+        <span>Instant studio websites</span>
+      </div>
+      <h2 class="section-title showcase-title">
+        Every vendor gets a live website automatically.
+      </h2>
+      <p class="showcase-copy">
+        No developer needed. Studios upload their services, photos, hours, and Paystack policy once
+        and get a dedicated site ready for Instagram bios and WhatsApp links.
+      </p>
+
+      <div class="showcase-switcher">
+        @for (studio of showcaseStudios(); track studio.id; let i = $index) {
+          <button
+            type="button"
+            class="showcase-btn"
+            [class.is-active]="activeShowcaseStudio().slug === studio.slug"
+            (click)="activeShowcaseSlug.set(studio.slug)"
+          >
+            <span>0{{ i + 1 }}</span>
+            <div>
+              <strong>{{ studio.name }}</strong>
+              <small>/business/{{ studio.slug }}</small>
+            </div>
+          </button>
+        }
+      </div>
+
+      <div class="showcase-actions">
+        <a [routerLink]="['/business', activeShowcaseStudio().slug]" class="btn btn--white">
+          Open {{ activeShowcaseStudio().name }} site
+        </a>
+        <a routerLink="/vendor" class="btn btn--ghost-light">Create a studio site</a>
+      </div>
+    </div>
+
+    @if (activeShowcaseStudio(); as studio) {
+      <div class="showcase-card">
+        <div class="showcase-url-bar">
+          <span class="url-dot"></span>
+          <code>beautiva.ng/business/{{ studio.slug }}</code>
+          <span class="url-city">{{ studio.location }}</span>
+        </div>
+
+        <div class="showcase-photos">
+          <img [src]="studio.coverImage" [alt]="studio.name" class="showcase-photo-main" />
+          <img
+            [src]="studio.gallery[1] || studio.coverImage"
+            [alt]="studio.name + ' portfolio'"
+            class="showcase-photo-side"
+          />
+        </div>
+
+        <div class="showcase-card-body">
+          <div class="showcase-meta-row">
+            <div>
+              <h3>{{ studio.name }}</h3>
+              <p>{{ studio.tagline }}</p>
+            </div>
+            <span class="showcase-rating">★ {{ studio.rating.toFixed(1) }}</span>
+          </div>
+
+          <div class="showcase-services">
+            @for (srv of studio.services.slice(0, 3); track srv.id) {
+              <div class="showcase-srv-row">
+                <span>{{ srv.name }}</span>
+                <strong>{{ marketplace.formatNaira(srv.price) }}</strong>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- 06 | FOUR SIMPLE STEPS -->
+<section id="how-it-works" class="section">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-index">
+          <span class="section-index-num">06</span>
+          <span>How it works</span>
+        </div>
+        <h2 class="section-title">From first search to the chair.</h2>
+      </div>
+      <a routerLink="/track" class="btn btn--outline">Track a booking</a>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-item">
+        <div class="step-head">
+          <span class="step-num">Step 01</span>
+          <span class="step-time">1 minute</span>
+        </div>
+        <h3>Pick a craft &amp; studio</h3>
+        <p>
+          Filter Hairdressers, Barbers, Nail Techs, Lash Artists, Makeup Artists, or Tattoo Artists
+          by Lagos or Abuja area and starting Naira price.
+        </p>
+      </div>
+
+      <div class="step-item">
+        <div class="step-head">
+          <span class="step-num">Step 02</span>
+          <span class="step-time">Instant site</span>
+        </div>
+        <h3>Inspect their studio site</h3>
+        <p>
+          Open their generated site like <code>/business/glamour-studio</code> to view real photos,
+          services, specialists, hours, and reviews.
+        </p>
+      </div>
+
+      <div class="step-item">
+        <div class="step-head">
+          <span class="step-num">Step 03</span>
+          <span class="step-time">Paystack / Studio</span>
+        </div>
+        <h3>Choose slot &amp; settle</h3>
+        <p>
+          Select date, time, and optional specialist. Pay in full with Paystack, put down a 30%
+          deposit, or pay at the studio where allowed.
+        </p>
+      </div>
+
+      <div class="step-item">
+        <div class="step-head">
+          <span class="step-num">Step 04</span>
+          <span class="step-time">Live ID</span>
+        </div>
+        <h3>Track with your reference</h3>
+        <p>
+          Receive a confirmation email preview and booking code like <code>BK-2026-000124</code>
+          to check your appointment anytime.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 | CLIENT REVIEWS (SAND EDITORIAL QUOTE) -->
+<section class="section section--sand">
+  <div class="container">
+    <div class="reviews-top">
+      <div>
+        <div class="section-index">
+          <span class="section-index-num">07</span>
+          <span>Client reviews</span>
+        </div>
+        <div class="reviews-score">4.9 from 1,400+ verified bookings</div>
+      </div>
+      <a [routerLink]="['/business', activeReview().businessSlug]" class="btn btn--outline">
+        Visit {{ activeReview().businessName }} →
+      </a>
+    </div>
+
+    @if (activeReview(); as rev) {
+      <blockquote class="featured-quote">
+        “{{ rev.comment }}”
+        <footer>
+          <strong>{{ rev.author }}</strong>
+          <span>{{ rev.serviceName }} · {{ rev.businessName }}</span>
+        </footer>
+      </blockquote>
+    }
+
+    <div class="review-selector">
+      @for (rev of reviews(); track rev.id; let i = $index) {
+        <button
+          type="button"
+          class="review-pill"
+          [class.is-active]="activeReviewIndex() === i"
+          (click)="activeReviewIndex.set(i)"
+        >
+          <strong>{{ rev.author }}</strong>
+          <span>{{ rev.serviceName }}</span>
+        </button>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- 08 | LOOKBOOK -->
 <section class="section">
   <div class="container">
     <div class="section-header">
       <div>
-        <span class="eyebrow">04 · Ready To Book</span>
-        <h2 class="section-title">Popular services across studios</h2>
+        <div class="section-index">
+          <span class="section-index-num">08</span>
+          <span>Lookbook</span>
+        </div>
+        <h2 class="section-title">Fresh from Nigerian chairs.</h2>
         <p class="section-subtitle">
-          Jump straight to scheduling and Paystack checkout for our most-requested treatments.
+          Real braids, fades, BIAB sets, lashes, bridal glam, and fine-line ink across Lagos and
+          Abuja studios.
         </p>
       </div>
-      <a routerLink="/track" class="btn btn--outline">Track a booking →</a>
+      <a routerLink="/businesses" class="btn btn--primary">Book a look</a>
     </div>
 
-    <div class="srv-grid">
-      @for (item of popularServices(); track item.service.id) {
-        <a
-          [routerLink]="['/book', item.businessSlug]"
-          [queryParams]="{ service: item.service.id }"
-          class="pop-srv-card card"
-        >
-          <img [src]="item.coverImage" [alt]="item.service.name" class="pop-srv-img" loading="lazy" />
-          <div class="pop-srv-body">
-            <span class="pop-srv-studio">{{ item.businessName }} · {{ item.businessLocation }}</span>
-            <h3 class="pop-srv-name">{{ item.service.name }}</h3>
-            <p class="pop-srv-desc">{{ item.service.description }}</p>
-            <div class="pop-srv-foot">
-              <strong class="pop-srv-price">{{ marketplace.formatNaira(item.service.price) }}</strong>
-              <span class="pop-srv-dur">{{ marketplace.formatDuration(item.service.durationMinutes) }}</span>
-              <span class="pop-srv-cta">Book →</span>
+    <div class="lookbook-grid">
+      @for (item of lookbookItems; track item.title) {
+        <a [routerLink]="['/business', item.studioSlug]" class="look-card">
+          <div class="look-img-wrap">
+            <img [src]="item.image" [alt]="item.title" loading="lazy" />
+          </div>
+          <div class="look-meta">
+            <div>
+              <strong>{{ item.title }}</strong>
+              <span>{{ item.studioName }}</span>
             </div>
+            <span class="look-price">{{ item.priceLabel }}</span>
           </div>
         </a>
       }
@@ -173,104 +485,49 @@
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section id="how-it-works" class="section section--stone">
-  <div class="container">
-    <div class="section-header">
-      <div>
-        <span class="eyebrow">05 · Seamless Journey</span>
-        <h2 class="section-title">How Beautiva works</h2>
+<!-- 09 | FAQ & QUICK TRACKING -->
+<section class="section faq-section">
+  <div class="container faq-layout">
+    <div class="faq-left">
+      <div class="section-index">
+        <span class="section-index-num">09</span>
+        <span>FAQ &amp; booking lookup</span>
       </div>
+      <h2 class="section-title">Questions, answered.</h2>
+      <p class="section-subtitle">
+        Already booked an appointment? Enter your reference ID below to open live payment and
+        confirmation details.
+      </p>
+
+      <form class="quick-track" (ngSubmit)="submitQuickTrack()">
+        <label class="field-label" for="home-track-ref">Quick Booking Reference</label>
+        <div class="quick-track-row">
+          <input
+            id="home-track-ref"
+            type="text"
+            class="input"
+            name="quickTrackRef"
+            [ngModel]="quickTrackRef()"
+            (ngModelChange)="quickTrackRef.set($event)"
+            placeholder="BK-2026-000124"
+          />
+          <button type="submit" class="btn btn--primary">Track</button>
+        </div>
+      </form>
     </div>
 
-    <div class="steps-grid">
-      <div class="step-card card">
-        <span class="step-num">01</span>
-        <h3>Discover & Select Category</h3>
-        <p>
-          Browse Hairdressers, Barbers, Nail Techs, Lash Artists, Makeup Artists, or Tattoo
-          Studios by city and starting price.
-        </p>
-      </div>
-
-      <div class="step-card card">
-        <span class="step-num">02</span>
-        <h3>Visit Auto-Generated Studio Site</h3>
-        <p>
-          Open any business’s dedicated page (like <code>/business/glamour-studio</code>) to view
-          their gallery, full price list, staff, and hours.
-        </p>
-      </div>
-
-      <div class="step-card card">
-        <span class="step-num">03</span>
-        <h3>Pick Slot & Pay with Paystack</h3>
-        <p>
-          Choose your date, time, optional specialist, and pay in full, put down a 30% deposit, or
-          pay at the studio when allowed.
-        </p>
-      </div>
-
-      <div class="step-card card">
-        <span class="step-num">04</span>
-        <h3>Receive Reference & Track Live</h3>
-        <p>
-          Get an email confirmation with a unique ID like <code>BK-2026-000124</code> and check
-          live status anytime on our Tracking page.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CUSTOMER REVIEWS -->
-<section class="section">
-  <div class="container">
-    <div class="section-header">
-      <div>
-        <span class="eyebrow">06 · Verified Clients</span>
-        <h2 class="section-title">Customer reviews</h2>
-      </div>
-    </div>
-
-    <div class="reviews-grid">
-      @for (rev of reviews(); track rev.id) {
-        <article class="review-card card">
-          <div class="review-stars">★★★★★ <span>{{ rev.rating }}.0</span></div>
-          <p class="review-text">“{{ rev.comment }}”</p>
-          <div class="review-footer">
-            <div>
-              <strong>{{ rev.author }}</strong>
-              <span>{{ rev.serviceName }}</span>
-            </div>
-            <a [routerLink]="['/business', rev.businessSlug]" class="review-link">
-              {{ rev.businessName }} ↗
-            </a>
-          </div>
-        </article>
+    <div class="faq-list">
+      @for (faq of faqs; track faq.question; let i = $index) {
+        <div class="faq-item" [class.is-open]="openFaqIndex() === i">
+          <button type="button" class="faq-trigger" (click)="toggleFaq(i)">
+            <span>{{ faq.question }}</span>
+            <span class="faq-plus">{{ openFaqIndex() === i ? '−' : '+' }}</span>
+          </button>
+          @if (openFaqIndex() === i) {
+            <p class="faq-answer">{{ faq.answer }}</p>
+          }
+        </div>
       }
     </div>
   </div>
 </section>
-
-<!-- VENDOR AUTO-WEBSITE CALLOUT -->
-<section class="section section--dark vendor-banner">
-  <div class="container vendor-banner-inner">
-    <div>
-      <span class="eyebrow eyebrow--light">For Beauty Professionals</span>
-      <h2 class="section-title">Get an auto-generated studio website in 2 minutes.</h2>
-      <p class="vendor-copy">
-        No web developer needed. Upload your studio name, services, Naira prices, hours, and photos
-        — Beautiva publishes your live <code>/business/your-studio</code> website and Paystack
-        booking engine immediately.
-      </p>
-    </div>
-    <div class="vendor-banner-actions">
-      <a routerLink="/vendor" class="btn btn--white btn--lg">Launch Your Studio Site →</a>
-      <a routerLink="/business/glamour-studio" class="btn btn--ghost-light btn--lg">
-        Preview Sample Website
-      </a>
-    </div>
-  </div>
-</section>
-

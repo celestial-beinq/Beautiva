@@ -1,0 +1,459 @@
+<!-- DARK ESPRESSO SUPER ADMIN HEADER -->
+<section class="admin-hero section--dark">
+  <div class="container">
+    <div class="admin-top">
+      <div>
+        <div class="section-index section-index--light">
+          <span class="section-index-num">01</span>
+          <span>Super Admin Console · Beautiva Marketplace</span>
+        </div>
+        <h1 class="admin-title">Platform Operations &amp; Ledger</h1>
+        <p class="admin-sub">
+          Verify studios, curate homepage highlights, audit Paystack settlements, and moderate
+          client feedback across Lagos &amp; Abuja.
+        </p>
+      </div>
+
+      <div class="admin-head-actions">
+        <a routerLink="/vendor" class="btn btn--ghost-light btn--sm">Vendor Console</a>
+        <a routerLink="/businesses" class="btn btn--white btn--sm">Public Directory ↗</a>
+      </div>
+    </div>
+
+    <div class="admin-kpis">
+      <div class="kpi-cell">
+        <span class="kpi-label">Gross Booking Value</span>
+        <strong class="kpi-value">
+          {{ marketplace.formatNaira(platformMetrics().grossBookingValue) }}
+        </strong>
+        <span class="kpi-sub">{{ platformMetrics().validBookingsCount }} active bookings</span>
+      </div>
+
+      <div class="kpi-cell">
+        <span class="kpi-label">Paystack Settled Online</span>
+        <strong class="kpi-value">
+          {{ marketplace.formatNaira(platformMetrics().paystackCollected) }}
+        </strong>
+        <span class="kpi-sub">
+          Est. 10% fee: {{ marketplace.formatNaira(platformMetrics().platformCommission) }}
+        </span>
+      </div>
+
+      <div class="kpi-cell">
+        <span class="kpi-label">Registered Studios</span>
+        <strong class="kpi-value">{{ platformMetrics().totalStudios }}</strong>
+        <span class="kpi-sub">
+          {{ platformMetrics().verifiedStudios }} verified ·
+          {{ platformMetrics().suspendedStudios }} suspended
+        </span>
+      </div>
+
+      <div class="kpi-cell">
+        <span class="kpi-label">Balance Due at Studios</span>
+        <strong class="kpi-value">
+          {{ marketplace.formatNaira(platformMetrics().balanceAtStudios) }}
+        </strong>
+        <span class="kpi-sub">{{ platformMetrics().featuredStudios }} featured on homepage</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GOVERNANCE TABS -->
+<section class="admin-body">
+  <div class="container">
+    <div class="admin-tabs" role="tablist">
+      <button
+        type="button"
+        class="admin-tab"
+        [class.is-active]="activeTab() === 'overview'"
+        (click)="activeTab.set('overview')"
+      >
+        01 · Overview &amp; Analytics
+      </button>
+      <button
+        type="button"
+        class="admin-tab"
+        [class.is-active]="activeTab() === 'studios'"
+        (click)="activeTab.set('studios')"
+      >
+        02 · Studios &amp; Approvals ({{ businesses().length }})
+      </button>
+      <button
+        type="button"
+        class="admin-tab"
+        [class.is-active]="activeTab() === 'ledger'"
+        (click)="activeTab.set('ledger')"
+      >
+        03 · Paystack &amp; Booking Ledger ({{ bookings().length }})
+      </button>
+      <button
+        type="button"
+        class="admin-tab"
+        [class.is-active]="activeTab() === 'reviews'"
+        (click)="activeTab.set('reviews')"
+      >
+        04 · Reviews Moderation ({{ allReviews().length }})
+      </button>
+    </div>
+
+    <!-- TAB 1: OVERVIEW & ANALYTICS -->
+    @if (activeTab() === 'overview') {
+      <div class="analytics-grid">
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Category Volume &amp; Supply</h2>
+              <p>Booking volume (₦) and active studios across all 6 disciplines.</p>
+            </div>
+          </div>
+
+          <div class="bar-list">
+            @for (row of categoryBreakdown(); track row.slug) {
+              <div class="bar-row">
+                <div class="bar-labels">
+                  <strong>{{ row.name }}</strong>
+                  <span>
+                    {{ row.studioCount }} {{ row.studioCount === 1 ? 'studio' : 'studios' }} ·
+                    {{ row.bookingCount }} {{ row.bookingCount === 1 ? 'booking' : 'bookings' }} ·
+                    <strong>{{ marketplace.formatNaira(row.volume) }}</strong>
+                  </span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill" [style.width.%]="row.barWidthPct"></div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="side-stack">
+          <div class="panel-card">
+            <h2>Payment Checkout Mix</h2>
+            <div class="split-rows">
+              <div class="split-row">
+                <span>Paystack Full Payment</span>
+                <strong>{{ platformMetrics().fullCount }} bookings</strong>
+              </div>
+              <div class="split-row">
+                <span>Paystack 30% Deposit</span>
+                <strong>{{ platformMetrics().depositCount }} bookings</strong>
+              </div>
+              <div class="split-row">
+                <span>Pay at Studio</span>
+                <strong>{{ platformMetrics().venueCount }} bookings</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <h2>City Footprint</h2>
+            <div class="split-rows">
+              @for (c of cityBreakdown(); track c.city) {
+                <div class="split-row">
+                  <span>{{ c.city }}</span>
+                  <strong>{{ c.count }} {{ c.count === 1 ? 'studio' : 'studios' }}</strong>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-card recent-block">
+        <div class="panel-head">
+          <div>
+            <h2>Latest Platform Bookings</h2>
+            <p>Live stream across all registered studios.</p>
+          </div>
+          <button type="button" class="btn btn--outline btn--sm" (click)="activeTab.set('ledger')">
+            Open full ledger →
+          </button>
+        </div>
+
+        <div class="mini-ledger">
+          @for (b of bookings().slice(0, 5); track b.bookingReference) {
+            <div class="mini-row">
+              <a routerLink="/track" [queryParams]="{ ref: b.bookingReference }" class="ref-link">
+                {{ b.bookingReference }}
+              </a>
+              <span>{{ b.businessName }}</span>
+              <span>{{ b.serviceName }}</span>
+              <span>{{ b.customerName }}</span>
+              <strong>{{ marketplace.formatNaira(b.servicePrice) }}</strong>
+              <span
+                class="badge"
+                [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
+                [class.badge--warning]="b.status === 'Pending'"
+                [class.badge--danger]="b.status === 'Cancelled'"
+              >
+                {{ b.status }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- TAB 2: STUDIOS & VERIFICATION -->
+    @if (activeTab() === 'studios') {
+      <div class="toolbar-row">
+        <input
+          type="text"
+          class="input toolbar-search"
+          [ngModel]="studioSearch()"
+          (ngModelChange)="studioSearch.set($event)"
+          placeholder="Search studio name, area, or slug..."
+        />
+
+        <select
+          class="select toolbar-select"
+          [ngModel]="studioCategoryFilter()"
+          (ngModelChange)="studioCategoryFilter.set($event)"
+        >
+          <option value="all">All 6 Categories</option>
+          @for (cat of categories(); track cat.slug) {
+            <option [value]="cat.slug">{{ cat.name }}</option>
+          }
+        </select>
+
+        <select
+          class="select toolbar-select"
+          [ngModel]="studioStatusFilter()"
+          (ngModelChange)="studioStatusFilter.set($event)"
+        >
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+
+      <div class="studio-admin-list">
+        @for (biz of filteredStudios(); track biz.id) {
+          <div class="studio-admin-row" [class.is-suspended]="biz.status === 'suspended'">
+            <div class="studio-admin-id">
+              <img [src]="biz.coverImage" [alt]="biz.name" class="studio-thumb" />
+              <div>
+                <div class="studio-badges-inline">
+                  <strong>{{ biz.name }}</strong>
+                  @if (biz.verified) {
+                    <span class="badge badge--success">Verified</span>
+                  }
+                  @if (biz.featured) {
+                    <span class="badge badge--bronze">Featured</span>
+                  }
+                  @if (biz.status === 'suspended') {
+                    <span class="badge badge--danger">Suspended</span>
+                  }
+                </div>
+                <p>
+                  {{ biz.categoryLabel }} · {{ biz.location }} · from
+                  {{ marketplace.formatNaira(marketplace.getStartingPrice(biz)) }}
+                </p>
+                <code>/business/{{ biz.slug }}</code>
+              </div>
+            </div>
+
+            <div class="studio-admin-stats">
+              <div>
+                <span>Bookings</span>
+                <strong>{{ studioStatsMap().get(biz.slug)?.bookings || 0 }}</strong>
+              </div>
+              <div>
+                <span>Settled</span>
+                <strong>
+                  {{ marketplace.formatNaira(studioStatsMap().get(biz.slug)?.revenue || 0) }}
+                </strong>
+              </div>
+              <div>
+                <span>Rating</span>
+                <strong>★ {{ biz.rating.toFixed(1) }}</strong>
+              </div>
+            </div>
+
+            <div class="studio-admin-actions">
+              <button
+                type="button"
+                class="btn btn--outline btn--sm"
+                (click)="toggleVerified(biz.slug)"
+              >
+                {{ biz.verified ? 'Unverify' : 'Verify' }}
+              </button>
+              <button
+                type="button"
+                class="btn btn--outline btn--sm"
+                (click)="toggleFeatured(biz.slug)"
+              >
+                {{ biz.featured ? 'Unfeature' : 'Feature' }}
+              </button>
+              <button
+                type="button"
+                class="btn btn--sm"
+                [class.btn--outline]="biz.status !== 'suspended'"
+                [class.btn--primary]="biz.status === 'suspended'"
+                (click)="toggleSuspend(biz.slug, biz.status)"
+              >
+                {{ biz.status === 'suspended' ? 'Restore' : 'Suspend' }}
+              </button>
+              <a [routerLink]="['/business', biz.slug]" class="btn btn--primary btn--sm">
+                Site ↗
+              </a>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- TAB 3: GLOBAL PAYSTACK & BOOKING LEDGER -->
+    @if (activeTab() === 'ledger') {
+      <div class="toolbar-row">
+        <input
+          type="text"
+          class="input toolbar-search"
+          [ngModel]="ledgerSearch()"
+          (ngModelChange)="ledgerSearch.set($event)"
+          placeholder="Search BK-2026-..., PSK_..., studio, or customer..."
+        />
+
+        <div class="status-pills">
+          @for (st of ['all', 'Confirmed', 'Pending', 'Completed', 'Cancelled']; track st) {
+            <button
+              type="button"
+              class="filter-pill"
+              [class.is-active]="ledgerStatusFilter() === st"
+              (click)="ledgerStatusFilter.set($any(st))"
+            >
+              {{ st === 'all' ? 'All' : st }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="ledger-table-wrap">
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th>Booking ID</th>
+              <th>Studio</th>
+              <th>Customer &amp; Service</th>
+              <th>Schedule</th>
+              <th>Paystack Ref</th>
+              <th>Paid / Total</th>
+              <th>Status</th>
+              <th>Override</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (b of filteredLedger(); track b.bookingReference) {
+              <tr>
+                <td>
+                  <a
+                    routerLink="/track"
+                    [queryParams]="{ ref: b.bookingReference }"
+                    class="ref-link"
+                  >
+                    {{ b.bookingReference }}
+                  </a>
+                </td>
+                <td>
+                  <a [routerLink]="['/business', b.businessSlug]" class="studio-link">
+                    {{ b.businessName }}
+                  </a>
+                </td>
+                <td>
+                  <strong>{{ b.customerName }}</strong>
+                  <div class="cell-sub">{{ b.serviceName }}</div>
+                </td>
+                <td>
+                  {{ b.dateDisplay }}
+                  <div class="cell-sub">{{ b.time }}</div>
+                </td>
+                <td>
+                  <code>{{ b.paystackReference || 'At Studio' }}</code>
+                </td>
+                <td>
+                  <strong>{{ marketplace.formatNaira(b.amountPaid) }}</strong>
+                  <div class="cell-sub">
+                    of {{ marketplace.formatNaira(b.servicePrice) }} ({{ b.paymentStatus }})
+                  </div>
+                </td>
+                <td>
+                  <span
+                    class="badge"
+                    [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
+                    [class.badge--warning]="b.status === 'Pending'"
+                    [class.badge--danger]="b.status === 'Cancelled'"
+                  >
+                    {{ b.status }}
+                  </span>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    @if (b.balanceDue > 0 && b.status !== 'Cancelled') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="markBookingPaid(b.bookingReference)"
+                      >
+                        Mark Paid
+                      </button>
+                    }
+                    @if (b.status === 'Confirmed') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="setBookingStatus(b.bookingReference, 'Completed')"
+                      >
+                        Complete
+                      </button>
+                    }
+                    @if (b.status !== 'Cancelled' && b.status !== 'Completed') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="setBookingStatus(b.bookingReference, 'Cancelled')"
+                      >
+                        Cancel
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- TAB 4: REVIEWS MODERATION -->
+    @if (activeTab() === 'reviews') {
+      <div class="reviews-mod-list">
+        @for (rev of allReviews(); track rev.id) {
+          <div class="review-mod-row">
+            <div>
+              <div class="review-mod-head">
+                <strong>{{ rev.author }}</strong>
+                <span class="badge badge--bronze">★ {{ rev.rating }}.0</span>
+                <a [routerLink]="['/business', rev.businessSlug]" class="studio-link">
+                  {{ rev.businessName }}
+                </a>
+                <span class="cell-sub">· {{ rev.serviceName }} · {{ rev.dateLabel }}</span>
+              </div>
+              <p class="review-mod-comment">“{{ rev.comment }}”</p>
+            </div>
+
+            <button
+              type="button"
+              class="btn btn--outline btn--sm"
+              (click)="removeReview(rev.businessSlug, rev.id)"
+            >
+              Remove review
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</section>
+

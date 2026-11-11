@@ -14,8 +14,13 @@ import {
   CategoryInfo,
   CategorySlug,
   PaymentOption,
+  PaymentPolicy,
   PaymentStatus,
   PopularServiceHighlight,
+  ServiceItem,
+  StaffMember,
+  StudioStatus,
+  WorkingHours,
 } from '../models/marketplace.models';
 
 const BUSINESSES_STORAGE_KEY = 'beautiva_businesses_v1';
@@ -47,13 +52,17 @@ export class MarketplaceService {
   readonly businesses = signal<BusinessProfile[]>(this.loadBusinesses());
   readonly bookings = signal<BookingRecord[]>(this.loadBookings());
 
+  readonly activeBusinesses = computed(() =>
+    this.businesses().filter((b) => b.status !== 'suspended'),
+  );
+
   readonly featuredBusinesses = computed(() =>
-    this.businesses().filter((b) => b.featured).slice(0, 6),
+    this.activeBusinesses().filter((b) => b.featured).slice(0, 6),
   );
 
   readonly popularServices = computed<PopularServiceHighlight[]>(() => {
     const list: PopularServiceHighlight[] = [];
-    for (const biz of this.businesses()) {
+    for (const biz of this.activeBusinesses()) {
       if (biz.services.length > 0) {
         list.push({
           businessSlug: biz.slug,
@@ -91,7 +100,7 @@ export class MarketplaceService {
   }
 
   getBusinessesByCategory(slug: CategorySlug): BusinessProfile[] {
-    return this.businesses().filter((b) => b.categorySlug === slug);
+    return this.activeBusinesses().filter((b) => b.categorySlug === slug);
   }
 
   getBusinessBySlug(slug: string | null | undefined): BusinessProfile | undefined {
@@ -119,7 +128,7 @@ export class MarketplaceService {
     onlyPayAtBusiness = false,
   ): BusinessProfile[] {
     const q = query.trim().toLowerCase();
-    return this.businesses().filter((biz) => {
+    return this.activeBusinesses().filter((biz) => {
       if (categorySlug && categorySlug !== 'all' && biz.categorySlug !== categorySlug) {
         return false;
       }
@@ -300,6 +309,77 @@ export class MarketplaceService {
     this.businesses.set(list);
     this.saveBusinesses(list);
     return record;
+  }
+
+  updateStudioConfiguration(
+    slug: string,
+    patch: {
+      services?: ServiceItem[];
+      staff?: StaffMember[];
+      workingHours?: WorkingHours[];
+      paymentPolicy?: PaymentPolicy;
+      tagline?: string;
+      about?: string;
+    },
+  ): BusinessProfile | undefined {
+    let updatedBiz: BusinessProfile | undefined;
+    const list = this.businesses().map((b) => {
+      if (b.slug !== slug) return b;
+      updatedBiz = {
+        ...b,
+        ...patch,
+      };
+      return updatedBiz;
+    });
+    if (updatedBiz) {
+      this.businesses.set(list);
+      this.saveBusinesses(list);
+    }
+    return updatedBiz;
+  }
+
+  setBusinessStatus(slug: string, status: StudioStatus): void {
+    const list = this.businesses().map((b) => (b.slug === slug ? { ...b, status } : b));
+    this.businesses.set(list);
+    this.saveBusinesses(list);
+  }
+
+  toggleBusinessVerified(slug: string): void {
+    const list = this.businesses().map((b) =>
+      b.slug === slug ? { ...b, verified: !b.verified } : b,
+    );
+    this.businesses.set(list);
+    this.saveBusinesses(list);
+  }
+
+  toggleBusinessFeatured(slug: string): void {
+    const list = this.businesses().map((b) =>
+      b.slug === slug ? { ...b, featured: !b.featured } : b,
+    );
+    this.businesses.set(list);
+    this.saveBusinesses(list);
+  }
+
+  deleteReview(businessSlug: string, reviewId: string): void {
+    const list = this.businesses().map((biz) => {
+      if (biz.slug !== businessSlug) return biz;
+      const reviews = biz.reviews.filter((r) => r.id !== reviewId);
+      const count = Math.max(0, biz.reviewCount - 1);
+      const avg =
+        reviews.length > 0
+          ? Number(
+              (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1),
+            )
+          : 5.0;
+      return {
+        ...biz,
+        reviews,
+        reviewCount: count,
+        rating: avg,
+      };
+    });
+    this.businesses.set(list);
+    this.saveBusinesses(list);
   }
 
   slugify(text: string): string {

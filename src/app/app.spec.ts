@@ -55,4 +55,19 @@ describe('App & MarketplaceService', () => {
     expect(created.balanceDue).toBe(17500);
     expect(service.findBookingByReference(created.bookingReference)?.status).toBe('Confirmed');
   });
+
+  it('should support vendor updates and super admin studio governance', () => {
+    const service = TestBed.inject(MarketplaceService);
+    const initialActive = service.activeBusinesses().length;
+
+    service.setBusinessStatus('velvet-crown-atelier', 'suspended');
+    expect(service.activeBusinesses().length).toBe(initialActive - 1);
+
+    service.setBusinessStatus('velvet-crown-atelier', 'active');
+    expect(service.activeBusinesses().length).toBe(initialActive);
+
+    const beforeVerified = service.getBusinessBySlug('glamour-studio')?.verified;
+    service.toggleBusinessVerified('glamour-studio');
+    expect(service.getBusinessBySlug('glamour-studio')?.verified).toBe(!beforeVerified);
+  });
 });

@@ -56,6 +56,8 @@ export interface PaymentPolicy {
   allowPayAtBusiness: boolean;
 }
 
+export type StudioStatus = 'active' | 'pending' | 'suspended';
+
 export interface BusinessProfile {
   id: string;
   slug: string;
@@ -76,6 +78,7 @@ export interface BusinessProfile {
   reviewCount: number;
   verified: boolean;
   featured: boolean;
+  status?: StudioStatus;
   services: ServiceItem[];
   staff: StaffMember[];
   workingHours: WorkingHours[];
