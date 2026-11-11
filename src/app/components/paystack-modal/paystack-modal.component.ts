@@ -1,41 +1,73 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, inject, input, output, signal } from '@angular/core';
+import { PaystackService } from '../../services/paystack.service';
 
 @Component({
   selector: 'app-paystack-modal',
   standalone: true,
-  imports: [FormsModule],
+  imports: [],
   templateUrl: './paystack-modal.component.html',
   styleUrl: './paystack-modal.component.css',
 })
-export class PaystackModalComponent {
-  @Input({ required: true }) businessName!: string;
-  @Input({ required: true }) customerEmail!: string;
-  @Input({ required: true }) amount!: number;
-  @Input() description = 'Service booking payment';
+export class PaystackModalComponent implements OnInit {
+  private readonly paystack = inject(PaystackService);
 
-  @Output() cancel = new EventEmitter<void>();
-  @Output() success = new EventEmitter<string>();
+  readonly businessName = input.required<string>();
+  readonly customerEmail = input.required<string>();
+  readonly amount = input.required<number>();
+  readonly description = input<string>('Service booking payment');
 
-  readonly channel = signal<'card' | 'bank' | 'ussd'>('card');
+  readonly cancel = output<void>();
+  readonly success = output<string>();
+
   readonly processing = signal(false);
+  readonly statusMessage = signal('Launching Paystack secure checkout...');
+  readonly errorMessage = signal('');
 
-  cardNumber = '4084 0841 2345 6789';
-  expiry = '12/28';
-  cvv = '408';
+  get isTestMode(): boolean {
+    return this.paystack.publicKey.startsWith('pk_test_');
+  }
+
+  get hasRealKey(): boolean {
+    return this.paystack.isRealKeyConfigured();
+  }
+
+  ngOnInit(): void {
+    void this.launchCheckout();
+  }
 
   formatNaira(val: number): string {
     return `₦${val.toLocaleString('en-NG')}`;
   }
 
-  completeTestPayment(): void {
+  async launchCheckout(): Promise<void> {
     if (this.processing()) return;
+    this.errorMessage.set('');
     this.processing.set(true);
-    setTimeout(() => {
-      const ref = `PSK_${Date.now().toString().slice(-8)}`;
-      this.processing.set(false);
-      this.success.emit(ref);
-    }, 950);
+    this.statusMessage.set('Opening Paystack Checkout...');
+
+    const result = await this.paystack.openCheckout({
+      email: this.customerEmail(),
+      amountNaira: this.amount(),
+      metadata: {
+        business_name: this.businessName(),
+        description: this.description(),
+      },
+    });
+
+    this.processing.set(false);
+
+    if (result.status === 'success' && result.reference) {
+      this.statusMessage.set('Payment verified!');
+      this.success.emit(result.reference);
+      return;
+    }
+
+    if (result.status === 'cancelled') {
+      this.statusMessage.set('Paystack window closed before payment completed.');
+      return;
+    }
+
+    this.errorMessage.set(result.error || 'Unable to complete Paystack payment.');
+    this.statusMessage.set('');
   }
 }
-

@@ -5,6 +5,7 @@ import { routes } from './app.routes';
 import { DEFAULT_WORKING_HOURS } from './data/seed-data';
 import { AuthService } from './services/auth.service';
 import { MarketplaceService } from './services/marketplace.service';
+import { PaystackService } from './services/paystack.service';
 
 describe('App & MarketplaceService', () => {
   beforeEach(async () => {
@@ -294,5 +295,13 @@ describe('App & MarketplaceService', () => {
     );
     expect(login.ok).toBe(true);
     expect(login.profile?.role).toBe('vendor');
+  });
+
+  it('should require a real Paystack public key instead of demo placeholder', () => {
+    const paystack = TestBed.inject(PaystackService);
+    expect(paystack.isRealKeyConfigured('pk_test_beautiva_demo')).toBe(false);
+    expect(paystack.isRealKeyConfigured('')).toBe(false);
+    expect(paystack.isRealKeyConfigured('pk_test_1234567890abcdef')).toBe(true);
+    expect(paystack.isRealKeyConfigured('pk_live_1234567890abcdef')).toBe(true);
   });
 });

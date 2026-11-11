@@ -187,3 +187,28 @@
   color: #64748b;
 }
 
+.psk-error-box {
+  background: #fdecec;
+  border: 1px solid #e6a9a9;
+  color: #7d1f1f;
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+}
+
+.psk-cancel-btn {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.psk-cancel-btn:hover:not(:disabled) {
+  background: #f8fafc;
+}
+

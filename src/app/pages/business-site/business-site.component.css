@@ -151,6 +151,19 @@
   color: rgba(255, 255, 255, 0.78);
 }
 
+.studio-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.meta-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--accent-camel);
+}
+
 .studio-hero-cta {
   display: flex;
   flex-direction: column;

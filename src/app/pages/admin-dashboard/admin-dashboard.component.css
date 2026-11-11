@@ -51,11 +51,6 @@
   flex-shrink: 0;
 }
 
-.badge--verified {
-  background: #e8f4fd;
-  color: #0c5f9b;
-}
-
 .admin-head-actions {
   display: flex;
   flex-wrap: wrap;

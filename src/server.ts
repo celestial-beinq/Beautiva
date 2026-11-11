@@ -20,6 +20,7 @@ const angularApp = new AngularNodeAppEngine();
 const supabaseUrl = (process.env['SUPABASE_URL'] || '').trim();
 const supabaseAnonKey = (process.env['SUPABASE_ANON_KEY'] || '').trim();
 const supabaseServiceKey = (process.env['SUPABASE_SERVICE_ROLE_KEY'] || '').trim();
+const paystackSecretKey = (process.env['PAYSTACK_SECRET_KEY'] || '').trim();
 
 function getAdminClient(): SupabaseClient | null {
   if (!supabaseUrl || !supabaseServiceKey) return null;
@@ -33,7 +34,84 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     supabaseConfigured: Boolean(supabaseUrl && supabaseAnonKey),
     serviceRoleConfigured: Boolean(supabaseUrl && supabaseServiceKey),
+    paystackVerificationConfigured: Boolean(paystackSecretKey),
   });
+});
+
+// Server-side Paystack transaction verification using PAYSTACK_SECRET_KEY
+app.post('/api/paystack/verify', async (req, res) => {
+  const { reference, expectedAmount } = req.body as {
+    reference?: string;
+    expectedAmount?: number;
+  };
+
+  const ref = String(reference || '').trim();
+  if (!ref) {
+    res.status(400).json({ verified: false, error: 'Transaction reference is required' });
+    return;
+  }
+
+  if (!paystackSecretKey) {
+    res.status(503).json({
+      verified: false,
+      verificationSkipped: true,
+      error: 'PAYSTACK_SECRET_KEY is not configured on the server.',
+    });
+    return;
+  }
+
+  try {
+    const resp = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey}`,
+        },
+      },
+    );
+    const payload = (await resp.json()) as {
+      status?: boolean;
+      message?: string;
+      data?: {
+        status?: string;
+        amount?: number;
+        currency?: string;
+        channel?: string;
+        paid_at?: string;
+        reference?: string;
+      };
+    };
+
+    if (!resp.ok || !payload.status || payload.data?.status !== 'success') {
+      res.status(400).json({
+        verified: false,
+        error: payload.message || 'Paystack transaction was not successful.',
+      });
+      return;
+    }
+
+    const expectedKobo = Math.round((Number(expectedAmount) || 0) * 100);
+    if (expectedKobo > 0 && (payload.data.amount ?? 0) < expectedKobo) {
+      res.status(400).json({
+        verified: false,
+        error: 'Verified Paystack amount does not match the required payment.',
+      });
+      return;
+    }
+
+    res.json({
+      verified: true,
+      reference: payload.data.reference || ref,
+      amountNaira: Math.round((payload.data.amount ?? 0) / 100),
+      channel: payload.data.channel,
+      paidAt: payload.data.paid_at,
+    });
+  } catch (err: any) {
+    res.status(502).json({
+      verified: false,
+      error: err?.message || 'Unable to verify transaction with Paystack API.',
+    });
+  }
 });
 
 // Guest booking tracking lookup by exact reference (no full-table exposure)
@@ -501,7 +579,7 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
         logo_text: logoText,
         logo_bg: '#3b0b0b',
         cover_image: appRow['cover_image'] || 'images/hero-salon.jpg',
-        gallery: [appRow['cover_image'] || 'images/hero-salon.jpg', 'images/hero-salon.jpg'],
+        gallery: [],
         rating: 5.0,
         review_count: 0,
         verified: true,

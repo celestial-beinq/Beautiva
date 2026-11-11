@@ -3,7 +3,7 @@
     <div class="psk-header">
       <div class="psk-brand">
         <span class="psk-badge">PAYSTACK</span>
-        <span class="psk-test-tag">TEST MODE</span>
+        <span class="psk-test-tag">{{ isTestMode ? 'TEST MODE' : 'LIVE' }}</span>
       </div>
       <button type="button" class="psk-close" (click)="cancel.emit()" [disabled]="processing()">
         ✕
@@ -12,92 +12,55 @@
 
     <div class="psk-merchant">
       <div>
-        <div class="psk-merchant-name">{{ businessName }} via Beautiva</div>
-        <div class="psk-email">{{ customerEmail }}</div>
+        <div class="psk-merchant-name">{{ businessName() }} via Beautiva</div>
+        <div class="psk-email">{{ customerEmail() }}</div>
       </div>
       <div class="psk-amount">
-        <span>Pay</span>
-        <strong>{{ formatNaira(amount) }}</strong>
+        <span>Total</span>
+        <strong>{{ formatNaira(amount()) }}</strong>
       </div>
-    </div>
-
-    <div class="psk-tabs">
-      <button
-        type="button"
-        [class.active]="channel() === 'card'"
-        (click)="channel.set('card')"
-      >
-        Card
-      </button>
-      <button
-        type="button"
-        [class.active]="channel() === 'bank'"
-        (click)="channel.set('bank')"
-      >
-        Transfer
-      </button>
-      <button
-        type="button"
-        [class.active]="channel() === 'ussd'"
-        (click)="channel.set('ussd')"
-      >
-        USSD
-      </button>
     </div>
 
     <div class="psk-body">
-      @if (channel() === 'card') {
-        <p class="psk-hint">
-          Paystack test card is prefilled below. Click <strong>Pay Now</strong> to simulate an
-          instant verified transaction.
-        </p>
-        <div class="field">
-          <label class="field-label">Card Number</label>
-          <input class="input" [(ngModel)]="cardNumber" />
-        </div>
-        <div class="psk-card-row">
-          <div class="field">
-            <label class="field-label">Card Expiry</label>
-            <input class="input" [(ngModel)]="expiry" />
-          </div>
-          <div class="field">
-            <label class="field-label">CVV</label>
-            <input class="input" [(ngModel)]="cvv" />
-          </div>
-        </div>
-      } @else if (channel() === 'bank') {
-        <div class="psk-transfer-box">
-          <p>Transfer exact amount to this temporary Paystack virtual account:</p>
-          <div class="psk-acct-row"><span>Bank</span><strong>Wema Bank (Paystack-Titan)</strong></div>
-          <div class="psk-acct-row"><span>Account No.</span><strong>9904 8122 04</strong></div>
-          <div class="psk-acct-row"><span>Amount</span><strong>{{ formatNaira(amount) }}</strong></div>
-        </div>
-      } @else {
-        <div class="psk-transfer-box">
-          <p>Dial your bank USSD code to authorize {{ formatNaira(amount) }}:</p>
-          <div class="psk-acct-row"><span>GTBank</span><strong>*737*2*{{ amount }}#</strong></div>
-          <div class="psk-acct-row"><span>Zenith</span><strong>*966*{{ amount }}#</strong></div>
-          <div class="psk-acct-row"><span>Access</span><strong>*901*{{ amount }}#</strong></div>
+      @if (errorMessage()) {
+        <div class="psk-error-box">{{ errorMessage() }}</div>
+      } @else if (statusMessage()) {
+        <p class="psk-hint">{{ statusMessage() }}</p>
+      }
+
+      @if (!hasRealKey) {
+        <div class="psk-hint">
+          Set <code>PAYSTACK_PUBLIC_KEY</code> (starting with <code>pk_test_</code> or
+          <code>pk_live_</code>) in <code>.env</code> and restart <code>npm start</code> to launch
+          real Paystack Checkout.
         </div>
       }
 
       <button
         type="button"
         class="psk-pay-btn"
-        [disabled]="processing()"
-        (click)="completeTestPayment()"
+        [disabled]="processing() || !hasRealKey"
+        (click)="launchCheckout()"
       >
         @if (processing()) {
-          Verifying with Paystack...
+          Waiting for Paystack Checkout...
         } @else {
-          Pay {{ formatNaira(amount) }}
+          Pay {{ formatNaira(amount()) }} with Paystack
         }
       </button>
 
+      <button
+        type="button"
+        class="psk-cancel-btn"
+        [disabled]="processing()"
+        (click)="cancel.emit()"
+      >
+        Cancel Payment
+      </button>
+
       <div class="psk-footer-note">
-        🔒 Secured by Paystack · Ready to connect live Paystack Inline key
+        Secured by Paystack · Card, Bank Transfer, USSD &amp; Bank
       </div>
     </div>
   </div>
 </div>
-

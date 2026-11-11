@@ -286,6 +286,17 @@ textarea {
   color: var(--accent-sage);
 }
 
+.badge--verified {
+  background: #e8f4fd;
+  color: #0c5f9b;
+}
+
+.verified-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
 .badge--bronze {
   background: var(--accent-bronze-soft);
   color: var(--accent-crimson);

@@ -74,8 +74,20 @@ export class VendorStudioComponent {
   };
 
   // Editable Services, Team, Hours, Availability & Payment Policy
+  editGallery: string[] = [];
+  readonly uploadingGallery = signal(false);
   editServices: ServiceItem[] = [];
   editStaff: StaffMember[] = [];
+
+  readonly serviceModalOpen = signal(false);
+  readonly editingServiceId = signal<string | null>(null);
+  readonly serviceModalError = signal('');
+  serviceDraft: ServiceItem = this.createEmptyServiceDraft();
+
+  readonly staffModalOpen = signal(false);
+  readonly editingStaffId = signal<string | null>(null);
+  readonly staffModalError = signal('');
+  staffDraft: StaffMember = this.createEmptyStaffDraft();
   editHours: WorkingHours[] = [];
   editAvailability: AvailabilitySettings = {
     ...DEFAULT_AVAILABILITY,
@@ -114,7 +126,7 @@ export class VendorStudioComponent {
   email = '';
   instagram = '';
   coverImage = 'images/cat-hairdressers.jpg';
-  galleryImages: string[] = ['images/cat-hairdressers.jpg', 'images/hero-salon.jpg'];
+  galleryImages: string[] = [];
 
   allowFull = true;
   allowDeposit = true;
@@ -303,6 +315,7 @@ export class VendorStudioComponent {
         website: studio.contact.website || '',
       };
 
+      this.editGallery = [...(studio.gallery || [])];
       this.editServices = studio.services.map((s) => ({
         ...s,
         isActive: s.isActive !== false,
@@ -377,6 +390,30 @@ export class VendorStudioComponent {
     this.profileForm.coverImage = await this.marketplace.uploadStudioImage(file, 'covers');
   }
 
+  async onProfileGallerySelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+
+    this.uploadingGallery.set(true);
+    try {
+      for (const file of files) {
+        const url = await this.marketplace.uploadStudioImage(file, 'gallery');
+        this.editGallery = [...this.editGallery, url];
+      }
+      this.flashToast(
+        `${files.length} portfolio ${files.length === 1 ? 'image' : 'images'} added. Click Save Business Profile to publish.`,
+      );
+    } finally {
+      this.uploadingGallery.set(false);
+      input.value = '';
+    }
+  }
+
+  removeProfileGalleryImage(index: number): void {
+    this.editGallery = this.editGallery.filter((_, i) => i !== index);
+  }
+
   saveBusinessProfile(): void {
     const studio = this.activeStudio();
     if (!studio) return;
@@ -398,55 +435,175 @@ export class VendorStudioComponent {
       address: this.profileForm.address.trim() || studio.address,
       logoImage: this.profileForm.logoImage.trim() || undefined,
       coverImage: this.profileForm.coverImage.trim() || studio.coverImage,
+      gallery: [...this.editGallery],
       workingHours: this.editHours.map((h) => ({ ...h })),
       contact,
     });
-    this.flashToast(`Saved business profile & contact links for ${this.profileForm.name}.`);
+    this.flashToast(`Saved business profile & portfolio for ${this.profileForm.name}.`);
   }
 
   // ==========================================================================
   // SERVICE & TEAM MANAGEMENT
   // ==========================================================================
-  addEditService(): void {
-    this.editServices.push({
+  private createEmptyServiceDraft(): ServiceItem {
+    return {
       id: `srv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       name: '',
       categoryLabel: 'Service',
       price: 15000,
       durationMinutes: 60,
       description: '',
+      imageUrl: '',
       isActive: true,
-    });
+    };
   }
 
-  async onServiceImageSelected(event: Event, srv: ServiceItem): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    srv.imageUrl = await this.marketplace.uploadStudioImage(file, 'services');
-  }
-
-  removeEditService(index: number): void {
-    if (this.editServices.length > 1) {
-      this.editServices.splice(index, 1);
-    }
-  }
-
-  addEditStaff(): void {
-    this.editStaff.push({
+  private createEmptyStaffDraft(): StaffMember {
+    return {
       id: `stf-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       name: '',
       role: 'Specialist',
       specialty: 'Studio Craft',
       avatarColor: '#92745b',
-    });
+    };
+  }
+
+  openAddServiceModal(): void {
+    this.editingServiceId.set(null);
+    this.serviceModalError.set('');
+    this.serviceDraft = this.createEmptyServiceDraft();
+    this.serviceModalOpen.set(true);
+  }
+
+  openEditServiceModal(srv: ServiceItem): void {
+    this.editingServiceId.set(srv.id);
+    this.serviceModalError.set('');
+    this.serviceDraft = {
+      ...srv,
+      isActive: srv.isActive !== false,
+    };
+    this.serviceModalOpen.set(true);
+  }
+
+  closeServiceModal(): void {
+    this.serviceModalOpen.set(false);
+    this.serviceModalError.set('');
+  }
+
+  async onDraftServiceImageSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.serviceDraft.imageUrl = await this.marketplace.uploadStudioImage(file, 'services');
+  }
+
+  saveServiceModal(): void {
+    const name = this.serviceDraft.name.trim();
+    const price = Number(this.serviceDraft.price);
+    const durationMinutes = Number(this.serviceDraft.durationMinutes) || 60;
+    if (!name || Number.isNaN(price) || price <= 0) {
+      this.serviceModalError.set('Enter a valid service name and Naira price.');
+      return;
+    }
+
+    const normalized: ServiceItem = {
+      ...this.serviceDraft,
+      name,
+      categoryLabel: this.serviceDraft.categoryLabel.trim() || 'Service',
+      price,
+      durationMinutes,
+      description: this.serviceDraft.description.trim() || 'Studio appointment with consultation.',
+      imageUrl: this.serviceDraft.imageUrl?.trim() || undefined,
+      isActive: this.serviceDraft.isActive !== false,
+    };
+
+    const editingId = this.editingServiceId();
+    if (editingId) {
+      this.editServices = this.editServices.map((s) => (s.id === editingId ? normalized : s));
+    } else {
+      this.editServices = [...this.editServices, normalized];
+    }
+
+    this.serviceModalOpen.set(false);
+    this.persistMenuAndTeam(
+      editingId ? `Updated service "${normalized.name}".` : `Added service "${normalized.name}".`,
+    );
+  }
+
+  toggleServiceActive(srv: ServiceItem): void {
+    const nextActive = srv.isActive === false;
+    this.editServices = this.editServices.map((s) =>
+      s.id === srv.id ? { ...s, isActive: nextActive } : s,
+    );
+    this.persistMenuAndTeam(
+      `"${srv.name}" is now ${nextActive ? 'active on your storefront' : 'deactivated'}.`,
+    );
+  }
+
+  removeEditService(index: number): void {
+    if (this.editServices.length <= 1) return;
+    const removed = this.editServices[index];
+    this.editServices = this.editServices.filter((_, i) => i !== index);
+    this.persistMenuAndTeam(`Deleted service "${removed?.name || 'Service'}".`);
+  }
+
+  openAddStaffModal(): void {
+    this.editingStaffId.set(null);
+    this.staffModalError.set('');
+    this.staffDraft = this.createEmptyStaffDraft();
+    this.staffModalOpen.set(true);
+  }
+
+  openEditStaffModal(member: StaffMember): void {
+    this.editingStaffId.set(member.id);
+    this.staffModalError.set('');
+    this.staffDraft = { ...member };
+    this.staffModalOpen.set(true);
+  }
+
+  closeStaffModal(): void {
+    this.staffModalOpen.set(false);
+    this.staffModalError.set('');
+  }
+
+  saveStaffModal(): void {
+    const name = this.staffDraft.name.trim();
+    if (!name) {
+      this.staffModalError.set('Enter the specialist name.');
+      return;
+    }
+
+    const normalized: StaffMember = {
+      ...this.staffDraft,
+      name,
+      role: this.staffDraft.role.trim() || 'Specialist',
+      specialty: this.staffDraft.specialty.trim() || 'Studio Craft',
+    };
+
+    const editingId = this.editingStaffId();
+    if (editingId) {
+      this.editStaff = this.editStaff.map((m) => (m.id === editingId ? normalized : m));
+    } else {
+      this.editStaff = [...this.editStaff, normalized];
+    }
+
+    this.staffModalOpen.set(false);
+    this.persistMenuAndTeam(
+      editingId ? `Updated specialist "${normalized.name}".` : `Added specialist "${normalized.name}".`,
+    );
   }
 
   removeEditStaff(index: number): void {
-    this.editStaff.splice(index, 1);
+    const removed = this.editStaff[index];
+    this.editStaff = this.editStaff.filter((_, i) => i !== index);
+    this.persistMenuAndTeam(`Removed specialist "${removed?.name || 'Team member'}".`);
   }
 
   saveMenuAndTeam(): void {
+    this.persistMenuAndTeam();
+  }
+
+  private persistMenuAndTeam(customToast?: string): void {
     const studio = this.activeStudio();
     if (!studio) return;
     const validServices = this.editServices
@@ -464,7 +621,9 @@ export class VendorStudioComponent {
       services: validServices,
       staff: this.editStaff.filter((m) => m.name.trim()),
     });
-    this.flashToast(`Saved service menu & team changes to /business/${studio.slug}`);
+    this.flashToast(
+      customToast || `Saved service menu & team changes to /business/${studio.slug}`,
+    );
   }
 
   // ==========================================================================
@@ -542,9 +701,6 @@ export class VendorStudioComponent {
     const cat = this.marketplace.getCategoryBySlug(slug);
     if (cat) {
       this.coverImage = cat.coverImage;
-      if (!this.galleryImages.includes(cat.coverImage)) {
-        this.galleryImages = [cat.coverImage, 'images/hero-salon.jpg'];
-      }
     }
   }
 
@@ -586,7 +742,27 @@ export class VendorStudioComponent {
     if (!file) return;
     const url = await this.marketplace.uploadStudioImage(file, 'covers');
     this.coverImage = url;
-    this.galleryImages = [url, ...this.galleryImages.slice(0, 3)];
+  }
+
+  async onBuilderGallerySelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+
+    this.uploadingGallery.set(true);
+    try {
+      for (const file of files) {
+        const url = await this.marketplace.uploadStudioImage(file, 'gallery');
+        this.galleryImages = [...this.galleryImages, url];
+      }
+    } finally {
+      this.uploadingGallery.set(false);
+      input.value = '';
+    }
+  }
+
+  removeBuilderGalleryImage(index: number): void {
+    this.galleryImages = this.galleryImages.filter((_, i) => i !== index);
   }
 
   loadDemoPreset(): void {
@@ -603,7 +779,7 @@ export class VendorStudioComponent {
     this.email = 'hello@aureliaspa.ng';
     this.instagram = '@aureliahairspa';
     this.coverImage = 'images/hair-knotless-2.jpg';
-    this.galleryImages = ['images/hair-knotless-2.jpg', 'images/hero-salon.jpg'];
+    this.galleryImages = [];
     this.services = [
       {
         id: 'srv-au-1',
@@ -671,7 +847,7 @@ export class VendorStudioComponent {
       logoText,
       logoBg: '#302c28',
       coverImage: this.coverImage,
-      gallery: this.galleryImages.length ? this.galleryImages : [this.coverImage],
+      gallery: this.galleryImages.filter(Boolean),
       featured: true,
       status: 'active',
       services: validServices.map((s) => ({

@@ -391,6 +391,51 @@
                 <input type="file" accept="image/*" (change)="onProfileCoverSelected($event)" />
               </div>
             </div>
+
+            <div class="portfolio-upload-block">
+              <div class="portfolio-upload-head">
+                <div>
+                  <label class="field-label">Portfolio / Studio &amp; Work Gallery</label>
+                  <p class="cell-sub">
+                    Upload your own studio &amp; work photos shown on your public storefront.
+                  </p>
+                </div>
+                <label class="btn btn--outline btn--sm portfolio-upload-btn">
+                  {{ uploadingGallery() ? 'Uploading...' : '+ Upload Portfolio Images' }}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    hidden
+                    [disabled]="uploadingGallery()"
+                    (change)="onProfileGallerySelected($event)"
+                  />
+                </label>
+              </div>
+
+              @if (editGallery.length === 0) {
+                <p class="cell-sub">
+                  No portfolio images uploaded yet. Upload your own work photos above and click
+                  <strong>Save Business Profile</strong>.
+                </p>
+              } @else {
+                <div class="portfolio-thumb-grid">
+                  @for (img of editGallery; track $index) {
+                    <div class="portfolio-thumb-card">
+                      <img [src]="img" [alt]="'Portfolio image ' + ($index + 1)" />
+                      <button
+                        type="button"
+                        class="portfolio-remove-btn"
+                        aria-label="Remove portfolio image"
+                        (click)="removeProfileGalleryImage($index)"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
           </div>
         </div>
 
@@ -444,72 +489,96 @@
 
     <!-- TAB 3: SERVICE MANAGEMENT & TEAM -->
     @if (activeTab() === 'menu') {
-      <div class="panel-grid">
+      <div class="menu-stack">
         <div class="panel-card">
           <div class="panel-head">
             <div>
               <h2>Service Management (₦)</h2>
               <p>Add, edit, upload images, delete, or activate/deactivate services.</p>
             </div>
-            <button type="button" class="btn btn--outline btn--sm" (click)="addEditService()">
+            <button type="button" class="btn btn--primary btn--sm" (click)="openAddServiceModal()">
               + Add service
             </button>
           </div>
 
-          <div class="dynamic-list">
-            @for (srv of editServices; track srv.id; let i = $index) {
-              <div class="dynamic-item" [class.is-inactive]="srv.isActive === false">
-                <div class="service-top-bar">
-                  <label class="active-switch">
-                    <input type="checkbox" [(ngModel)]="srv.isActive" />
-                    <span>{{ srv.isActive !== false ? 'Active on Storefront' : 'Deactivated' }}</span>
-                  </label>
-                  @if (editServices.length > 1) {
-                    <button
-                      type="button"
-                      class="btn btn--outline btn--sm"
-                      (click)="removeEditService(i)"
-                    >
-                      Delete Service
-                    </button>
+          @if (editServices.length === 0) {
+            <p class="cell-sub">
+              No services added yet. Click <strong>+ Add service</strong> to add your first service.
+            </p>
+          } @else {
+            <div class="menu-table-wrap">
+              <table class="menu-table">
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th>Category</th>
+                    <th>Price (₦)</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (srv of editServices; track srv.id; let i = $index) {
+                    <tr [class.is-inactive-row]="srv.isActive === false">
+                      <td>
+                        <div class="table-service-cell">
+                          @if (srv.imageUrl) {
+                            <img [src]="srv.imageUrl" [alt]="srv.name" class="table-srv-thumb" />
+                          }
+                          <div>
+                            <strong>{{ srv.name }}</strong>
+                            @if (srv.description) {
+                              <div class="cell-sub">{{ srv.description }}</div>
+                            }
+                          </div>
+                        </div>
+                      </td>
+                      <td>{{ srv.categoryLabel || 'Service' }}</td>
+                      <td><strong>{{ marketplace.formatNaira(srv.price) }}</strong></td>
+                      <td>{{ marketplace.formatDuration(srv.durationMinutes) }}</td>
+                      <td>
+                        <span
+                          class="badge"
+                          [class.badge--success]="srv.isActive !== false"
+                          [class.badge--warning]="srv.isActive === false"
+                        >
+                          {{ srv.isActive !== false ? 'Active' : 'Deactivated' }}
+                        </span>
+                      </td>
+                      <td>
+                        <div class="table-actions">
+                          <button
+                            type="button"
+                            class="btn btn--outline btn--sm"
+                            (click)="openEditServiceModal(srv)"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn--outline btn--sm"
+                            (click)="toggleServiceActive(srv)"
+                          >
+                            {{ srv.isActive !== false ? 'Deactivate' : 'Activate' }}
+                          </button>
+                          @if (editServices.length > 1) {
+                            <button
+                              type="button"
+                              class="btn btn--outline btn--sm btn-danger-outline"
+                              (click)="removeEditService(i)"
+                            >
+                              Delete
+                            </button>
+                          }
+                        </div>
+                      </td>
+                    </tr>
                   }
-                </div>
-
-                <div class="form-three">
-                  <div class="field">
-                    <label class="field-label">Service Name</label>
-                    <input class="input" [(ngModel)]="srv.name" />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">Price (₦)</label>
-                    <input class="input" type="number" [(ngModel)]="srv.price" min="500" />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">Duration (mins)</label>
-                    <input class="input" type="number" [(ngModel)]="srv.durationMinutes" min="15" />
-                  </div>
-                </div>
-
-                <input
-                  class="input"
-                  [(ngModel)]="srv.description"
-                  placeholder="Service description..."
-                />
-
-                <div class="srv-img-row">
-                  @if (srv.imageUrl) {
-                    <img [src]="srv.imageUrl" [alt]="srv.name" class="srv-thumb" />
-                  }
-                  <input
-                    class="input"
-                    [(ngModel)]="srv.imageUrl"
-                    placeholder="Service image URL (optional)"
-                  />
-                  <input type="file" accept="image/*" (change)="onServiceImageSelected($event, srv)" />
-                </div>
-              </div>
-            }
-          </div>
+                </tbody>
+              </table>
+            </div>
+          }
         </div>
 
         <div class="panel-card">
@@ -518,35 +587,63 @@
               <h2>Specialists &amp; Team</h2>
               <p>Clients can select a specialist while booking.</p>
             </div>
-            <button type="button" class="btn btn--outline btn--sm" (click)="addEditStaff()">
+            <button type="button" class="btn btn--primary btn--sm" (click)="openAddStaffModal()">
               + Add specialist
             </button>
           </div>
 
-          <div class="dynamic-list">
-            @for (m of editStaff; track m.id; let i = $index) {
-              <div class="staff-edit-card">
-                <div class="form-two">
-                  <input class="input" [(ngModel)]="m.name" placeholder="Name" />
-                  <input class="input" [(ngModel)]="m.role" placeholder="Role" />
-                </div>
-                <div class="srv-desc-row">
-                  <input class="input" [(ngModel)]="m.specialty" placeholder="Specialty" />
-                  <button
-                    type="button"
-                    class="btn btn--outline btn--sm"
-                    (click)="removeEditStaff(i)"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-
-          <button type="button" class="btn btn--primary btn--lg save-btn" (click)="saveMenuAndTeam()">
-            Save Services &amp; Team Live
-          </button>
+          @if (editStaff.length === 0) {
+            <p class="cell-sub">
+              No specialists added yet. Click <strong>+ Add specialist</strong> to add a team member.
+            </p>
+          } @else {
+            <div class="menu-table-wrap">
+              <table class="menu-table">
+                <thead>
+                  <tr>
+                    <th>Specialist</th>
+                    <th>Role</th>
+                    <th>Specialty</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (m of editStaff; track m.id; let i = $index) {
+                    <tr>
+                      <td>
+                        <div class="table-service-cell">
+                          <span class="staff-dot" [style.background]="m.avatarColor || '#92745b'">
+                            {{ m.name.charAt(0).toUpperCase() || 'S' }}
+                          </span>
+                          <strong>{{ m.name }}</strong>
+                        </div>
+                      </td>
+                      <td>{{ m.role }}</td>
+                      <td>{{ m.specialty }}</td>
+                      <td>
+                        <div class="table-actions">
+                          <button
+                            type="button"
+                            class="btn btn--outline btn--sm"
+                            (click)="openEditStaffModal(m)"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn--outline btn--sm btn-danger-outline"
+                            (click)="removeEditStaff(i)"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
         </div>
       </div>
     }
@@ -955,21 +1052,46 @@
             <div class="cover-upload-row">
               <img [src]="coverImage" alt="Cover preview" class="cover-preview-thumb" />
               <div class="cover-upload-controls">
-                <label class="field-label">Pick a curated image or upload your own</label>
-                <div class="preset-chips">
-                  @for (opt of galleryPresetOptions; track opt.path) {
-                    <button
-                      type="button"
-                      class="filter-pill"
-                      [class.is-active]="coverImage === opt.path"
-                      (click)="coverImage = opt.path"
-                    >
-                      {{ opt.label }}
-                    </button>
-                  }
-                </div>
+                <label class="field-label">Upload your studio cover image</label>
                 <input type="file" accept="image/*" (change)="onCoverFileSelected($event)" />
               </div>
+            </div>
+
+            <div class="portfolio-upload-block">
+              <div class="portfolio-upload-head">
+                <div>
+                  <label class="field-label">Portfolio / Studio &amp; Work Gallery (Optional)</label>
+                  <p class="cell-sub">Upload your own work photos to showcase on your storefront.</p>
+                </div>
+                <label class="btn btn--outline btn--sm portfolio-upload-btn">
+                  {{ uploadingGallery() ? 'Uploading...' : '+ Upload Images' }}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    hidden
+                    [disabled]="uploadingGallery()"
+                    (change)="onBuilderGallerySelected($event)"
+                  />
+                </label>
+              </div>
+              @if (galleryImages.length > 0) {
+                <div class="portfolio-thumb-grid">
+                  @for (img of galleryImages; track $index) {
+                    <div class="portfolio-thumb-card">
+                      <img [src]="img" [alt]="'Builder portfolio ' + ($index + 1)" />
+                      <button
+                        type="button"
+                        class="portfolio-remove-btn"
+                        aria-label="Remove portfolio image"
+                        (click)="removeBuilderGalleryImage($index)"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
             </div>
 
             <div class="form-three">
@@ -1070,3 +1192,178 @@
     }
   </div>
 </section>
+
+<!-- ADD / EDIT SERVICE MODAL -->
+@if (serviceModalOpen()) {
+  <div class="studio-modal-backdrop" (click)="closeServiceModal()">
+    <div
+      class="studio-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="service-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="studio-modal-head">
+        <div>
+          <span class="eyebrow">Service Menu</span>
+          <h2 id="service-modal-title">
+            {{ editingServiceId() ? 'Edit Service' : 'Add New Service' }}
+          </h2>
+        </div>
+        <button
+          type="button"
+          class="studio-modal-close"
+          aria-label="Close service modal"
+          (click)="closeServiceModal()"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="studio-modal-body">
+        @if (serviceModalError()) {
+          <div class="form-error">{{ serviceModalError() }}</div>
+        }
+
+        <div class="form-two">
+          <div class="field">
+            <label class="field-label">Service Name *</label>
+            <input
+              class="input"
+              [(ngModel)]="serviceDraft.name"
+              placeholder="e.g. Knotless Braids"
+            />
+          </div>
+          <div class="field">
+            <label class="field-label">Category Label</label>
+            <input
+              class="input"
+              [(ngModel)]="serviceDraft.categoryLabel"
+              placeholder="e.g. Protective Styling"
+            />
+          </div>
+          <div class="field">
+            <label class="field-label">Price (₦) *</label>
+            <input
+              class="input"
+              type="number"
+              min="500"
+              [(ngModel)]="serviceDraft.price"
+            />
+          </div>
+          <div class="field">
+            <label class="field-label">Duration (mins)</label>
+            <input
+              class="input"
+              type="number"
+              min="15"
+              step="5"
+              [(ngModel)]="serviceDraft.durationMinutes"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Description</label>
+          <textarea
+            class="textarea"
+            rows="3"
+            [(ngModel)]="serviceDraft.description"
+            placeholder="Describe what is included in this service..."
+          ></textarea>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Service Image (optional)</label>
+          <div class="srv-img-row">
+            @if (serviceDraft.imageUrl) {
+              <img [src]="serviceDraft.imageUrl" [alt]="serviceDraft.name || 'Service'" class="srv-thumb" />
+            }
+            <input
+              class="input"
+              [(ngModel)]="serviceDraft.imageUrl"
+              placeholder="Image URL (optional)"
+            />
+            <input type="file" accept="image/*" (change)="onDraftServiceImageSelected($event)" />
+          </div>
+        </div>
+
+        <label class="active-switch">
+          <input type="checkbox" [(ngModel)]="serviceDraft.isActive" />
+          <span>Active on Storefront</span>
+        </label>
+      </div>
+
+      <div class="studio-modal-foot">
+        <button type="button" class="btn btn--outline" (click)="closeServiceModal()">
+          Cancel
+        </button>
+        <button type="button" class="btn btn--primary" (click)="saveServiceModal()">
+          {{ editingServiceId() ? 'Save Changes' : 'Add Service' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ADD / EDIT SPECIALIST MODAL -->
+@if (staffModalOpen()) {
+  <div class="studio-modal-backdrop" (click)="closeStaffModal()">
+    <div
+      class="studio-modal studio-modal--sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="staff-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="studio-modal-head">
+        <div>
+          <span class="eyebrow">Studio Team</span>
+          <h2 id="staff-modal-title">
+            {{ editingStaffId() ? 'Edit Specialist' : 'Add Specialist' }}
+          </h2>
+        </div>
+        <button
+          type="button"
+          class="studio-modal-close"
+          aria-label="Close specialist modal"
+          (click)="closeStaffModal()"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="studio-modal-body">
+        @if (staffModalError()) {
+          <div class="form-error">{{ staffModalError() }}</div>
+        }
+
+        <div class="field">
+          <label class="field-label">Full Name *</label>
+          <input class="input" [(ngModel)]="staffDraft.name" placeholder="e.g. Tolu Adeyemi" />
+        </div>
+        <div class="field">
+          <label class="field-label">Role</label>
+          <input class="input" [(ngModel)]="staffDraft.role" placeholder="e.g. Senior Stylist" />
+        </div>
+        <div class="field">
+          <label class="field-label">Specialty</label>
+          <input
+            class="input"
+            [(ngModel)]="staffDraft.specialty"
+            placeholder="e.g. Knotless Braids &amp; Scalp Care"
+          />
+        </div>
+      </div>
+
+      <div class="studio-modal-foot">
+        <button type="button" class="btn btn--outline" (click)="closeStaffModal()">
+          Cancel
+        </button>
+        <button type="button" class="btn btn--primary" (click)="saveStaffModal()">
+          {{ editingStaffId() ? 'Save Changes' : 'Add Specialist' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

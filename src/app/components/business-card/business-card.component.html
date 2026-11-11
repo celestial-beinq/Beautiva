@@ -1,49 +1,21 @@
 <article class="biz-card">
-  <a [routerLink]="['/business', business().slug]" class="biz-cover-wrap">
+  <a [routerLink]="['/business', business().slug]" class="biz-card-link" [attr.aria-label]="'Visit ' + business().name">
     <img [src]="business().coverImage" [alt]="business().name" class="biz-cover" loading="lazy" />
-    <span class="biz-cat-pill">{{ business().categoryLabel }}</span>
-    @if (business().paymentPolicy.allowPayAtBusiness) {
-      <span class="biz-pay-pill">Pay at studio</span>
-    }
-  </a>
 
-  <div class="biz-body">
-    <div class="biz-top">
-      <div class="biz-logo" [style.background]="business().logoBg">
-        @if (business().logoImage) {
-          <img [src]="business().logoImage" [alt]="business().name + ' logo'" />
-        } @else {
-          {{ business().logoText }}
-        }
-      </div>
-
+    <div class="biz-info-card">
       <div class="biz-title-col">
-        <a [routerLink]="['/business', business().slug]" class="biz-name">
-          {{ business().name }}
-        </a>
-        <p class="biz-location">{{ business().location }}</p>
+        <h3 class="biz-name">{{ business().name }}</h3>
+        <p class="biz-subtitle">
+          {{ business().categoryLabel }}@if (business().location) { · {{ business().location }} }
+        </p>
       </div>
 
-      <div class="biz-rating" aria-label="Rating">
-        <strong>{{ business().rating.toFixed(1) }}</strong>
-        <span>({{ business().reviewCount }})</span>
-      </div>
+      <span class="biz-action-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 17 17 7" />
+          <path d="M9 7h8v8" />
+        </svg>
+      </span>
     </div>
-
-    <div class="biz-footer">
-      <div class="biz-price">
-        <span class="price-label">From</span>
-        <strong class="price-value">{{ startingPrice() }}</strong>
-      </div>
-
-      <div class="biz-actions">
-        <a [routerLink]="['/business', business().slug]" class="btn btn--outline btn--sm">
-          Visit site
-        </a>
-        <a [routerLink]="['/book', business().slug]" class="btn btn--primary btn--sm">
-          Book
-        </a>
-      </div>
-    </div>
-  </div>
+  </a>
 </article>
