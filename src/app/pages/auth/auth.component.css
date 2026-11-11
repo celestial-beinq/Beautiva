@@ -251,82 +251,6 @@
   text-decoration: underline;
 }
 
-.demo-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 26px 0 14px;
-  color: var(--ink-muted);
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.demo-divider::before,
-.demo-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border-linen);
-}
-
-.demo-grid {
-  display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  gap: 10px;
-}
-
-.demo-btn {
-  text-align: left;
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-linen);
-  background: var(--bg-ivory);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.demo-btn:hover {
-  border-color: var(--accent-bronze);
-  background: var(--accent-bronze-soft);
-}
-
-.demo-btn strong {
-  display: block;
-  font-size: 0.88rem;
-  color: var(--ink-primary);
-}
-
-.demo-btn span {
-  display: block;
-  font-size: 0.76rem;
-  color: var(--ink-muted);
-}
-
-.demo-vendor-box {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border-linen);
-  border-radius: var(--radius-sm);
-  background: var(--bg-ivory);
-  overflow: hidden;
-}
-
-.demo-btn--flat {
-  border: 0;
-  border-radius: 0;
-  padding-bottom: 8px;
-}
-
-.demo-select {
-  border: 0;
-  border-top: 1px solid var(--border-linen);
-  border-radius: 0;
-  background: var(--bg-card);
-  font-size: 0.8rem;
-  padding: 7px 10px;
-}
-
 .session-card {
   display: flex;
   flex-direction: column;
@@ -360,9 +284,5 @@
 
   .signin-form-panel {
     padding: 32px 24px;
-  }
-
-  .demo-grid {
-    grid-template-columns: 1fr;
   }
 }

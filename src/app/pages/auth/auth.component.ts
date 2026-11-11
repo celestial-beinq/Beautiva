@@ -22,7 +22,6 @@ export class AuthComponent {
   readonly showPassword = signal<boolean>(false);
   readonly errorMsg = signal<string>('');
   readonly statusMsg = signal<string>('');
-  readonly demoStudioSlug = signal<string>('glamour-studio');
 
   email = '';
   password = '';
@@ -50,13 +49,6 @@ export class AuthComponent {
     }
 
     this.navigateAfterAuth(res.profile?.role);
-  }
-
-  quickSwitch(role: UserRole): void {
-    this.errorMsg.set('');
-    this.statusMsg.set('');
-    this.auth.switchDemoRole(role, this.demoStudioSlug());
-    this.navigateAfterAuth(role);
   }
 
   async logout(): Promise<void> {

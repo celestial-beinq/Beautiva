@@ -1,6 +1,10 @@
 <header class="site-header">
   <div class="container">
     <nav class="nav-bar" aria-label="Primary Navigation">
+      <a routerLink="/" class="nav-brand" aria-label="Beautiva Home" (click)="closeMobile()">
+        <span class="brand-name">BEAUTIVA</span>
+      </a>
+
       <div class="nav-links-desktop">
         <a
           routerLink="/"
@@ -25,24 +29,22 @@
         </a>
       </div>
 
-      <a routerLink="/" class="nav-brand" aria-label="Beautiva Home" (click)="closeMobile()">
-        <span class="brand-name">BEAUTIVA</span>
-      </a>
-
       <div class="nav-actions">
-        <a routerLink="/vendor" routerLinkActive="is-active" class="nav-link nav-portal-link" (click)="closeMobile()">
-          Vendor
-        </a>
-        <a routerLink="/admin" routerLinkActive="is-active" class="nav-link nav-portal-link" (click)="closeMobile()">
-          Admin
-        </a>
-        <a routerLink="/auth" routerLinkActive="is-active" class="nav-link nav-portal-link" (click)="closeMobile()">
-          @if (auth.currentUser(); as user) {
-            {{ user.role === 'super_admin' ? 'Admin' : user.role === 'vendor' ? 'Vendor' : 'Account' }}
-          } @else {
+        @if (auth.currentUser(); as user) {
+          <a
+            [routerLink]="user.role === 'super_admin' ? '/admin' : user.role === 'vendor' ? '/vendor' : '/auth'"
+            routerLinkActive="is-active"
+            class="nav-link nav-portal-link"
+            (click)="closeMobile()"
+          >
+            {{ user.role === 'super_admin' ? 'Admin' : user.role === 'vendor' ? 'Dashboard' : 'Account' }}
+          </a>
+        } @else {
+          <a routerLink="/auth" routerLinkActive="is-active" class="nav-link nav-portal-link" (click)="closeMobile()">
             Sign In
-          }
-        </a>
+          </a>
+        }
+
         <a routerLink="/vendors" class="btn btn--primary nav-cta" (click)="closeMobile()">
           Book a session
         </a>

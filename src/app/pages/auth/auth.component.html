@@ -42,9 +42,7 @@
     <div class="signin-form-panel">
       @if (auth.currentUser(); as user) {
         <div class="session-card">
-          <span class="badge badge--bronze">
-            {{ auth.authMode() === 'supabase' ? 'Authenticated Session' : 'Demo Preview Active' }}
-          </span>
+          <span class="badge badge--bronze">Authenticated Session</span>
           <h2 class="session-name">{{ user.fullName }}</h2>
           <p class="session-meta">
             {{ user.email }} · Role:
@@ -135,35 +133,6 @@
         <div class="vendor-help-note">
           Need a vendor studio account? Contact the Beautiva Platform Owner via
           <a routerLink="/contact">Concierge</a> to have your credentials provisioned.
-        </div>
-
-        <!-- COMPACT DEMO QUICK-SWITCH -->
-        <div class="demo-divider">
-          <span>Or preview with Demo Quick-Switch</span>
-        </div>
-
-        <div class="demo-grid">
-          <button type="button" class="demo-btn" (click)="quickSwitch('super_admin')">
-            <strong>Super Admin</strong>
-            <span>Platform Dashboard</span>
-          </button>
-
-          <div class="demo-vendor-box">
-            <button type="button" class="demo-btn demo-btn--flat" (click)="quickSwitch('vendor')">
-              <strong>Vendor Admin</strong>
-              <span>Studio Dashboard</span>
-            </button>
-            <select
-              class="select demo-select"
-              [ngModel]="demoStudioSlug()"
-              (ngModelChange)="demoStudioSlug.set($event)"
-              aria-label="Choose demo studio"
-            >
-              @for (b of marketplace.businesses(); track b.id) {
-                <option [value]="b.slug">{{ b.name }}</option>
-              }
-            </select>
-          </div>
         </div>
       }
     </div>

@@ -19,9 +19,10 @@
 }
 
 .nav-links-desktop {
+  justify-self: center;
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 24px;
 }
 
 .nav-link {
@@ -48,7 +49,7 @@
 }
 
 .nav-brand {
-  justify-self: center;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
 }
