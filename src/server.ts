@@ -67,28 +67,37 @@ app.get('/api/public/track/:reference', async (req, res) => {
   res.json({ booking: data });
 });
 
-// Super Admin: Provision real Supabase Auth vendor user + profile
-app.post('/api/admin/create-vendor-account', async (req, res) => {
+function getSuperAdminEmails(): string[] {
+  return (process.env['SUPER_ADMIN_EMAILS'] || 'admin@beautiva.ng')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+async function verifySuperAdmin(
+  req: express.Request,
+  res: express.Response,
+): Promise<{ admin: SupabaseClient; userId: string } | null> {
   const admin = getAdminClient();
   if (!admin) {
     res.status(503).json({
       requiresServiceRole: true,
-      error: 'SUPABASE_SERVICE_ROLE_KEY is required on the server to provision auth users directly.',
+      error: 'SUPABASE_SERVICE_ROLE_KEY is required on the server.',
     });
-    return;
+    return null;
   }
 
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!token) {
-    res.status(401).json({ error: 'Missing bearer token' });
-    return;
+    res.status(401).json({ error: 'Missing Super Admin auth token' });
+    return null;
   }
 
   const { data: userData, error: userErr } = await admin.auth.getUser(token);
   if (userErr || !userData?.user) {
     res.status(401).json({ error: 'Invalid auth session' });
-    return;
+    return null;
   }
 
   const { data: callerProfile } = await admin
@@ -97,10 +106,24 @@ app.post('/api/admin/create-vendor-account', async (req, res) => {
     .eq('id', userData.user.id)
     .maybeSingle();
 
-  if (callerProfile?.role !== 'super_admin') {
+  const userEmail = (userData.user.email || '').trim().toLowerCase();
+  const isAllowed =
+    callerProfile?.role === 'super_admin' ||
+    (Boolean(userEmail) && getSuperAdminEmails().includes(userEmail));
+
+  if (!isAllowed) {
     res.status(403).json({ error: 'Super Admin role required' });
-    return;
+    return null;
   }
+
+  return { admin, userId: userData.user.id };
+}
+
+// Super Admin: Provision real Supabase Auth vendor user + profile
+app.post('/api/admin/create-vendor-account', async (req, res) => {
+  const authCtx = await verifySuperAdmin(req, res);
+  if (!authCtx) return;
+  const { admin } = authCtx;
 
   const { email, password, fullName, phone } = req.body as {
     email?: string;
@@ -153,6 +176,17 @@ app.post('/api/public/vendor-applications', async (req, res) => {
   }
 
   const body = req.body as Record<string, unknown>;
+  const { data: settingsRow } = await admin
+    .from('platform_settings')
+    .select('vendor_onboarding_fee')
+    .eq('id', 1)
+    .maybeSingle();
+
+  const configuredFee = Number(settingsRow?.['vendor_onboarding_fee']);
+  const onboardingFee = Number.isFinite(configuredFee)
+    ? configuredFee
+    : Number(body['onboardingFee']) || 25000;
+
   const { error, data } = await admin
     .from('vendor_applications')
     .insert({
@@ -174,7 +208,7 @@ app.post('/api/public/vendor-applications', async (req, res) => {
       starting_service_name: body['startingServiceName'] || 'Signature Session',
       starting_service_price: Number(body['startingServicePrice']) || 20000,
       starting_service_duration_minutes: Number(body['startingServiceDurationMinutes']) || 60,
-      onboarding_fee: Number(body['onboardingFee']) || 25000,
+      onboarding_fee: onboardingFee,
       status: 'pending',
     })
     .select('*')
@@ -216,6 +250,140 @@ app.get('/api/public/vendor-application/:appNumber', async (req, res) => {
   res.json({ application: data });
 });
 
+// Super Admin: Accept or decline a vendor application
+app.post('/api/admin/vendor-applications/:appNumber/review', async (req, res) => {
+  const authCtx = await verifySuperAdmin(req, res);
+  if (!authCtx) return;
+  const { admin } = authCtx;
+
+  const appNum = String(req.params['appNumber'] || '').trim().toUpperCase();
+  const { decision, adminNote } = req.body as {
+    decision?: 'approved' | 'declined';
+    adminNote?: string;
+  };
+
+  if (decision !== 'approved' && decision !== 'declined') {
+    res.status(400).json({ error: 'Decision must be approved or declined' });
+    return;
+  }
+
+  const { data, error } = await admin
+    .from('vendor_applications')
+    .update({
+      status: decision,
+      admin_note: adminNote?.trim() || null,
+      reviewed_at: new Date().toISOString(),
+    })
+    .ilike('application_number', appNum)
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+  if (!data) {
+    res.status(404).json({ error: `Application ${appNum} not found` });
+    return;
+  }
+
+  res.status(200).json({ ok: true, application: data });
+});
+
+// Super Admin: Update studio attributes (profile, verified, featured, status)
+app.patch('/api/admin/businesses/:id', async (req, res) => {
+  const authCtx = await verifySuperAdmin(req, res);
+  if (!authCtx) return;
+  const { admin } = authCtx;
+
+  const idOrSlug = String(req.params['id'] || '').trim();
+  if (!idOrSlug) {
+    res.status(400).json({ error: 'Studio identifier is required' });
+    return;
+  }
+
+  const allowedKeys = [
+    'name',
+    'category_slug',
+    'category_label',
+    'tagline',
+    'about',
+    'location',
+    'city',
+    'address',
+    'logo_image',
+    'cover_image',
+    'gallery',
+    'working_hours',
+    'availability_settings',
+    'contact',
+    'payment_policy',
+    'verified',
+    'featured',
+    'status',
+  ] as const;
+
+  const body = (req.body || {}) as Record<string, unknown>;
+  const patch: Record<string, unknown> = {};
+  for (const key of allowedKeys) {
+    if (body[key] !== undefined) {
+      patch[key] = body[key];
+    }
+  }
+
+  if (Object.keys(patch).length === 0) {
+    res.status(400).json({ error: 'No valid update fields provided' });
+    return;
+  }
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+  const query = admin.from('businesses').update(patch);
+  const { data, error } = await (isUuid ? query.eq('id', idOrSlug) : query.eq('slug', idOrSlug))
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+  if (!data) {
+    res.status(404).json({ error: 'Studio not found' });
+    return;
+  }
+
+  res.status(200).json({ ok: true, business: data });
+});
+
+// Super Admin: Delete a studio
+app.delete('/api/admin/businesses/:id', async (req, res) => {
+  const authCtx = await verifySuperAdmin(req, res);
+  if (!authCtx) return;
+  const { admin } = authCtx;
+
+  const idOrSlug = String(req.params['id'] || '').trim();
+  if (!idOrSlug) {
+    res.status(400).json({ error: 'Studio identifier is required' });
+    return;
+  }
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+  const query = admin.from('businesses').delete();
+  const { data, error } = await (isUuid ? query.eq('id', idOrSlug) : query.eq('slug', idOrSlug))
+    .select('id')
+    .maybeSingle();
+
+  if (error) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+  if (!data) {
+    res.status(404).json({ error: 'Studio not found' });
+    return;
+  }
+
+  res.status(200).json({ ok: true, id: data['id'] });
+});
+
 // Public: Complete Paystack onboarding payment for an approved application & issue vendor login
 app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async (req, res) => {
   const admin = getAdminClient();
@@ -235,6 +403,26 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
 
   if (!paystackReference || !tempPassword || !email) {
     res.status(400).json({ error: 'Paystack reference, email, and temp password are required' });
+    return;
+  }
+
+  const { data: appRow } = await admin
+    .from('vendor_applications')
+    .select('*')
+    .ilike('application_number', appNum)
+    .maybeSingle();
+
+  if (!appRow) {
+    res.status(404).json({ error: 'Application not found' });
+    return;
+  }
+  if (appRow['status'] !== 'approved') {
+    res.status(400).json({
+      error:
+        appRow['status'] === 'paid_live'
+          ? 'This application has already been paid and activated.'
+          : 'This application must be approved by the Super Admin before payment.',
+    });
     return;
   }
 
@@ -278,7 +466,124 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
     });
   }
 
-  await admin
+  const businessName = String(appRow['business_name'] || 'Studio').trim();
+  const baseSlug = String(appRow['slug'] || businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+  const words = businessName.split(/\s+/);
+  const logoText =
+    words.length >= 2
+      ? `${words[0][0]}${words[1][0]}`.toUpperCase()
+      : businessName.slice(0, 2).toUpperCase();
+
+  const defaultWorkingHours = [
+    { day: 'Monday', open: '09:00 AM', close: '07:00 PM' },
+    { day: 'Tuesday', open: '09:00 AM', close: '07:00 PM' },
+    { day: 'Wednesday', open: '09:00 AM', close: '07:00 PM' },
+    { day: 'Thursday', open: '09:00 AM', close: '08:00 PM' },
+    { day: 'Friday', open: '09:00 AM', close: '08:00 PM' },
+    { day: 'Saturday', open: '08:30 AM', close: '08:00 PM' },
+    { day: 'Sunday', open: '12:00 PM', close: '06:00 PM' },
+  ];
+
+  const { data: bizRow, error: bizErr } = await admin
+    .from('businesses')
+    .upsert(
+      {
+        owner_id: userId,
+        slug: baseSlug,
+        name: businessName,
+        category_slug: appRow['category_slug'],
+        category_label: appRow['category_label'],
+        tagline: appRow['tagline'] || '',
+        about: appRow['about'] || '',
+        location: appRow['location'] || '',
+        city: appRow['city'] || 'Lagos',
+        address: appRow['address'] || appRow['location'] || '',
+        logo_text: logoText,
+        logo_bg: '#3b0b0b',
+        cover_image: appRow['cover_image'] || 'images/hero-salon.jpg',
+        gallery: [appRow['cover_image'] || 'images/hero-salon.jpg', 'images/hero-salon.jpg'],
+        rating: 5.0,
+        review_count: 0,
+        verified: true,
+        featured: false,
+        status: 'active',
+        working_hours: defaultWorkingHours,
+        contact: {
+          phone: appRow['phone'] || '',
+          email: normalizedEmail,
+          instagram: appRow['instagram'] || `@${baseSlug}`,
+        },
+        payment_policy: {
+          allowFull: true,
+          allowDeposit: true,
+          depositPercent: 30,
+          allowPayAtBusiness: true,
+        },
+      },
+      { onConflict: 'slug' },
+    )
+    .select('*')
+    .single();
+
+  if (bizErr) {
+    res.status(400).json({ error: `Could not create live business: ${bizErr.message}` });
+    return;
+  }
+
+  const businessId = bizRow['id'];
+  const existingServices = await admin
+    .from('services')
+    .select('id')
+    .eq('business_id', businessId)
+    .limit(1);
+  if (!existingServices.data || existingServices.data.length === 0) {
+    await admin.from('services').insert({
+      business_id: businessId,
+      name: appRow['starting_service_name'] || 'Signature Session',
+      category_label: String(appRow['category_label'] || 'Signature'),
+      price: Number(appRow['starting_service_price']) || 20000,
+      duration_minutes: Number(appRow['starting_service_duration_minutes']) || 60,
+      description: `${appRow['starting_service_name'] || 'Signature Session'} at ${businessName}.`,
+      image_url: appRow['cover_image'] || null,
+      is_active: true,
+      sort_order: 1,
+    });
+  }
+
+  const existingStaff = await admin
+    .from('staff_members')
+    .select('id')
+    .eq('business_id', businessId)
+    .limit(1);
+  if (!existingStaff.data || existingStaff.data.length === 0) {
+    await admin.from('staff_members').insert({
+      business_id: businessId,
+      name: ownerName || appRow['owner_name'] || 'Studio Owner',
+      role: 'Founder & Lead Specialist',
+      specialty: String(appRow['category_label'] || 'Studio Craft'),
+      avatar_color: '#b81d1a',
+      is_active: true,
+    });
+  }
+
+  const onboardingFee = Number(appRow['onboarding_fee']) || 25000;
+  await admin.from('transactions').insert({
+    booking_reference: appNum,
+    business_id: businessId,
+    business_name: businessName,
+    customer_name: ownerName || appRow['owner_name'] || businessName,
+    customer_email: normalizedEmail,
+    gateway: 'Paystack (Vendor Onboarding)',
+    gateway_reference: paystackReference,
+    amount: onboardingFee,
+    platform_commission_rate: 100,
+    platform_commission_amount: onboardingFee,
+    vendor_net_amount: 0,
+    status: 'success',
+    paid_at: new Date().toISOString(),
+  });
+
+  const { data: updatedAppRow } = await admin
     .from('vendor_applications')
     .update({
       status: 'paid_live',
@@ -286,10 +591,19 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
       paid_at: new Date().toISOString(),
       issued_login_email: normalizedEmail,
       issued_temp_password: tempPassword,
+      live_business_slug: bizRow['slug'],
     })
-    .ilike('application_number', appNum);
+    .ilike('application_number', appNum)
+    .select('*')
+    .maybeSingle();
 
-  res.status(200).json({ ok: true, userId, email: normalizedEmail });
+  res.status(200).json({
+    ok: true,
+    userId,
+    email: normalizedEmail,
+    business: bizRow,
+    application: updatedAppRow,
+  });
 });
 
 /**

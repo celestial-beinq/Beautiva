@@ -305,7 +305,7 @@
   vertical-align: middle;
 }
 
-.studio-admin-table tr.is-suspended td {
+.studio-admin-table tr.is-suspended td:not(:last-child) {
   opacity: 0.65;
 }
 
@@ -508,12 +508,17 @@
 }
 
 .toast-bar {
-  margin-bottom: 1.5rem;
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 200;
+  max-width: min(480px, calc(100vw - 2rem));
   padding: 0.85rem 1.15rem;
   background: var(--accent-sage-soft);
   color: var(--accent-sage);
   border: 1px solid rgba(43, 110, 82, 0.25);
   border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-lg);
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -701,6 +706,34 @@
 .muted-note {
   font-size: 0.88rem;
   color: var(--ink-muted);
+}
+
+.fee-config-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.1rem;
+  border: 1px solid var(--border-linen);
+  border-radius: var(--radius-xs);
+  background: var(--bg-ivory);
+}
+
+.fee-config-bar strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.fee-config-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.fee-input {
+  width: 140px;
 }
 
 .app-modal-backdrop {

@@ -118,7 +118,7 @@ describe('App & MarketplaceService', () => {
     expect(service.findBookingByReference(created.bookingReference)?.status).toBe('Confirmed');
   });
 
-  it('should support vendor updates and super admin studio governance', () => {
+  it('should support vendor updates and super admin studio governance', async () => {
     const service = TestBed.inject(MarketplaceService);
     seedAdminTestStudio(service);
     const initialActive = service.activeBusinesses().length;
@@ -130,8 +130,18 @@ describe('App & MarketplaceService', () => {
     expect(service.activeBusinesses().length).toBe(initialActive);
 
     const beforeVerified = service.getBusinessBySlug('atelier-lagos')?.verified;
-    service.toggleBusinessVerified('atelier-lagos');
+    await service.toggleBusinessVerified('atelier-lagos');
     expect(service.getBusinessBySlug('atelier-lagos')?.verified).toBe(!beforeVerified);
+
+    const beforeFeatured = service.getBusinessBySlug('atelier-lagos')?.featured;
+    await service.toggleBusinessFeatured('atelier-lagos');
+    expect(service.getBusinessBySlug('atelier-lagos')?.featured).toBe(!beforeFeatured);
+
+    await service.saveStudioConfiguration('atelier-lagos', { tagline: 'Updated Lekki studio' });
+    expect(service.getBusinessBySlug('atelier-lagos')?.tagline).toBe('Updated Lekki studio');
+
+    await service.deleteBusiness('atelier-lagos');
+    expect(service.getBusinessBySlug('atelier-lagos')).toBeUndefined();
   });
 
   it('should support category CRUD, platform commission settings, and failed payment logging', () => {
@@ -154,8 +164,22 @@ describe('App & MarketplaceService', () => {
     service.deleteCategory('spa-wellness');
     expect(service.categories().length).toBe(initialCats);
 
-    service.updatePlatformSettings({ commissionRate: 15 });
+    service.updatePlatformSettings({ commissionRate: 15, vendorOnboardingFee: 35000 });
     expect(service.platformSettings().commissionRate).toBe(15);
+    expect(service.platformSettings().vendorOnboardingFee).toBe(35000);
+
+    const appWithCustomFee = service.submitVendorApplication({
+      ownerName: 'Fee Test',
+      email: 'feetest@beautiva.ng',
+      phone: '+234 800 111 2222',
+      businessName: 'Fee Test Studio',
+      categorySlug: 'hairdressers',
+      city: 'Lagos',
+      location: 'Lekki, Lagos',
+      startingServiceName: 'Silk Press',
+      startingServicePrice: 18000,
+    });
+    expect(appWithCustomFee.onboardingFee).toBe(35000);
 
     const tx = service.recordFailedPayment({
       businessSlug: 'atelier-lagos',
@@ -239,12 +263,13 @@ describe('App & MarketplaceService', () => {
     expect(app.status).toBe('pending');
 
     // Super Admin views & approves application
-    const reviewed = service.reviewVendorApplication(
+    const reviewed = await service.reviewVendorApplication(
       app.applicationNumber,
       'approved',
       'Verified studio details.',
     );
-    expect(reviewed?.status).toBe('approved');
+    expect(reviewed.ok).toBe(true);
+    expect(reviewed.application?.status).toBe('approved');
 
     // Vendor checks status by Application Number & pays onboarding fee via Paystack
     const lookedUp = service.findApplicationByNumber(app.applicationNumber);

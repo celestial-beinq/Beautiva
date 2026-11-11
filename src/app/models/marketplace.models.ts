@@ -244,6 +244,7 @@ export interface VendorInvitation {
 
 export interface PlatformSettings {
   commissionRate: number;
+  vendorOnboardingFee: number;
   siteName: string;
   heroHeadline: string;
   heroSubheadline: string;

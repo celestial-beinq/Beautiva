@@ -1,9 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
   AccountStatus,
-  BookingStatus,
   BusinessProfile,
   CategoryInfo,
   CategorySlug,
@@ -34,19 +33,19 @@ export class AdminDashboardComponent {
 
   readonly categories = this.marketplace.categories;
   readonly businesses = this.marketplace.businesses;
-  readonly bookings = this.marketplace.bookings;
   readonly transactions = this.marketplace.transactions;
   readonly invitations = this.marketplace.vendorInvitations;
   readonly vendorApplications = this.marketplace.vendorApplications;
 
   readonly activeTab = signal<
-    'overview' | 'vendors' | 'categories' | 'bookings' | 'payments' | 'settings'
+    'overview' | 'vendors' | 'categories' | 'payments' | 'settings'
   >('overview');
   readonly toast = signal('');
 
   // Vendor Applications review state
   readonly applicationFilter = signal<'all' | VendorApplicationStatus>('all');
   readonly viewingApplicationNum = signal<string | null>(null);
+  readonly reviewingAppNum = signal<string | null>(null);
   applicationReviewNote = '';
 
   // Vendor Management filters & forms
@@ -56,6 +55,7 @@ export class AdminDashboardComponent {
   readonly showCreateVendor = signal(false);
   readonly showInviteVendor = signal(false);
   readonly editingVendorSlug = signal<string | null>(null);
+  readonly busyStudioSlug = signal<string | null>(null);
   readonly viewingApplication = signal<BusinessProfile | null>(null);
 
   newVendor = {
@@ -107,12 +107,6 @@ export class AdminDashboardComponent {
     tagsText: '',
   };
 
-  // Booking Management filters
-  readonly ledgerSearch = signal('');
-  readonly ledgerCategoryFilter = signal<CategorySlug | 'all'>('all');
-  readonly ledgerBusinessFilter = signal<string>('all');
-  readonly ledgerStatusFilter = signal<'all' | BookingStatus>('all');
-
   // Payment Management filters
   readonly paymentFilter = signal<'all' | 'success' | 'failed' | 'refunded'>('all');
   readonly paymentSearch = signal('');
@@ -120,37 +114,27 @@ export class AdminDashboardComponent {
   // Platform Settings & Customer Accounts
   readonly customerSearch = signal('');
   settingsDraft: PlatformSettings = { ...this.marketplace.platformSettings() };
+  onboardingFeeInput: number = this.marketplace.platformSettings().vendorOnboardingFee;
+
+  constructor() {
+    effect(() => {
+      const s = this.marketplace.platformSettings();
+      this.settingsDraft = { ...s };
+      this.onboardingFeeInput = s.vendorOnboardingFee;
+    });
+  }
 
   readonly uniqueCustomers = computed(() => {
-    const map = new Map<
-      string,
-      { id: string; fullName: string; email: string; phone: string; status: AccountStatus; bookings: number }
-    >();
-    for (const acc of this.marketplace.customerAccounts()) {
-      if (acc.role !== 'customer') continue;
-      map.set(acc.email.toLowerCase(), {
+    return this.marketplace
+      .customerAccounts()
+      .filter((acc) => acc.role === 'customer')
+      .map((acc) => ({
         id: acc.id,
         fullName: acc.fullName,
         email: acc.email,
         phone: acc.phone,
         status: acc.status,
-        bookings: 0,
-      });
-    }
-    for (const b of this.bookings()) {
-      const key = b.customerEmail.toLowerCase();
-      const existing = map.get(key) ?? {
-        id: `bk-cust-${key}`,
-        fullName: b.customerName,
-        email: b.customerEmail,
-        phone: b.customerPhone,
-        status: 'active' as AccountStatus,
-        bookings: 0,
-      };
-      existing.bookings += 1;
-      map.set(key, existing);
-    }
-    return Array.from(map.values());
+      }));
   });
 
   readonly filteredCustomers = computed(() => {
@@ -172,17 +156,15 @@ export class AdminDashboardComponent {
     const verifiedStudios = allBiz.filter((b) => b.verified).length;
     const featuredStudios = allBiz.filter((b) => b.featured).length;
 
-    const allBookings = this.bookings();
-    const validBookings = allBookings.filter((b) => b.status !== 'Cancelled');
-    const grossBookingValue = validBookings.reduce((s, b) => s + b.servicePrice, 0);
-    const paystackCollected = validBookings.reduce((s, b) => s + b.amountPaid, 0);
-    const balanceAtStudios = validBookings.reduce((s, b) => s + b.balanceDue, 0);
     const rate = this.marketplace.platformSettings().commissionRate || 10;
-    const platformCommission = Math.round((paystackCollected * rate) / 100);
-
     const txs = this.transactions();
     const successTx = txs.filter((t) => t.status === 'success');
     const failedTx = txs.filter((t) => t.status === 'failed');
+    const successTxVolume = successTx.reduce((s, t) => s + t.amount, 0);
+    const platformCommission = successTx.reduce(
+      (s, t) => s + (t.platformCommissionAmount || Math.round((t.amount * rate) / 100)),
+      0,
+    );
 
     return {
       totalStudios: allBiz.length,
@@ -192,58 +174,34 @@ export class AdminDashboardComponent {
       verifiedStudios,
       featuredStudios,
       totalCustomers: this.uniqueCustomers().length,
-      totalBookings: allBookings.length,
-      validBookingsCount: validBookings.length,
-      grossBookingValue,
-      paystackCollected,
-      balanceAtStudios,
       platformCommission,
       commissionRate: rate,
       successTxCount: successTx.length,
-      successTxVolume: successTx.reduce((s, t) => s + t.amount, 0),
+      successTxVolume,
       failedTxCount: failedTx.length,
       failedTxVolume: failedTx.reduce((s, t) => s + t.amount, 0),
     };
   });
 
   readonly categoryBreakdown = computed(() => {
-    const validBookings = this.bookings().filter((b) => b.status !== 'Cancelled');
-    const bizMap = new Map(this.businesses().map((b) => [b.slug, b]));
-
     const rows = this.categories().map((cat) => {
       const studios = this.businesses().filter((b) => b.categorySlug === cat.slug);
-      const catBookings = validBookings.filter(
-        (bk) => bizMap.get(bk.businessSlug)?.categorySlug === cat.slug,
-      );
-      const volume = catBookings.reduce((sum, bk) => sum + bk.servicePrice, 0);
+      const activeCount = studios.filter((b) => (b.status ?? 'active') === 'active').length;
       return {
         slug: cat.slug,
         name: cat.shortName,
         studioCount: studios.length,
-        bookingCount: catBookings.length,
-        volume,
+        activeCount,
       };
     });
 
-    const maxVol = Math.max(1, ...rows.map((r) => r.volume));
+    const maxCount = Math.max(1, ...rows.map((r) => r.studioCount));
     return rows
       .map((r) => ({
         ...r,
-        barWidthPct: Math.max(r.studioCount > 0 ? 12 : 0, Math.round((r.volume / maxVol) * 100)),
+        barWidthPct: Math.max(r.studioCount > 0 ? 15 : 0, Math.round((r.studioCount / maxCount) * 100)),
       }))
-      .sort((a, b) => b.bookingCount - a.bookingCount || b.volume - a.volume);
-  });
-
-  readonly studioStatsMap = computed(() => {
-    const map = new Map<string, { bookings: number; revenue: number }>();
-    for (const bk of this.bookings()) {
-      if (bk.status === 'Cancelled') continue;
-      const cur = map.get(bk.businessSlug) ?? { bookings: 0, revenue: 0 };
-      cur.bookings += 1;
-      cur.revenue += bk.amountPaid;
-      map.set(bk.businessSlug, cur);
-    }
-    return map;
+      .sort((a, b) => b.studioCount - a.studioCount);
   });
 
   readonly filteredApplications = computed(() => {
@@ -274,31 +232,6 @@ export class AdminDashboardComponent {
     });
   });
 
-  readonly filteredLedger = computed(() => {
-    const q = this.ledgerSearch().trim().toLowerCase();
-    const cat = this.ledgerCategoryFilter();
-    const bizFilter = this.ledgerBusinessFilter();
-    const st = this.ledgerStatusFilter();
-    const bizMap = new Map(this.businesses().map((b) => [b.slug, b]));
-
-    return this.bookings().filter((b) => {
-      if (st !== 'all' && b.status !== st) return false;
-      if (bizFilter !== 'all' && b.businessSlug !== bizFilter) return false;
-      if (cat !== 'all') {
-        const bCat = b.categorySlug || bizMap.get(b.businessSlug)?.categorySlug;
-        if (bCat !== cat) return false;
-      }
-      if (!q) return true;
-      return (
-        b.bookingReference.toLowerCase().includes(q) ||
-        b.businessName.toLowerCase().includes(q) ||
-        b.customerName.toLowerCase().includes(q) ||
-        b.serviceName.toLowerCase().includes(q) ||
-        (b.paystackReference ?? '').toLowerCase().includes(q)
-      );
-    });
-  });
-
   readonly filteredTransactions = computed(() => {
     const status = this.paymentFilter();
     const q = this.paymentSearch().trim().toLowerCase();
@@ -306,9 +239,9 @@ export class AdminDashboardComponent {
       if (status !== 'all' && tx.status !== status) return false;
       if (!q) return true;
       return (
-        tx.bookingReference.toLowerCase().includes(q) ||
         tx.businessName.toLowerCase().includes(q) ||
         tx.customerName.toLowerCase().includes(q) ||
+        tx.customerEmail.toLowerCase().includes(q) ||
         (tx.gatewayReference ?? '').toLowerCase().includes(q)
       );
     });
@@ -441,16 +374,34 @@ export class AdminDashboardComponent {
     this.viewingApplication.set(null);
   }
 
-  approveVendor(slug: string): void {
-    this.marketplace.setBusinessStatus(slug, 'active');
-    this.viewingApplication.set(null);
-    this.flash(`Approved & activated studio: ${slug}`);
+  async approveVendor(slug: string): Promise<void> {
+    this.busyStudioSlug.set(slug);
+    try {
+      const res = await this.marketplace.setBusinessStatus(slug, 'active');
+      if (!res.ok) {
+        this.flash(res.error || `Could not approve studio: ${slug}`);
+        return;
+      }
+      this.viewingApplication.set(null);
+      this.flash(`Approved & activated studio: ${slug}`);
+    } finally {
+      this.busyStudioSlug.set(null);
+    }
   }
 
-  declineVendor(biz: BusinessProfile): void {
-    this.marketplace.deleteBusiness(biz.slug);
-    this.viewingApplication.set(null);
-    this.flash(`Declined vendor application: ${biz.name}`);
+  async declineVendor(biz: BusinessProfile): Promise<void> {
+    this.busyStudioSlug.set(biz.slug);
+    try {
+      const res = await this.marketplace.deleteBusiness(biz.slug);
+      if (!res.ok) {
+        this.flash(res.error || `Could not decline studio: ${biz.name}`);
+        return;
+      }
+      this.viewingApplication.set(null);
+      this.flash(`Declined vendor application: ${biz.name}`);
+    } finally {
+      this.busyStudioSlug.set(null);
+    }
   }
 
   inspectApplication(app: VendorApplication): void {
@@ -463,23 +414,42 @@ export class AdminDashboardComponent {
     }
   }
 
-  decideApplication(appNumber: string, decision: 'approved' | 'declined'): void {
-    const updated = this.marketplace.reviewVendorApplication(
-      appNumber,
-      decision,
-      this.applicationReviewNote,
-    );
-    if (!updated) return;
-    this.viewingApplicationNum.set(null);
-    this.applicationReviewNote = '';
-    this.flash(
-      decision === 'approved'
-        ? `Accepted ${updated.businessName} (${updated.applicationNumber}). Vendor can now pay onboarding fee & go live.`
-        : `Declined ${updated.businessName} (${updated.applicationNumber}).`,
-    );
+  async decideApplication(appNumber: string, decision: 'approved' | 'declined'): Promise<void> {
+    this.reviewingAppNum.set(appNumber);
+    try {
+      const res = await this.marketplace.reviewVendorApplication(
+        appNumber,
+        decision,
+        this.applicationReviewNote,
+      );
+      if (!res.ok || !res.application) {
+        this.flash(res.error || 'Could not update application.');
+        return;
+      }
+      this.viewingApplicationNum.set(null);
+      this.applicationReviewNote = '';
+      this.flash(
+        decision === 'approved'
+          ? `Accepted ${res.application.businessName} (${res.application.applicationNumber}). Vendor can now pay onboarding fee & go live.`
+          : `Declined ${res.application.businessName} (${res.application.applicationNumber}).`,
+      );
+    } finally {
+      this.reviewingAppNum.set(null);
+    }
+  }
+
+  copyApplicationPayLink(appNumber: string): void {
+    if (typeof window === 'undefined' || !navigator.clipboard) return;
+    const url = `${window.location.origin}/apply?app=${encodeURIComponent(appNumber)}`;
+    void navigator.clipboard.writeText(url);
+    this.flash(`Copied onboarding payment link: ${url}`);
   }
 
   startEditVendor(biz: BusinessProfile): void {
+    if (this.editingVendorSlug() === biz.slug) {
+      this.editingVendorSlug.set(null);
+      return;
+    }
     this.editingVendorSlug.set(biz.slug);
     this.editVendorForm = {
       name: biz.name,
@@ -493,41 +463,96 @@ export class AdminDashboardComponent {
     };
   }
 
-  saveVendorEdit(biz: BusinessProfile): void {
-    this.marketplace.updateStudioConfiguration(biz.slug, {
-      name: this.editVendorForm.name.trim() || biz.name,
-      categorySlug: this.editVendorForm.categorySlug,
-      city: this.editVendorForm.city.trim() || biz.city,
-      location: this.editVendorForm.location.trim() || biz.location,
-      address: this.editVendorForm.address.trim() || biz.address,
-      tagline: this.editVendorForm.tagline.trim(),
-      contact: {
-        ...biz.contact,
-        phone: this.editVendorForm.phone.trim(),
-        email: this.editVendorForm.email.trim(),
-      },
-    });
-    this.editingVendorSlug.set(null);
-    this.flash(`Updated vendor profile for ${this.editVendorForm.name}.`);
+  async saveVendorEdit(biz: BusinessProfile): Promise<void> {
+    this.busyStudioSlug.set(biz.slug);
+    try {
+      const nextName = this.editVendorForm.name.trim() || biz.name;
+      const res = await this.marketplace.saveStudioConfiguration(biz.slug, {
+        name: nextName,
+        categorySlug: this.editVendorForm.categorySlug,
+        city: this.editVendorForm.city.trim() || biz.city,
+        location: this.editVendorForm.location.trim() || biz.location,
+        address: this.editVendorForm.address.trim() || biz.address,
+        tagline: this.editVendorForm.tagline.trim(),
+        contact: {
+          ...biz.contact,
+          phone: this.editVendorForm.phone.trim(),
+          email: this.editVendorForm.email.trim(),
+        },
+      });
+      if (!res.ok) {
+        this.flash(res.error || `Could not save changes for ${nextName}.`);
+        return;
+      }
+      this.editingVendorSlug.set(null);
+      this.flash(`Updated vendor profile for ${nextName}.`);
+    } finally {
+      this.busyStudioSlug.set(null);
+    }
   }
 
-  toggleVerified(slug: string): void {
-    this.marketplace.toggleBusinessVerified(slug);
+  async toggleVerified(slug: string): Promise<void> {
+    this.busyStudioSlug.set(slug);
+    try {
+      const res = await this.marketplace.toggleBusinessVerified(slug);
+      if (!res.ok) {
+        this.flash(res.error || `Could not update verification status for ${slug}.`);
+        return;
+      }
+      this.flash(
+        res.verified ? `Studio ${slug} marked Verified.` : `Removed verification from ${slug}.`,
+      );
+    } finally {
+      this.busyStudioSlug.set(null);
+    }
   }
 
-  toggleFeatured(slug: string): void {
-    this.marketplace.toggleBusinessFeatured(slug);
+  async toggleFeatured(slug: string): Promise<void> {
+    this.busyStudioSlug.set(slug);
+    try {
+      const res = await this.marketplace.toggleBusinessFeatured(slug);
+      if (!res.ok) {
+        this.flash(res.error || `Could not update featured status for ${slug}.`);
+        return;
+      }
+      this.flash(
+        res.featured ? `Studio ${slug} is now Featured.` : `Removed ${slug} from Featured.`,
+      );
+    } finally {
+      this.busyStudioSlug.set(null);
+    }
   }
 
-  toggleSuspend(slug: string, currentStatus?: StudioStatus): void {
+  async toggleSuspend(slug: string, currentStatus?: StudioStatus): Promise<void> {
     const next: StudioStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
-    this.marketplace.setBusinessStatus(slug, next);
-    this.flash(`Studio ${slug} is now ${next}.`);
+    this.busyStudioSlug.set(slug);
+    try {
+      const res = await this.marketplace.setBusinessStatus(slug, next);
+      if (!res.ok) {
+        this.flash(res.error || `Could not update status for ${slug}.`);
+        return;
+      }
+      this.flash(`Studio ${slug} is now ${next}.`);
+    } finally {
+      this.busyStudioSlug.set(null);
+    }
   }
 
-  deleteVendor(slug: string, name: string): void {
-    this.marketplace.deleteBusiness(slug);
-    this.flash(`Deleted vendor account & studio: ${name}`);
+  async deleteVendor(slug: string, name: string): Promise<void> {
+    this.busyStudioSlug.set(slug);
+    try {
+      const res = await this.marketplace.deleteBusiness(slug);
+      if (!res.ok) {
+        this.flash(res.error || `Could not delete studio ${name}.`);
+        return;
+      }
+      if (this.editingVendorSlug() === slug) {
+        this.editingVendorSlug.set(null);
+      }
+      this.flash(`Deleted vendor account & studio: ${name}`);
+    } finally {
+      this.busyStudioSlug.set(null);
+    }
   }
 
   // ==========================================================================
@@ -597,21 +622,20 @@ export class AdminDashboardComponent {
   }
 
   // ==========================================================================
-  // BOOKINGS, SETTINGS, CUSTOMERS & REVIEWS
+  // SETTINGS, CUSTOMERS & REVIEWS
   // ==========================================================================
-  setBookingStatus(ref: string, status: BookingStatus): void {
-    this.marketplace.updateBookingStatus(ref, status);
-    this.flash(`Booking ${ref} marked ${status}.`);
-  }
-
-  markBookingPaid(ref: string): void {
-    this.marketplace.updateBookingStatus(ref, 'Confirmed', 'Paid');
-    this.flash(`Booking ${ref} marked Paid.`);
+  saveOnboardingFee(): void {
+    const fee = Math.max(0, Number(this.onboardingFeeInput) || 0);
+    this.onboardingFeeInput = fee;
+    this.marketplace.updatePlatformSettings({ vendorOnboardingFee: fee });
+    this.flash(
+      `Vendor onboarding fee updated to ${this.marketplace.formatNaira(fee)} for new and awaiting applications.`,
+    );
   }
 
   savePlatformSettings(): void {
     this.marketplace.updatePlatformSettings(this.settingsDraft);
-    this.flash('Saved platform commission, website content & notification rules.');
+    this.flash('Saved platform commission, onboarding fee, website content & notification rules.');
   }
 
   toggleCustomerStatus(id: string, current: AccountStatus): void {

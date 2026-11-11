@@ -76,6 +76,7 @@ export const DEFAULT_AVAILABILITY: AvailabilitySettings = {
 
 const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   commissionRate: 10,
+  vendorOnboardingFee: 25000,
   siteName: 'Beautiva',
   heroHeadline: 'Curated Nigerian Beauty & Grooming Studios',
   heroSubheadline:
@@ -349,6 +350,7 @@ export class MarketplaceService {
         const s = setRes.data;
         const mappedSettings: PlatformSettings = {
           commissionRate: Number(s.commission_rate ?? 10),
+          vendorOnboardingFee: Number(s.vendor_onboarding_fee ?? 25000),
           siteName: s.site_name || 'Beautiva',
           heroHeadline: s.hero_headline || DEFAULT_PLATFORM_SETTINGS.heroHeadline,
           heroSubheadline: s.hero_subheadline || DEFAULT_PLATFORM_SETTINGS.heroSubheadline,
@@ -737,21 +739,23 @@ export class MarketplaceService {
     this.saveTransactions(updated);
 
     if (this.sb.client && this.isBrowser && biz && this.isUuid(biz.id)) {
-      void this.sb.client.from('transactions').insert({
-        booking_reference: tx.bookingReference,
-        business_id: biz.id,
-        business_name: tx.businessName,
-        customer_name: tx.customerName,
-        customer_email: tx.customerEmail,
-        gateway: tx.gateway,
-        gateway_reference: tx.gatewayReference,
-        amount: tx.amount,
-        platform_commission_rate: tx.platformCommissionRate,
-        platform_commission_amount: 0,
-        vendor_net_amount: 0,
-        status: 'failed',
-        failure_reason: tx.failureReason,
-      });
+      this.runSupabaseWrite(
+        this.sb.client.from('transactions').insert({
+          booking_reference: tx.bookingReference,
+          business_id: biz.id,
+          business_name: tx.businessName,
+          customer_name: tx.customerName,
+          customer_email: tx.customerEmail,
+          gateway: tx.gateway,
+          gateway_reference: tx.gatewayReference,
+          amount: tx.amount,
+          platform_commission_rate: tx.platformCommissionRate,
+          platform_commission_amount: 0,
+          vendor_net_amount: 0,
+          status: 'failed',
+          failure_reason: tx.failureReason,
+        }),
+      );
     }
     return tx;
   }
@@ -806,15 +810,17 @@ export class MarketplaceService {
       this.saveBookings(updated);
 
       if (this.sb.client && this.isBrowser) {
-        void this.sb.client
-          .from('bookings')
-          .update({
-            status: target.status,
-            payment_status: target.paymentStatus,
-            amount_paid: target.amountPaid,
-            balance_due: target.balanceDue,
-          })
-          .ilike('booking_reference', target.bookingReference);
+        this.runSupabaseWrite(
+          this.sb.client
+            .from('bookings')
+            .update({
+              status: target.status,
+              payment_status: target.paymentStatus,
+              amount_paid: target.amountPaid,
+              balance_due: target.balanceDue,
+            })
+            .ilike('booking_reference', target.bookingReference),
+        );
       }
     }
     return target;
@@ -846,16 +852,18 @@ export class MarketplaceService {
       this.bookings.set(updated);
       this.saveBookings(updated);
       if (this.sb.client && this.isBrowser) {
-        void this.sb.client
-          .from('bookings')
-          .update({
-            date: target.date,
-            date_display: target.dateDisplay,
-            time: target.time,
-            status: target.status,
-            rescheduled_from: target.rescheduledFrom,
-          })
-          .ilike('booking_reference', target.bookingReference);
+        this.runSupabaseWrite(
+          this.sb.client
+            .from('bookings')
+            .update({
+              date: target.date,
+              date_display: target.dateDisplay,
+              time: target.time,
+              status: target.status,
+              rescheduled_from: target.rescheduledFrom,
+            })
+            .ilike('booking_reference', target.bookingReference),
+        );
       }
     }
     return target;
@@ -890,16 +898,18 @@ export class MarketplaceService {
     this.saveBusinesses(updated);
 
     if (this.sb.client && this.isBrowser && targetBizId && this.isUuid(targetBizId)) {
-      void this.sb.client.from('reviews').insert({
-        business_id: targetBizId,
-        business_slug: businessSlug,
-        author: review.author,
-        rating: review.rating,
-        service_name: review.serviceName,
-        date_label: 'Just now',
-        comment: review.comment,
-        status: 'published',
-      });
+      this.runSupabaseWrite(
+        this.sb.client.from('reviews').insert({
+          business_id: targetBizId,
+          business_slug: businessSlug,
+          author: review.author,
+          rating: review.rating,
+          service_name: review.serviceName,
+          date_label: 'Just now',
+          comment: review.comment,
+          status: 'published',
+        }),
+      );
     }
   }
 
@@ -1037,6 +1047,147 @@ export class MarketplaceService {
     );
   }
 
+  private runSupabaseWrite(op: PromiseLike<{ error?: { message?: string } | null }>): void {
+    void Promise.resolve(op).then(
+      (res) => {
+        if (res?.error?.message) {
+          this.backendError.set(res.error.message);
+        }
+      },
+      (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Unable to sync change to Supabase';
+        this.backendError.set(msg);
+      },
+    );
+  }
+
+  private async persistBusinessMutation(
+    method: 'PATCH' | 'DELETE',
+    bizId: string,
+    slug: string,
+    payload?: Record<string, unknown>,
+    extraSync?: () => Promise<void>,
+  ): Promise<{ ok: boolean; error?: string }> {
+    if (
+      !this.sb.client ||
+      !this.isBrowser ||
+      !this.isUuid(bizId) ||
+      this.auth.authMode() !== 'supabase'
+    ) {
+      return { ok: true };
+    }
+
+    const idOrSlug = this.isUuid(bizId) ? bizId : slug;
+    const token = this.auth.accessToken();
+
+    // Super Admin requests can use the server route (bypasses brittle client RLS edge cases)
+    if (this.auth.authMode() === 'supabase' && this.auth.isSuperAdmin() && token) {
+      try {
+        const resp = await fetch(`/api/admin/businesses/${encodeURIComponent(idOrSlug)}`, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: method === 'PATCH' ? JSON.stringify(payload || {}) : undefined,
+        });
+        if (resp.ok) {
+          if (extraSync) await extraSync();
+          return { ok: true };
+        }
+        if (resp.status !== 404 && resp.status !== 503) {
+          const errJson = (await resp.json().catch(() => ({}))) as { error?: string };
+          return { ok: false, error: errJson.error || `Server returned ${resp.status}` };
+        }
+      } catch {
+        // Fall through to direct Supabase client update below
+      }
+    }
+
+    if (method === 'DELETE') {
+      const { data, error } = await this.sb.client
+        .from('businesses')
+        .delete()
+        .eq('id', bizId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+      if (this.auth.authMode() === 'supabase' && !data) {
+        return { ok: false, error: 'Studio delete was rejected by Supabase RLS or not found.' };
+      }
+      return { ok: true };
+    }
+
+    const { data, error } = await this.sb.client
+      .from('businesses')
+      .update(payload || {})
+      .eq('id', bizId)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+    if (this.auth.authMode() === 'supabase' && !data) {
+      return { ok: false, error: 'Studio update was rejected by Supabase RLS or not found.' };
+    }
+
+    if (extraSync) await extraSync();
+    return { ok: true };
+  }
+
+  private applyStudioPatchLocal(
+    slug: string,
+    patch: Parameters<MarketplaceService['updateStudioConfiguration']>[1],
+  ): { previous: BusinessProfile[]; updatedBiz?: BusinessProfile } {
+    const previous = this.businesses();
+    let updatedBiz: BusinessProfile | undefined;
+    const category = patch.categorySlug ? this.getCategoryBySlug(patch.categorySlug) : undefined;
+
+    const list = previous.map((b) => {
+      if (b.slug !== slug) return b;
+      updatedBiz = {
+        ...b,
+        ...patch,
+        categoryLabel: category?.name ?? b.categoryLabel,
+      };
+      return updatedBiz;
+    });
+
+    if (updatedBiz) {
+      this.businesses.set(list);
+      this.saveBusinesses(list);
+    }
+
+    return { previous, updatedBiz };
+  }
+
+  private buildBusinessUpdatePayload(biz: BusinessProfile): Record<string, unknown> {
+    return {
+      name: biz.name,
+      category_slug: biz.categorySlug,
+      category_label: biz.categoryLabel,
+      tagline: biz.tagline,
+      about: biz.about,
+      location: biz.location,
+      city: biz.city,
+      address: biz.address,
+      logo_image: biz.logoImage || null,
+      cover_image: biz.coverImage,
+      gallery: biz.gallery,
+      working_hours: biz.workingHours,
+      availability_settings: biz.availabilitySettings ?? DEFAULT_AVAILABILITY,
+      contact: biz.contact,
+      payment_policy: biz.paymentPolicy,
+      verified: biz.verified,
+      featured: biz.featured,
+      status: biz.status ?? 'active',
+    };
+  }
+
   updateStudioConfiguration(
     slug: string,
     patch: {
@@ -1061,120 +1212,146 @@ export class MarketplaceService {
       status?: StudioStatus;
     },
   ): BusinessProfile | undefined {
-    let updatedBiz: BusinessProfile | undefined;
-    const category = patch.categorySlug ? this.getCategoryBySlug(patch.categorySlug) : undefined;
-
-    const list = this.businesses().map((b) => {
-      if (b.slug !== slug) return b;
-      updatedBiz = {
-        ...b,
-        ...patch,
-        categoryLabel: category?.name ?? b.categoryLabel,
-      };
-      return updatedBiz;
-    });
+    const { updatedBiz } = this.applyStudioPatchLocal(slug, patch);
 
     if (updatedBiz) {
-      this.businesses.set(list);
-      this.saveBusinesses(list);
-
-      if (this.sb.client && this.isBrowser && this.isUuid(updatedBiz.id)) {
-        const biz = updatedBiz;
-        void (async () => {
-          await this.sb.client!.from('businesses').update({
-            name: biz.name,
-            category_slug: biz.categorySlug,
-            category_label: biz.categoryLabel,
-            tagline: biz.tagline,
-            about: biz.about,
-            location: biz.location,
-            city: biz.city,
-            address: biz.address,
-            logo_image: biz.logoImage || null,
-            cover_image: biz.coverImage,
-            gallery: biz.gallery,
-            working_hours: biz.workingHours,
-            availability_settings: biz.availabilitySettings ?? DEFAULT_AVAILABILITY,
-            contact: biz.contact,
-            payment_policy: biz.paymentPolicy,
-            verified: biz.verified,
-            featured: biz.featured,
-            status: biz.status ?? 'active',
-          }).eq('id', biz.id);
-
+      const biz = updatedBiz;
+      void this.persistBusinessMutation(
+        'PATCH',
+        biz.id,
+        biz.slug,
+        this.buildBusinessUpdatePayload(biz),
+        async () => {
           if (patch.services) {
             await this.syncBusinessServicesToSupabase(biz.id, biz.services);
           }
           if (patch.staff) {
             await this.syncBusinessStaffToSupabase(biz.id, biz.staff);
           }
-        })();
-      }
+        },
+      );
     }
     return updatedBiz;
   }
 
-  setBusinessStatus(slug: string, status: StudioStatus): void {
+  async saveStudioConfiguration(
+    slug: string,
+    patch: Parameters<MarketplaceService['updateStudioConfiguration']>[1],
+  ): Promise<{ ok: boolean; business?: BusinessProfile; error?: string }> {
+    const { previous, updatedBiz } = this.applyStudioPatchLocal(slug, patch);
+    if (!updatedBiz) {
+      return { ok: false, error: `Studio ${slug} not found.` };
+    }
+
+    const res = await this.persistBusinessMutation(
+      'PATCH',
+      updatedBiz.id,
+      updatedBiz.slug,
+      this.buildBusinessUpdatePayload(updatedBiz),
+      async () => {
+        if (patch.services) {
+          await this.syncBusinessServicesToSupabase(updatedBiz.id, updatedBiz.services);
+        }
+        if (patch.staff) {
+          await this.syncBusinessStaffToSupabase(updatedBiz.id, updatedBiz.staff);
+        }
+      },
+    );
+
+    if (!res.ok && this.auth.authMode() === 'supabase') {
+      this.businesses.set(previous);
+      this.saveBusinesses(previous);
+      return { ok: false, error: res.error };
+    }
+
+    return { ok: true, business: updatedBiz };
+  }
+
+  async setBusinessStatus(
+    slug: string,
+    status: StudioStatus,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const previous = this.businesses();
     const existing = this.getBusinessBySlug(slug);
-    const list = this.businesses().map((b) =>
-      b.slug === slug
-        ? { ...b, status, verified: status === 'active' ? true : b.verified }
-        : b,
+    if (!existing) return { ok: false, error: `Studio ${slug} not found.` };
+
+    const nextVerified = status === 'active' ? true : existing.verified;
+    const list = previous.map((b) =>
+      b.slug === slug ? { ...b, status, verified: nextVerified } : b,
     );
     this.businesses.set(list);
     this.saveBusinesses(list);
 
-    if (this.sb.client && this.isBrowser && existing && this.isUuid(existing.id)) {
-      void this.sb.client
-        .from('businesses')
-        .update({ status, verified: status === 'active' ? true : existing.verified })
-        .eq('id', existing.id);
+    const res = await this.persistBusinessMutation('PATCH', existing.id, slug, {
+      status,
+      verified: nextVerified,
+    });
+    if (!res.ok && this.auth.authMode() === 'supabase') {
+      this.businesses.set(previous);
+      this.saveBusinesses(previous);
+      return res;
     }
+    return { ok: true };
   }
 
-  deleteBusiness(slug: string): void {
+  async deleteBusiness(slug: string): Promise<{ ok: boolean; error?: string }> {
+    const previous = this.businesses();
     const existing = this.getBusinessBySlug(slug);
-    const list = this.businesses().filter((b) => b.slug !== slug);
+    if (!existing) return { ok: false, error: `Studio ${slug} not found.` };
+
+    const list = previous.filter((b) => b.slug !== slug);
     this.businesses.set(list);
     this.saveBusinesses(list);
 
-    if (this.sb.client && this.isBrowser && existing && this.isUuid(existing.id)) {
-      void this.sb.client.from('businesses').delete().eq('id', existing.id);
+    const res = await this.persistBusinessMutation('DELETE', existing.id, slug);
+    if (!res.ok && this.auth.authMode() === 'supabase') {
+      this.businesses.set(previous);
+      this.saveBusinesses(previous);
+      return res;
     }
+    return { ok: true };
   }
 
-  toggleBusinessVerified(slug: string): void {
-    let nextVal = true;
-    let bizId = '';
-    const list = this.businesses().map((b) => {
-      if (b.slug !== slug) return b;
-      nextVal = !b.verified;
-      bizId = b.id;
-      return { ...b, verified: nextVal };
-    });
+  async toggleBusinessVerified(slug: string): Promise<{ ok: boolean; verified?: boolean; error?: string }> {
+    const previous = this.businesses();
+    const existing = this.getBusinessBySlug(slug);
+    if (!existing) return { ok: false, error: `Studio ${slug} not found.` };
+
+    const nextVal = !existing.verified;
+    const list = previous.map((b) => (b.slug === slug ? { ...b, verified: nextVal } : b));
     this.businesses.set(list);
     this.saveBusinesses(list);
 
-    if (this.sb.client && this.isBrowser && this.isUuid(bizId)) {
-      void this.sb.client.from('businesses').update({ verified: nextVal }).eq('id', bizId);
+    const res = await this.persistBusinessMutation('PATCH', existing.id, slug, {
+      verified: nextVal,
+    });
+    if (!res.ok && this.auth.authMode() === 'supabase') {
+      this.businesses.set(previous);
+      this.saveBusinesses(previous);
+      return { ok: false, error: res.error };
     }
+    return { ok: true, verified: nextVal };
   }
 
-  toggleBusinessFeatured(slug: string): void {
-    let nextVal = true;
-    let bizId = '';
-    const list = this.businesses().map((b) => {
-      if (b.slug !== slug) return b;
-      nextVal = !b.featured;
-      bizId = b.id;
-      return { ...b, featured: nextVal };
-    });
+  async toggleBusinessFeatured(slug: string): Promise<{ ok: boolean; featured?: boolean; error?: string }> {
+    const previous = this.businesses();
+    const existing = this.getBusinessBySlug(slug);
+    if (!existing) return { ok: false, error: `Studio ${slug} not found.` };
+
+    const nextVal = !existing.featured;
+    const list = previous.map((b) => (b.slug === slug ? { ...b, featured: nextVal } : b));
     this.businesses.set(list);
     this.saveBusinesses(list);
 
-    if (this.sb.client && this.isBrowser && this.isUuid(bizId)) {
-      void this.sb.client.from('businesses').update({ featured: nextVal }).eq('id', bizId);
+    const res = await this.persistBusinessMutation('PATCH', existing.id, slug, {
+      featured: nextVal,
+    });
+    if (!res.ok && this.auth.authMode() === 'supabase') {
+      this.businesses.set(previous);
+      this.saveBusinesses(previous);
+      return { ok: false, error: res.error };
     }
+    return { ok: true, featured: nextVal };
   }
 
   // ============================================================================
@@ -1199,20 +1376,22 @@ export class MarketplaceService {
     this.saveCategories(list);
 
     if (this.sb.client && this.isBrowser) {
-      void this.sb.client.from('categories').upsert(
-        {
-          id: this.isUuid(record.id) ? record.id : undefined,
-          slug: record.slug,
-          name: record.name,
-          short_name: record.shortName,
-          tagline: record.tagline,
-          description: record.description,
-          cover_image: record.coverImage,
-          popular_tags: record.popularTags,
-          is_active: record.isActive ?? true,
-          sort_order: record.sortOrder ?? 1,
-        },
-        { onConflict: 'slug' },
+      this.runSupabaseWrite(
+        this.sb.client.from('categories').upsert(
+          {
+            id: this.isUuid(record.id) ? record.id : undefined,
+            slug: record.slug,
+            name: record.name,
+            short_name: record.shortName,
+            tagline: record.tagline,
+            description: record.description,
+            cover_image: record.coverImage,
+            popular_tags: record.popularTags,
+            is_active: record.isActive ?? true,
+            sort_order: record.sortOrder ?? 1,
+          },
+          { onConflict: 'slug' },
+        ),
       );
     }
     return record;
@@ -1224,7 +1403,7 @@ export class MarketplaceService {
     this.saveCategories(list);
 
     if (this.sb.client && this.isBrowser) {
-      void this.sb.client.from('categories').delete().eq('slug', slug);
+      this.runSupabaseWrite(this.sb.client.from('categories').delete().eq('slug', slug));
     }
   }
 
@@ -1374,15 +1553,17 @@ export class MarketplaceService {
     this.saveInvitations(list);
 
     if (this.sb.client && this.isBrowser) {
-      void this.sb.client.from('vendor_invitations').insert({
-        id: invite.id,
-        email: invite.email,
-        business_name: invite.businessName,
-        category_slug: invite.categorySlug,
-        city: invite.city,
-        invite_token: invite.inviteToken,
-        status: invite.status,
-      });
+      this.runSupabaseWrite(
+        this.sb.client.from('vendor_invitations').insert({
+          id: invite.id,
+          email: invite.email,
+          business_name: invite.businessName,
+          category_slug: invite.categorySlug,
+          city: invite.city,
+          invite_token: invite.inviteToken,
+          status: invite.status,
+        }),
+      );
     }
     return invite;
   }
@@ -1395,7 +1576,9 @@ export class MarketplaceService {
     this.saveInvitations(list);
 
     if (this.sb.client && this.isBrowser && this.isUuid(id)) {
-      void this.sb.client.from('vendor_invitations').update({ status: 'revoked' }).eq('id', id);
+      this.runSupabaseWrite(
+        this.sb.client.from('vendor_invitations').update({ status: 'revoked' }).eq('id', id),
+      );
     }
   }
 
@@ -1403,32 +1586,58 @@ export class MarketplaceService {
   // SUPER ADMIN: PLATFORM SETTINGS, CUSTOMERS & REVIEWS
   // ============================================================================
   updatePlatformSettings(patch: Partial<PlatformSettings>): PlatformSettings {
+    const nextFee = Math.max(
+      0,
+      Number(patch.vendorOnboardingFee ?? this.platformSettings().vendorOnboardingFee ?? 25000),
+    );
     const next: PlatformSettings = {
       ...this.platformSettings(),
       ...patch,
       commissionRate: Number(patch.commissionRate ?? this.platformSettings().commissionRate),
+      vendorOnboardingFee: nextFee,
     };
     this.platformSettings.set(next);
     this.saveSettings(next);
 
+    // Sync new onboarding fee onto awaiting (unpaid) applications
+    if (patch.vendorOnboardingFee !== undefined) {
+      const updatedApps = this.vendorApplications().map((a) =>
+        a.status === 'pending' || a.status === 'approved'
+          ? { ...a, onboardingFee: nextFee }
+          : a,
+      );
+      this.vendorApplications.set(updatedApps);
+      this.saveApplications(updatedApps);
+    }
+
     if (this.sb.client && this.isBrowser) {
-      void this.sb.client
-        .from('platform_settings')
-        .update({
-          commission_rate: next.commissionRate,
-          site_name: next.siteName,
-          hero_headline: next.heroHeadline,
-          hero_subheadline: next.heroSubheadline,
-          announcement_banner: next.announcementBanner,
-          support_email: next.supportEmail,
-          support_phone: next.supportPhone,
-          notify_new_booking: next.notifyNewBooking,
-          notify_payment_failed: next.notifyPaymentFailed,
-          notify_vendor_application: next.notifyVendorApplication,
-          notify_booking_reminders: next.notifyBookingReminders,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', 1);
+      void (async () => {
+        await this.sb.client!
+          .from('platform_settings')
+          .update({
+            commission_rate: next.commissionRate,
+            vendor_onboarding_fee: next.vendorOnboardingFee,
+            site_name: next.siteName,
+            hero_headline: next.heroHeadline,
+            hero_subheadline: next.heroSubheadline,
+            announcement_banner: next.announcementBanner,
+            support_email: next.supportEmail,
+            support_phone: next.supportPhone,
+            notify_new_booking: next.notifyNewBooking,
+            notify_payment_failed: next.notifyPaymentFailed,
+            notify_vendor_application: next.notifyVendorApplication,
+            notify_booking_reminders: next.notifyBookingReminders,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', 1);
+
+        if (patch.vendorOnboardingFee !== undefined) {
+          await this.sb.client!
+            .from('vendor_applications')
+            .update({ onboarding_fee: nextFee })
+            .in('status', ['pending', 'approved']);
+        }
+      })();
     }
     return next;
   }
@@ -1441,7 +1650,9 @@ export class MarketplaceService {
     this.saveCustomerAccounts(list);
 
     if (this.sb.client && this.isBrowser && this.isUuid(profileId)) {
-      void this.sb.client.from('profiles').update({ status }).eq('id', profileId);
+      this.runSupabaseWrite(
+        this.sb.client.from('profiles').update({ status }).eq('id', profileId),
+      );
     }
   }
 
@@ -1457,7 +1668,9 @@ export class MarketplaceService {
     this.saveBusinesses(list);
 
     if (this.sb.client && this.isBrowser && this.isUuid(reviewId)) {
-      void this.sb.client.from('reviews').update({ status }).eq('id', reviewId);
+      this.runSupabaseWrite(
+        this.sb.client.from('reviews').update({ status }).eq('id', reviewId),
+      );
     }
   }
 
@@ -1481,7 +1694,9 @@ export class MarketplaceService {
     this.saveBusinesses(list);
 
     if (this.sb.client && this.isBrowser && this.isUuid(reviewId)) {
-      void this.sb.client.from('reviews').delete().eq('id', reviewId);
+      this.runSupabaseWrite(
+        this.sb.client.from('reviews').delete().eq('id', reviewId),
+      );
     }
   }
 
@@ -1750,7 +1965,7 @@ export class MarketplaceService {
       startingServiceName: input.startingServiceName.trim() || 'Signature Session',
       startingServicePrice: Number(input.startingServicePrice) || 20000,
       startingServiceDurationMinutes: Number(input.startingServiceDurationMinutes) || 60,
-      onboardingFee: 25000,
+      onboardingFee: this.platformSettings().vendorOnboardingFee ?? 25000,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
@@ -1760,11 +1975,43 @@ export class MarketplaceService {
     this.saveApplications(updated);
 
     if (this.isBrowser) {
-      void fetch('/api/public/vendor-applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record),
-      }).catch(() => {});
+      void (async () => {
+        try {
+          const resp = await fetch('/api/public/vendor-applications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(record),
+          });
+          if (resp.ok) return;
+        } catch {
+          // Fallback to direct Supabase insert below
+        }
+
+        if (this.sb.client) {
+          await this.sb.client.from('vendor_applications').insert({
+            application_number: record.applicationNumber,
+            owner_name: record.ownerName,
+            email: record.email,
+            phone: record.phone,
+            business_name: record.businessName,
+            slug: record.slug,
+            category_slug: record.categorySlug,
+            category_label: record.categoryLabel,
+            city: record.city,
+            location: record.location,
+            address: record.address,
+            tagline: record.tagline,
+            about: record.about,
+            instagram: record.instagram,
+            cover_image: record.coverImage,
+            starting_service_name: record.startingServiceName,
+            starting_service_price: record.startingServicePrice,
+            starting_service_duration_minutes: record.startingServiceDurationMinutes,
+            onboarding_fee: record.onboardingFee,
+            status: 'pending',
+          });
+        }
+      })();
     }
 
     return record;
@@ -1808,40 +2055,96 @@ export class MarketplaceService {
     return local;
   }
 
-  reviewVendorApplication(
+  async reviewVendorApplication(
     appNumber: string,
     decision: 'approved' | 'declined',
     adminNote?: string,
-  ): VendorApplication | undefined {
+  ): Promise<{ ok: boolean; application?: VendorApplication; error?: string }> {
     const normalized = appNumber.trim().toUpperCase();
-    let updatedApp: VendorApplication | undefined;
-    const reviewedAt = new Date().toISOString();
-    const list = this.vendorApplications().map((a) => {
-      if (a.applicationNumber.toUpperCase() !== normalized) return a;
-      updatedApp = {
-        ...a,
-        status: decision,
-        adminNote: adminNote?.trim() || undefined,
-        reviewedAt,
-      };
-      return updatedApp;
-    });
+    const existing = this.findApplicationByNumber(normalized);
+    if (!existing) {
+      return { ok: false, error: `Application ${normalized} not found.` };
+    }
 
-    if (updatedApp) {
-      this.vendorApplications.set(list);
-      this.saveApplications(list);
-      if (this.sb.client) {
-        void this.sb.client
+    const reviewedAt = new Date().toISOString();
+    const trimmedNote = adminNote?.trim() || undefined;
+    let updatedApp: VendorApplication = {
+      ...existing,
+      status: decision,
+      adminNote: trimmedNote,
+      reviewedAt,
+    };
+
+    if (this.isBrowser && this.sb.client && this.auth.authMode() === 'supabase') {
+      const token = this.auth.accessToken();
+      let persisted = false;
+      let lastError = '';
+
+      if (token) {
+        try {
+          const resp = await fetch(
+            `/api/admin/vendor-applications/${encodeURIComponent(normalized)}/review`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ decision, adminNote: trimmedNote }),
+            },
+          );
+          if (resp.ok) {
+            const json = (await resp.json()) as { application?: any };
+            if (json.application) {
+              updatedApp = this.mapApplicationRow(json.application);
+            }
+            persisted = true;
+          } else {
+            const errJson = (await resp.json().catch(() => ({}))) as { error?: string };
+            lastError = errJson.error || `Server returned ${resp.status}`;
+          }
+        } catch {
+          // Fall back to direct Supabase client update below
+        }
+      }
+
+      if (!persisted && this.auth.authMode() === 'supabase') {
+        const { data, error } = await this.sb.client
           .from('vendor_applications')
           .update({
             status: decision,
-            admin_note: updatedApp.adminNote ?? null,
+            admin_note: trimmedNote ?? null,
             reviewed_at: reviewedAt,
           })
-          .ilike('application_number', normalized);
+          .ilike('application_number', normalized)
+          .select('*')
+          .maybeSingle();
+
+        if (!error && data) {
+          updatedApp = this.mapApplicationRow(data);
+          persisted = true;
+        } else {
+          lastError = error?.message || lastError || 'Could not update application in Supabase.';
+        }
+      }
+
+      if (!persisted) {
+        return {
+          ok: false,
+          error:
+            lastError ||
+            'Sign in with a Supabase Super Admin account at /auth to approve or decline applications.',
+        };
       }
     }
-    return updatedApp;
+
+    const list = this.vendorApplications().map((a) =>
+      a.applicationNumber.toUpperCase() === normalized ? updatedApp : a,
+    );
+    this.vendorApplications.set(list);
+    this.saveApplications(list);
+
+    return { ok: true, application: updatedApp };
   }
 
   async completeVendorApplicationPayment(
@@ -1869,6 +2172,60 @@ export class MarketplaceService {
 
     const tempPassword = this.generateTempPassword();
     const paidAt = new Date().toISOString();
+
+    if (this.isBrowser && this.sb.client) {
+      try {
+        const resp = await fetch(
+          `/api/public/vendor-applications/${encodeURIComponent(app.applicationNumber)}/complete-onboarding`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paystackReference,
+              tempPassword,
+              email: app.email,
+              ownerName: app.ownerName,
+              phone: app.phone,
+            }),
+          },
+        );
+        const json = (await resp.json().catch(() => ({}))) as {
+          ok?: boolean;
+          error?: string;
+          application?: any;
+        };
+        if (!resp.ok) {
+          return {
+            ok: false,
+            error: json.error || 'Could not complete onboarding payment on the server.',
+          };
+        }
+
+        await this.refreshFromBackend();
+        const syncedApp = json.application
+          ? this.mapApplicationRow(json.application)
+          : {
+              ...app,
+              status: 'paid_live' as const,
+              paystackReference,
+              paidAt,
+              issuedLoginEmail: app.email,
+              issuedTempPassword: tempPassword,
+              liveBusinessSlug: app.slug,
+            };
+        const nextApps = this.vendorApplications().map((a) =>
+          a.applicationNumber.toUpperCase() === app.applicationNumber.toUpperCase() ? syncedApp : a,
+        );
+        this.vendorApplications.set(nextApps);
+        this.saveApplications(nextApps);
+
+        const syncedBiz = this.getBusinessBySlug(syncedApp.liveBusinessSlug || app.slug);
+        return { ok: true, application: syncedApp, business: syncedBiz };
+      } catch {
+        // Fall through to local fallback when server endpoint is unavailable
+      }
+    }
+
     const cat = this.getCategoryBySlug(app.categorySlug);
     const words = app.businessName.trim().split(/\s+/);
     const logoText =
@@ -1949,7 +2306,7 @@ export class MarketplaceService {
     this.transactions.set(nextTx);
     this.saveTransactions(nextTx);
 
-    // Provision local vendor login credentials + attempt Supabase Auth user creation
+    // Provision local vendor login credentials
     this.auth.registerLocalVendorCredentials({
       email: app.email,
       password: tempPassword,
@@ -1957,27 +2314,6 @@ export class MarketplaceService {
       phone: app.phone,
       studioSlug: business.slug,
     });
-
-    if (this.isBrowser) {
-      try {
-        await fetch(
-          `/api/public/vendor-applications/${encodeURIComponent(app.applicationNumber)}/complete-onboarding`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              paystackReference,
-              tempPassword,
-              email: app.email,
-              ownerName: app.ownerName,
-              phone: app.phone,
-            }),
-          },
-        );
-      } catch {
-        // Local credentials remain active fallback
-      }
-    }
 
     const updatedApp: VendorApplication = {
       ...app,

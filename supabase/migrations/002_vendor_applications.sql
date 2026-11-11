@@ -57,3 +57,7 @@ on public.vendor_applications for update
 to authenticated
 using (private.is_super_admin())
 with check (private.is_super_admin());
+
+-- Allow Super Admin to configure platform-wide vendor onboarding fee
+alter table public.platform_settings
+  add column if not exists vendor_onboarding_fee numeric(12,2) not null default 25000;

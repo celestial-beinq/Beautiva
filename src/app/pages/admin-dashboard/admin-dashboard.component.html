@@ -9,8 +9,8 @@
         </div>
         <h1 class="admin-title">Platform Operations &amp; Governance</h1>
         <p class="admin-sub">
-          Full platform control over vendors, categories, bookings, Paystack settlements,
-          commissions, customers, and site configuration.
+          Full platform control over vendors, categories, Paystack settlements, commissions,
+          customers, and site configuration.
         </p>
         <div class="admin-status-row">
           @if (marketplace.backendConnected()) {
@@ -83,16 +83,16 @@
       <div class="kpi-cell">
         <span class="kpi-label">Total Customers</span>
         <strong class="kpi-value">{{ platformMetrics().totalCustomers }}</strong>
-        <span class="kpi-sub">{{ platformMetrics().totalBookings }} total platform bookings</span>
+        <span class="kpi-sub">Registered customer profiles</span>
       </div>
 
       <div class="kpi-cell">
-        <span class="kpi-label">Total Revenue (GMV)</span>
+        <span class="kpi-label">Platform Payment Volume</span>
         <strong class="kpi-value">
-          {{ marketplace.formatNaira(platformMetrics().grossBookingValue) }}
+          {{ marketplace.formatNaira(platformMetrics().successTxVolume) }}
         </strong>
         <span class="kpi-sub">
-          Settled online: {{ marketplace.formatNaira(platformMetrics().paystackCollected) }}
+          {{ platformMetrics().successTxCount }} settled transactions
         </span>
       </div>
 
@@ -140,18 +140,10 @@
       <button
         type="button"
         class="admin-tab"
-        [class.is-active]="activeTab() === 'bookings'"
-        (click)="activeTab.set('bookings')"
-      >
-        04 · Bookings ({{ bookings().length }})
-      </button>
-      <button
-        type="button"
-        class="admin-tab"
         [class.is-active]="activeTab() === 'payments'"
         (click)="activeTab.set('payments')"
       >
-        05 · Payments &amp; Commissions ({{ transactions().length }})
+        04 · Payments &amp; Commissions ({{ transactions().length }})
       </button>
       <button
         type="button"
@@ -159,7 +151,7 @@
         [class.is-active]="activeTab() === 'settings'"
         (click)="activeTab.set('settings')"
       >
-        06 · Platform Settings &amp; Users
+        05 · Platform Settings &amp; Users
       </button>
     </div>
 
@@ -174,7 +166,7 @@
           <div class="panel-head">
             <div>
               <h2>Most Popular Categories</h2>
-              <p>Ranked by booking demand and total service volume across Beautiva.</p>
+              <p>Registered and active beauty studios across each service category.</p>
             </div>
           </div>
 
@@ -190,8 +182,7 @@
                     <strong>{{ row.name }}</strong>
                     <span>
                       {{ row.studioCount }} {{ row.studioCount === 1 ? 'studio' : 'studios' }} ·
-                      {{ row.bookingCount }} {{ row.bookingCount === 1 ? 'booking' : 'bookings' }} ·
-                      <strong>{{ marketplace.formatNaira(row.volume) }}</strong>
+                      <strong>{{ row.activeCount }} active</strong>
                     </span>
                   </div>
                   <div class="bar-track">
@@ -267,50 +258,12 @@
                 <strong>{{ invitations().length }}</strong>
               </div>
               <div class="split-row">
-                <span>Balance Due at Studios</span>
-                <strong>{{ marketplace.formatNaira(platformMetrics().balanceAtStudios) }}</strong>
+                <span>Verified Businesses</span>
+                <strong>{{ platformMetrics().verifiedStudios }}</strong>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="panel-card recent-block">
-        <div class="panel-head">
-          <div>
-            <h2>Latest Platform Bookings</h2>
-            <p>Live stream across all registered businesses.</p>
-          </div>
-          <button type="button" class="btn btn--outline btn--sm" (click)="activeTab.set('bookings')">
-            Manage all bookings →
-          </button>
-        </div>
-
-        @if (bookings().length === 0) {
-          <p class="muted-note">No bookings recorded yet.</p>
-        } @else {
-          <div class="mini-ledger">
-            @for (b of bookings().slice(0, 6); track b.bookingReference) {
-              <div class="mini-row">
-                <a routerLink="/track" [queryParams]="{ ref: b.bookingReference }" class="ref-link">
-                  {{ b.bookingReference }}
-                </a>
-                <span>{{ b.businessName }}</span>
-                <span>{{ b.serviceName }}</span>
-                <span>{{ b.customerName }}</span>
-                <strong>{{ marketplace.formatNaira(b.servicePrice) }}</strong>
-                <span
-                  class="badge"
-                  [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
-                  [class.badge--warning]="b.status === 'Pending'"
-                  [class.badge--danger]="b.status === 'Cancelled'"
-                >
-                  {{ b.status }}
-                </span>
-              </div>
-            }
-          </div>
-        }
       </div>
     }
 
@@ -348,6 +301,29 @@
                 }}
               </button>
             }
+          </div>
+        </div>
+
+        <div class="fee-config-bar">
+          <div>
+            <strong>Vendor Onboarding Fee</strong>
+            <span class="cell-sub">
+              Charged via Paystack when an approved vendor activates their studio.
+            </span>
+          </div>
+          <div class="fee-config-controls">
+            <label class="field-label" for="admin-onboarding-fee">Fee (₦)</label>
+            <input
+              id="admin-onboarding-fee"
+              type="number"
+              class="input fee-input"
+              min="0"
+              step="500"
+              [(ngModel)]="onboardingFeeInput"
+            />
+            <button type="button" class="btn btn--primary btn--sm" (click)="saveOnboardingFee()">
+              Update Fee
+            </button>
           </div>
         </div>
 
@@ -413,16 +389,27 @@
                       <button
                         type="button"
                         class="btn btn--primary btn--sm"
+                        [disabled]="reviewingAppNum() === app.applicationNumber"
                         (click)="decideApplication(app.applicationNumber, 'approved')"
                       >
-                        Accept
+                        {{ reviewingAppNum() === app.applicationNumber ? 'Saving...' : 'Accept' }}
                       </button>
                       <button
                         type="button"
                         class="btn btn--outline btn--sm btn-danger-outline"
+                        [disabled]="reviewingAppNum() === app.applicationNumber"
                         (click)="decideApplication(app.applicationNumber, 'declined')"
                       >
                         Decline
+                      </button>
+                    }
+                    @if (app.status === 'approved') {
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--sm"
+                        (click)="copyApplicationPayLink(app.applicationNumber)"
+                      >
+                        Copy Payment Link
                       </button>
                     }
                     @if (app.status === 'paid_live' && app.liveBusinessSlug) {
@@ -480,13 +467,19 @@
                         <button
                           type="button"
                           class="btn btn--primary btn--sm"
+                          [disabled]="reviewingAppNum() === app.applicationNumber"
                           (click)="decideApplication(app.applicationNumber, 'approved')"
                         >
-                          Accept Application
+                          {{
+                            reviewingAppNum() === app.applicationNumber
+                              ? 'Saving...'
+                              : 'Accept Application'
+                          }}
                         </button>
                         <button
                           type="button"
                           class="btn btn--outline btn--sm btn-danger-outline"
+                          [disabled]="reviewingAppNum() === app.applicationNumber"
                           (click)="decideApplication(app.applicationNumber, 'declined')"
                         >
                           Decline Application
@@ -655,8 +648,7 @@
             <thead>
               <tr>
                 <th>Studio</th>
-                <th>Bookings</th>
-                <th>Settled</th>
+                <th>Category &amp; City</th>
                 <th>Rating</th>
                 <th>Actions</th>
               </tr>
@@ -688,12 +680,8 @@
                     </div>
                   </td>
                   <td>
-                    <strong>{{ studioStatsMap().get(biz.slug)?.bookings || 0 }}</strong>
-                  </td>
-                  <td>
-                    <strong>
-                      {{ marketplace.formatNaira(studioStatsMap().get(biz.slug)?.revenue || 0) }}
-                    </strong>
+                    <span>{{ biz.categoryLabel }}</span>
+                    <div class="cell-sub">{{ biz.location }}</div>
                   </td>
                   <td>
                     <strong>★ {{ biz.rating.toFixed(1) }}</strong>
@@ -704,6 +692,7 @@
                         <button
                           type="button"
                           class="btn btn--primary btn--sm"
+                          [disabled]="busyStudioSlug() === biz.slug"
                           (click)="openApplicationView(biz)"
                         >
                           View
@@ -712,13 +701,15 @@
                       <button
                         type="button"
                         class="btn btn--outline btn--sm"
+                        [disabled]="busyStudioSlug() === biz.slug"
                         (click)="startEditVendor(biz)"
                       >
-                        Edit
+                        {{ editingVendorSlug() === biz.slug ? 'Close' : 'Edit' }}
                       </button>
                       <button
                         type="button"
                         class="btn btn--outline btn--sm"
+                        [disabled]="busyStudioSlug() === biz.slug"
                         (click)="toggleVerified(biz.slug)"
                       >
                         {{ biz.verified ? 'Unverify' : 'Verify' }}
@@ -726,6 +717,7 @@
                       <button
                         type="button"
                         class="btn btn--outline btn--sm"
+                        [disabled]="busyStudioSlug() === biz.slug"
                         (click)="toggleFeatured(biz.slug)"
                       >
                         {{ biz.featured ? 'Unfeature' : 'Feature' }}
@@ -735,6 +727,7 @@
                         class="btn btn--sm"
                         [class.btn--outline]="biz.status !== 'suspended'"
                         [class.btn--primary]="biz.status === 'suspended'"
+                        [disabled]="busyStudioSlug() === biz.slug"
                         (click)="toggleSuspend(biz.slug, biz.status)"
                       >
                         {{ biz.status === 'suspended' ? 'Restore' : 'Suspend' }}
@@ -742,6 +735,7 @@
                       <button
                         type="button"
                         class="btn btn--outline btn--sm btn-danger-outline"
+                        [disabled]="busyStudioSlug() === biz.slug"
                         (click)="deleteVendor(biz.slug, biz.name)"
                       >
                         Delete
@@ -752,7 +746,7 @@
 
                 @if (editingVendorSlug() === biz.slug) {
                   <tr class="inline-editor-row">
-                    <td colspan="5" class="inline-editor-cell">
+                    <td colspan="4" class="inline-editor-cell">
                       <div class="inline-editor">
                         <div class="form-grid-3">
                           <input class="input" [(ngModel)]="editVendorForm.name" placeholder="Business Name" />
@@ -768,12 +762,18 @@
                           <input class="input" [(ngModel)]="editVendorForm.email" placeholder="Email" />
                           <input class="input" [(ngModel)]="editVendorForm.tagline" placeholder="Tagline" />
                           <div class="table-actions">
-                            <button type="button" class="btn btn--primary btn--sm" (click)="saveVendorEdit(biz)">
-                              Save Changes
+                            <button
+                              type="button"
+                              class="btn btn--primary btn--sm"
+                              [disabled]="busyStudioSlug() === biz.slug"
+                              (click)="saveVendorEdit(biz)"
+                            >
+                              {{ busyStudioSlug() === biz.slug ? 'Saving...' : 'Save Changes' }}
                             </button>
                             <button
                               type="button"
                               class="btn btn--outline btn--sm"
+                              [disabled]="busyStudioSlug() === biz.slug"
                               (click)="editingVendorSlug.set(null)"
                             >
                               Cancel
@@ -886,158 +886,7 @@
       </div>
     }
 
-    <!-- TAB 4: BOOKING MANAGEMENT -->
-    @if (activeTab() === 'bookings') {
-      <div class="toolbar-row">
-        <input
-          type="text"
-          class="input toolbar-search"
-          [ngModel]="ledgerSearch()"
-          (ngModelChange)="ledgerSearch.set($event)"
-          placeholder="Search BK-2026-..., PSK_..., studio, service, or customer..."
-        />
-
-        <select
-          class="select toolbar-select"
-          [ngModel]="ledgerCategoryFilter()"
-          (ngModelChange)="ledgerCategoryFilter.set($event)"
-        >
-          <option value="all">All Categories</option>
-          @for (cat of categories(); track cat.slug) {
-            <option [value]="cat.slug">{{ cat.name }}</option>
-          }
-        </select>
-
-        <select
-          class="select toolbar-select"
-          [ngModel]="ledgerBusinessFilter()"
-          (ngModelChange)="ledgerBusinessFilter.set($event)"
-        >
-          <option value="all">All Businesses</option>
-          @for (biz of businesses(); track biz.slug) {
-            <option [value]="biz.slug">{{ biz.name }}</option>
-          }
-        </select>
-
-        <div class="status-pills">
-          @for (st of ['all', 'Confirmed', 'Pending', 'Completed', 'Cancelled']; track st) {
-            <button
-              type="button"
-              class="filter-pill"
-              [class.is-active]="ledgerStatusFilter() === st"
-              (click)="ledgerStatusFilter.set($any(st))"
-            >
-              {{ st === 'all' ? 'All' : st }}
-            </button>
-          }
-        </div>
-      </div>
-
-      <div class="ledger-table-wrap">
-        <table class="ledger-table">
-          <thead>
-            <tr>
-              <th>Booking ID</th>
-              <th>Studio</th>
-              <th>Customer &amp; Service</th>
-              <th>Schedule</th>
-              <th>Payment Status</th>
-              <th>Paid / Total</th>
-              <th>Status</th>
-              <th>Activity Control</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (b of filteredLedger(); track b.bookingReference) {
-              <tr>
-                <td>
-                  <a
-                    routerLink="/track"
-                    [queryParams]="{ ref: b.bookingReference }"
-                    class="ref-link"
-                  >
-                    {{ b.bookingReference }}
-                  </a>
-                </td>
-                <td>
-                  <a [routerLink]="['/business', b.businessSlug]" class="studio-link">
-                    {{ b.businessName }}
-                  </a>
-                </td>
-                <td>
-                  <strong>{{ b.customerName }}</strong>
-                  <div class="cell-sub">{{ b.serviceName }}</div>
-                </td>
-                <td>
-                  {{ b.dateDisplay }}
-                  <div class="cell-sub">{{ b.time }}</div>
-                </td>
-                <td>
-                  <span class="badge badge--bronze">{{ b.paymentStatus }}</span>
-                  <div class="cell-sub"><code>{{ b.paystackReference || 'At Studio' }}</code></div>
-                </td>
-                <td>
-                  <strong>{{ marketplace.formatNaira(b.amountPaid) }}</strong>
-                  <div class="cell-sub">of {{ marketplace.formatNaira(b.servicePrice) }}</div>
-                </td>
-                <td>
-                  <span
-                    class="badge"
-                    [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
-                    [class.badge--warning]="b.status === 'Pending'"
-                    [class.badge--danger]="b.status === 'Cancelled'"
-                  >
-                    {{ b.status }}
-                  </span>
-                </td>
-                <td>
-                  <div class="table-actions">
-                    @if (b.balanceDue > 0 && b.status !== 'Cancelled') {
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="markBookingPaid(b.bookingReference)"
-                      >
-                        Mark Paid
-                      </button>
-                    }
-                    @if (b.status === 'Pending') {
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="setBookingStatus(b.bookingReference, 'Confirmed')"
-                      >
-                        Confirm
-                      </button>
-                    }
-                    @if (b.status === 'Confirmed') {
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="setBookingStatus(b.bookingReference, 'Completed')"
-                      >
-                        Complete
-                      </button>
-                    }
-                    @if (b.status !== 'Cancelled' && b.status !== 'Completed') {
-                      <button
-                        type="button"
-                        class="btn btn--outline btn--sm"
-                        (click)="setBookingStatus(b.bookingReference, 'Cancelled')"
-                      >
-                        Cancel
-                      </button>
-                    }
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-
-    <!-- TAB 5: PAYMENT MANAGEMENT -->
+    <!-- TAB 4: PAYMENT MANAGEMENT -->
     @if (activeTab() === 'payments') {
       <div class="payment-summary-grid">
         <div class="panel-card">
@@ -1069,7 +918,7 @@
           class="input toolbar-search"
           [ngModel]="paymentSearch()"
           (ngModelChange)="paymentSearch.set($event)"
-          placeholder="Search gateway ref, booking ID, business, or customer..."
+          placeholder="Search gateway ref, business, or payer..."
         />
         <div class="status-pills">
           @for (st of ['all', 'success', 'failed', 'refunded']; track st) {
@@ -1090,9 +939,8 @@
           <thead>
             <tr>
               <th>Gateway Ref</th>
-              <th>Booking Ref</th>
               <th>Business</th>
-              <th>Customer</th>
+              <th>Payer</th>
               <th>Amount</th>
               <th>Commission</th>
               <th>Vendor Net</th>
@@ -1103,7 +951,6 @@
             @for (tx of filteredTransactions(); track tx.id) {
               <tr>
                 <td><code>{{ tx.gatewayReference || '—' }}</code></td>
-                <td>{{ tx.bookingReference }}</td>
                 <td>{{ tx.businessName }}</td>
                 <td>
                   <strong>{{ tx.customerName }}</strong>
@@ -1159,6 +1006,16 @@
                 />
               </div>
               <div class="field">
+                <label class="field-label">Vendor Onboarding Fee (₦)</label>
+                <input
+                  type="number"
+                  class="input"
+                  min="0"
+                  step="500"
+                  [(ngModel)]="settingsDraft.vendorOnboardingFee"
+                />
+              </div>
+              <div class="field">
                 <label class="field-label">Platform Name</label>
                 <input class="input" [(ngModel)]="settingsDraft.siteName" />
               </div>
@@ -1193,20 +1050,12 @@
 
             <div class="notif-checks">
               <label class="policy-check">
-                <input type="checkbox" [(ngModel)]="settingsDraft.notifyNewBooking" />
-                <span>Notify Super Admin &amp; Vendor on new bookings</span>
-              </label>
-              <label class="policy-check">
                 <input type="checkbox" [(ngModel)]="settingsDraft.notifyPaymentFailed" />
                 <span>Alert operations on failed Paystack transactions</span>
               </label>
               <label class="policy-check">
                 <input type="checkbox" [(ngModel)]="settingsDraft.notifyVendorApplication" />
                 <span>Notify on new vendor registration applications</span>
-              </label>
-              <label class="policy-check">
-                <input type="checkbox" [(ngModel)]="settingsDraft.notifyBookingReminders" />
-                <span>Send automated client appointment reminders</span>
               </label>
             </div>
 
@@ -1238,8 +1087,7 @@
                   <div>
                     <strong>{{ cust.fullName }}</strong>
                     <div class="cell-sub">
-                      {{ cust.email }} · {{ cust.phone || 'No phone' }} ·
-                      {{ cust.bookings }} bookings
+                      {{ cust.email }} · {{ cust.phone || 'No phone' }}
                     </div>
                   </div>
                   <div class="table-actions">

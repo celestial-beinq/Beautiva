@@ -308,7 +308,11 @@
                 </li>
                 <li>
                   <strong>Pay onboarding fee</strong>
-                  <span>Check your Application Number and complete the ₦25,000 Paystack fee.</span>
+                  <span>
+                    Check your Application Number and complete the
+                    {{ marketplace.formatNaira(marketplace.platformSettings().vendorOnboardingFee) }}
+                    Paystack fee.
+                  </span>
                 </li>
                 <li>
                   <strong>Go live &amp; sign in</strong>
