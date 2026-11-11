@@ -34,7 +34,7 @@ export class BookingComponent {
   readonly marketplace = inject(MarketplaceService);
   private readonly route = inject(ActivatedRoute);
 
-  readonly slug = signal('glamour-studio');
+  readonly slug = signal('');
   readonly business = computed(() => this.marketplace.getBusinessBySlug(this.slug()));
 
   readonly dateOptions: DateChip[] = this.buildDateOptions();

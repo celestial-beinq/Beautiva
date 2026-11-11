@@ -34,7 +34,7 @@ export class AuthService {
   readonly authMode = signal<'supabase' | 'demo' | 'guest'>('guest');
   readonly accessToken = signal<string | null>(null);
   readonly loading = signal<boolean>(false);
-  readonly demoVendorStudioSlug = signal<string>('glamour-studio');
+  readonly demoVendorStudioSlug = signal<string>('');
 
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
   readonly role = computed<UserRole | null>(() => this.currentUser()?.role ?? null);
@@ -212,7 +212,7 @@ export class AuthService {
     this.authMode.set('guest');
   }
 
-  switchDemoRole(role: UserRole, studioSlug = 'glamour-studio'): UserProfile {
+  switchDemoRole(role: UserRole, studioSlug = ''): UserProfile {
     const presets: Record<UserRole, UserProfile> = {
       super_admin: {
         id: 'demo-super-admin',

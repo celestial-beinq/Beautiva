@@ -15,8 +15,8 @@ export class TrackBookingComponent {
   readonly marketplace = inject(MarketplaceService);
   private readonly route = inject(ActivatedRoute);
 
-  readonly referenceInput = signal('BK-2026-000124');
-  readonly searchedRef = signal('BK-2026-000124');
+  readonly referenceInput = signal('');
+  readonly searchedRef = signal('');
   readonly remoteMatch = signal<BookingRecord | undefined>(undefined);
 
   readonly recentBookings = computed(() => this.marketplace.bookings().slice(0, 5));

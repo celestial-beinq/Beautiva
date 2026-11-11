@@ -33,19 +33,23 @@
       </div>
     </div>
 
-    <a routerLink="/business/glamour-studio" class="hero-highlight">
-      <img
-        src="images/cat-hairdressers.jpg"
-        alt="Glamour Studio Knotless Braids"
-        class="highlight-thumb"
-      />
-      <div class="highlight-meta">
-        <span class="highlight-label">Most booked this week</span>
-        <strong class="highlight-title">Knotless Braids · Glamour Studio</strong>
-        <span class="highlight-sub">3 hrs, from ₦25,000</span>
-      </div>
-      <span class="highlight-arrow" aria-hidden="true">↗</span>
-    </a>
+    @if (heroHighlight(); as hl) {
+      <a [routerLink]="['/business', hl.slug]" class="hero-highlight">
+        <img
+          [src]="hl.coverImage"
+          [alt]="hl.name"
+          class="highlight-thumb"
+        />
+        <div class="highlight-meta">
+          <span class="highlight-label">Featured studio</span>
+          <strong class="highlight-title">{{ hl.serviceName }} · {{ hl.name }}</strong>
+          <span class="highlight-sub">
+            {{ hl.durationLabel }}{{ hl.priceLabel ? ', from ' + hl.priceLabel : '' }}
+          </span>
+        </div>
+        <span class="highlight-arrow" aria-hidden="true">↗</span>
+      </a>
+    }
   </div>
 </section>
 
@@ -104,7 +108,7 @@
         (ngModelChange)="selectedCategory.set($event)"
         aria-label="Filter by category"
       >
-        <option value="all">All 6 Categories</option>
+        <option value="all">All Categories</option>
         @for (cat of categories(); track cat.slug) {
           <option [value]="cat.slug">{{ cat.name }}</option>
         }
@@ -265,11 +269,17 @@
       <a routerLink="/vendors" class="btn btn--primary">Explore vendors →</a>
     </div>
 
-    <div class="biz-grid">
-      @for (biz of featuredBusinesses(); track biz.id) {
-        <app-business-card [business]="biz" />
-      }
-    </div>
+    @if (featuredBusinesses().length === 0) {
+      <p class="section-subtitle">
+        No featured studios yet. Studios added by the Super Admin will appear here once published.
+      </p>
+    } @else {
+      <div class="biz-grid">
+        @for (biz of featuredBusinesses(); track biz.id) {
+          <app-business-card [business]="biz" />
+        }
+      </div>
+    }
   </div>
 </section>
 
@@ -306,7 +316,7 @@
           <div class="bento-wide-copy">
             <h3>INSTANT STUDIO SITES</h3>
             <p>
-              Every vendor gets a dedicated site like <code>/business/glamour-studio</code> ready
+              Every vendor gets a dedicated site like <code>/business/your-studio</code> ready
               for bookings from day one.
             </p>
             <div class="bento-tags">
@@ -349,7 +359,7 @@
                 anytime.
               </p>
               <div class="bento-tags">
-                <span>BK-2026-000124</span>
+                <span>BK-2026-000001</span>
                 <span>Email Confirm</span>
                 <span>Live Status</span>
               </div>
@@ -362,7 +372,7 @@
                 class="input"
                 [ngModel]="quickTrackRef()"
                 (ngModelChange)="quickTrackRef.set($event)"
-                placeholder="BK-2026-000124"
+                placeholder="BK-2026-000001"
                 aria-label="Booking Reference"
               />
               <button type="submit" class="btn btn--primary">Track →</button>

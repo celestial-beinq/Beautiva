@@ -29,7 +29,21 @@ export class HomeComponent {
   readonly selectedCategory = signal<CategorySlug | 'all'>('all');
   readonly activeCategoryIndex = signal(0);
   readonly openFaqIndex = signal<number | null>(0);
-  readonly quickTrackRef = signal('BK-2026-000124');
+  readonly quickTrackRef = signal('');
+
+  readonly heroHighlight = computed(() => {
+    const biz = this.featuredBusinesses()[0] ?? this.marketplace.activeBusinesses()[0];
+    if (!biz) return null;
+    const srv = this.marketplace.getActiveServices(biz)[0];
+    return {
+      slug: biz.slug,
+      name: biz.name,
+      coverImage: biz.coverImage,
+      serviceName: srv?.name || biz.categoryLabel,
+      priceLabel: srv ? this.marketplace.formatNaira(srv.price) : '',
+      durationLabel: srv ? this.marketplace.formatDuration(srv.durationMinutes) : biz.location,
+    };
+  });
 
   readonly heroColumns = [
     {
@@ -42,7 +56,7 @@ export class HomeComponent {
       image: 'images/cat-hairdressers.jpg',
       label: 'STUDIO',
       alt: 'Nigerian stitch braids and curly ends',
-      route: '/business/glamour-studio',
+      route: '/vendors',
     },
     {
       image: 'images/cat-makeup.jpg',
@@ -62,12 +76,12 @@ export class HomeComponent {
     {
       question: 'HOW DO I BOOK AN APPOINTMENT?',
       answer:
-        'Browse any of the 6 beauty categories, open a studio’s auto-generated website, pick your service, date, time, and optional specialist, then confirm with Paystack (full or 30% deposit) or pay at the studio.',
+        'Browse any beauty category, open a studio’s auto-generated website, pick your service, date, time, and optional specialist, then confirm with Paystack (full or 30% deposit) or pay at the studio.',
     },
     {
       question: 'HOW DOES EVERY VENDOR GET A WEBSITE AUTOMATICALLY?',
       answer:
-        'When a studio submits its services, Naira prices, photos, and working hours in the Vendor Dashboard, Beautiva instantly generates a live storefront like beautiva.ng/business/glamour-studio.',
+        'When a studio is published on Beautiva with its services, Naira prices, photos, and working hours, Beautiva instantly generates a live storefront at beautiva.ng/business/your-studio.',
     },
     {
       question: 'WHAT PAYSTACK PAYMENT OPTIONS ARE SUPPORTED?',
@@ -77,7 +91,7 @@ export class HomeComponent {
     {
       question: 'HOW DO I TRACK MY BOOKING AFTER PAYING?',
       answer:
-        'Every confirmed booking issues a unique reference like BK-2026-000124 in your confirmation preview and email summary. Enter it on the Tracking page anytime for live status.',
+        'Every confirmed booking issues a unique reference like BK-2026-000001 in your confirmation preview and email summary. Enter it on the Tracking page anytime for live status.',
     },
     {
       question: 'CAN I PICK A SPECIFIC STYLIST, BARBER, OR ARTIST?',

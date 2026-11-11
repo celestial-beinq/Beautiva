@@ -14,7 +14,7 @@ export class BusinessSiteComponent {
   readonly marketplace = inject(MarketplaceService);
   private readonly route = inject(ActivatedRoute);
 
-  readonly slug = signal<string>('glamour-studio');
+  readonly slug = signal<string>('');
   readonly business = computed(() => this.marketplace.getBusinessBySlug(this.slug()));
   readonly lightboxImage = signal<string | null>(null);
 

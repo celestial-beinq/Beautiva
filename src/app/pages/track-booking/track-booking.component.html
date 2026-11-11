@@ -8,7 +8,7 @@
     <h1 class="track-title">Check your booking<br />in seconds.</h1>
     <p class="track-sub">
       Enter the unique reference from your confirmation email (for example
-      <code>BK-2026-000124</code>) to view live Paystack settlement and chair status.
+      <code>BK-2026-000001</code>) to view live Paystack settlement and chair status.
     </p>
 
     <form class="track-search" (ngSubmit)="lookupBooking()">
@@ -18,25 +18,27 @@
         [ngModel]="referenceInput()"
         (ngModelChange)="referenceInput.set($event)"
         name="reference"
-        placeholder="Enter booking ID e.g. BK-2026-000124"
+        placeholder="Enter booking ID e.g. BK-2026-000001"
         aria-label="Booking Reference"
       />
       <button type="submit" class="btn btn--primary btn--lg">Track booking</button>
     </form>
 
-    <div class="sample-chips">
-      <span>Quick lookup:</span>
-      @for (b of recentBookings(); track b.bookingReference) {
-        <button
-          type="button"
-          class="chip-btn"
-          [class.active]="searchedRef().toUpperCase() === b.bookingReference.toUpperCase()"
-          (click)="selectSample(b.bookingReference)"
-        >
-          {{ b.bookingReference }} · {{ b.businessName }}
-        </button>
-      }
-    </div>
+    @if (recentBookings().length > 0) {
+      <div class="sample-chips">
+        <span>Quick lookup:</span>
+        @for (b of recentBookings(); track b.bookingReference) {
+          <button
+            type="button"
+            class="chip-btn"
+            [class.active]="searchedRef().toUpperCase() === b.bookingReference.toUpperCase()"
+            (click)="selectSample(b.bookingReference)"
+          >
+            {{ b.bookingReference }} · {{ b.businessName }}
+          </button>
+        }
+      </div>
+    }
   </div>
 </section>
 
@@ -144,12 +146,19 @@
             </div>
           </div>
         </div>
-      } @else {
+      } @else if (searchedRef().trim()) {
         <div class="not-found-card">
           <h3>No booking found for “{{ searchedRef() }}”</h3>
           <p>
-            Double-check the booking reference from your email, or try the sample reference
-            <strong>BK-2026-000124</strong> above.
+            Double-check the booking reference from your confirmation email and try again.
+          </p>
+        </div>
+      } @else {
+        <div class="not-found-card">
+          <h3>Enter your booking reference above</h3>
+          <p>
+            Use the reference ID from your booking confirmation (for example
+            <code>BK-2026-000001</code>) to check live status.
           </p>
         </div>
       }

@@ -13,5 +13,6 @@ delete from public.reviews;
 delete from public.services;
 delete from public.staff_members;
 delete from public.vendor_invitations;
+delete from public.vendor_applications;
 delete from public.businesses;
 delete from public.categories;

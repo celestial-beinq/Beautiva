@@ -395,8 +395,21 @@
 .ledger-table td {
   padding: 0.95rem 1rem;
   border-bottom: 1px solid var(--border-linen);
-  vertical-align: top;
+  vertical-align: middle;
   white-space: nowrap;
+}
+
+.ledger-table.studio-admin-table th:nth-child(2),
+.ledger-table.studio-admin-table th:nth-child(3),
+.ledger-table.studio-admin-table th:nth-child(4),
+.ledger-table.studio-admin-table td:nth-child(2),
+.ledger-table.studio-admin-table td:nth-child(3),
+.ledger-table.studio-admin-table td:nth-child(4) {
+  text-align: center;
+}
+
+.ledger-table.studio-admin-table td {
+  vertical-align: middle;
 }
 
 .ledger-table th,
