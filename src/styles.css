@@ -1,1 +1,306 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --bg-alabaster: #faf7f2;
+  --bg-stone: #f3ede4;
+  --bg-card: #ffffff;
+  --bg-espresso: #171412;
+  --bg-espresso-soft: #241f1c;
+
+  --text-primary: #171412;
+  --text-secondary: #5c534a;
+  --text-muted: #8a7f74;
+  --text-on-dark: #faf7f2;
+
+  --accent-bronze: #a67c52;
+  --accent-bronze-dark: #87613d;
+  --accent-bronze-soft: #efe6da;
+  --accent-sage: #2b6e52;
+  --accent-sage-soft: #e6f3ec;
+  --accent-paystack: #00c3f7;
+  --accent-paystack-navy: #091d36;
+
+  --border-subtle: rgba(23, 20, 18, 0.09);
+  --border-strong: rgba(23, 20, 18, 0.18);
+
+  --shadow-sm: 0 2px 10px rgba(23, 20, 18, 0.05);
+  --shadow-md: 0 12px 32px rgba(23, 20, 18, 0.08);
+  --shadow-lg: 0 24px 60px rgba(23, 20, 18, 0.14);
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-alabaster);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.container {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.section {
+  padding-block: 5rem;
+}
+
+.section--stone {
+  background: var(--bg-stone);
+}
+
+.section--dark {
+  background: var(--bg-espresso);
+  color: var(--text-on-dark);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-bronze-dark);
+}
+
+.eyebrow--light {
+  color: #dfd2c0;
+}
+
+.section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.section-title {
+  margin: 0.45rem 0 0;
+  font-size: clamp(1.85rem, 3.2vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.section-subtitle {
+  margin: 0.65rem 0 0;
+  color: var(--text-secondary);
+  max-width: 58ch;
+  font-size: 1rem;
+}
+
+.serif-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.8rem 1.4rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--bg-espresso);
+  color: var(--text-on-dark);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #2b2521;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--white {
+  background: #ffffff;
+  color: var(--text-primary);
+}
+
+.btn--white:hover:not(:disabled) {
+  background: var(--bg-stone);
+}
+
+.btn--ghost-light {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.btn--ghost-light:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.btn--outline {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.btn--outline:hover:not(:disabled) {
+  background: var(--bg-stone);
+}
+
+.btn--accent {
+  background: var(--accent-bronze);
+  color: #ffffff;
+}
+
+.btn--accent:hover:not(:disabled) {
+  background: var(--accent-bronze-dark);
+}
+
+.btn--sm {
+  padding: 0.55rem 1rem;
+  font-size: 0.82rem;
+}
+
+.btn--lg {
+  padding: 0.95rem 1.75rem;
+  font-size: 0.96rem;
+}
+
+/* Badges & Pills */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.68rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.74rem;
+  font-weight: 600;
+  background: var(--bg-stone);
+  color: var(--text-secondary);
+}
+
+.badge--success {
+  background: var(--accent-sage-soft);
+  color: var(--accent-sage);
+}
+
+.badge--bronze {
+  background: var(--accent-bronze-soft);
+  color: var(--accent-bronze-dark);
+}
+
+.badge--warning {
+  background: #fdf3dc;
+  color: #936210;
+}
+
+.badge--danger {
+  background: #fbe8e7;
+  color: #a62b24;
+}
+
+/* Form Elements */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+}
+
+.field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: 0.78rem 0.95rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  background: #ffffff;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent-bronze);
+  box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.16);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding-block: 3.5rem;
+  }
+
+  .container {
+    padding-inline: 1rem;
+  }
+}

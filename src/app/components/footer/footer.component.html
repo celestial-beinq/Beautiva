@@ -1,0 +1,46 @@
+<footer class="footer section--dark">
+  <div class="container footer-grid">
+    <div class="footer-brand">
+      <div class="brand-lockup">
+        <span class="brand-mark">✦</span>
+        <span>BEAUTIVA</span>
+      </div>
+      <p class="footer-copy">
+        Connecting customers with vetted hairdressers, barbers, nail artists, lash techs, makeup
+        artists, and tattoo studios — complete with instant business websites and Paystack
+        checkout.
+      </p>
+      <div class="paystack-pill">
+        <span class="paystack-dot"></span>
+        Secured for Nigerian Paystack Payments (NGN ₦)
+      </div>
+    </div>
+
+    <div>
+      <h4 class="footer-heading">Categories</h4>
+      <ul class="footer-list">
+        @for (cat of categories(); track cat.slug) {
+          <li>
+            <a [routerLink]="['/category', cat.slug]">{{ cat.name }}</a>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <div>
+      <h4 class="footer-heading">Platform</h4>
+      <ul class="footer-list">
+        <li><a routerLink="/businesses">All Businesses</a></li>
+        <li><a routerLink="/business/glamour-studio">Glamour Studio Demo</a></li>
+        <li><a routerLink="/track">Track Booking (BK-2026-000124)</a></li>
+        <li><a routerLink="/vendor">Vendor Website Builder</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="container footer-bottom">
+    <span>© 2026 Beautiva Marketplace. All rights reserved.</span>
+    <span>Auto-generated studio websites · Instant booking references</span>
+  </div>
+</footer>
+

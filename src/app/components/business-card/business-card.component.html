@@ -1,0 +1,65 @@
+<article class="biz-card card">
+  <a [routerLink]="['/business', business().slug]" class="biz-cover-wrap">
+    <img [src]="business().coverImage" [alt]="business().name" class="biz-cover" loading="lazy" />
+    <span class="biz-cat-pill">{{ business().categoryLabel }}</span>
+    @if (business().paymentPolicy.allowPayAtBusiness) {
+      <span class="biz-pay-pill">Pay at studio available</span>
+    }
+  </a>
+
+  <div class="biz-body">
+    <div class="biz-top">
+      <div class="biz-logo" [style.background]="business().logoBg">
+        @if (business().logoImage) {
+          <img [src]="business().logoImage" [alt]="business().name + ' logo'" />
+        } @else {
+          {{ business().logoText }}
+        }
+      </div>
+
+      <div class="biz-title-col">
+        <a [routerLink]="['/business', business().slug]" class="biz-name">
+          {{ business().name }}
+          @if (business().verified) {
+            <span class="verified-dot" title="Verified Business">✓</span>
+          }
+        </a>
+        <p class="biz-location">📍 {{ business().location }}</p>
+      </div>
+
+      <div class="biz-rating" aria-label="Rating">
+        ★ {{ business().rating.toFixed(1) }}
+        <span>({{ business().reviewCount }})</span>
+      </div>
+    </div>
+
+    <div class="biz-services">
+      @for (srv of business().services.slice(0, 3); track srv.id) {
+        <div class="srv-chip">
+          <span>{{ srv.name }}</span>
+          <strong>{{ formatPrice(srv.price) }}</strong>
+        </div>
+      }
+      @if (business().services.length > 3) {
+        <span class="srv-more">+{{ business().services.length - 3 }} more services</span>
+      }
+    </div>
+
+    <div class="biz-footer">
+      <div class="biz-price">
+        <span class="price-label">Starting from</span>
+        <strong class="price-value">{{ startingPrice() }}</strong>
+      </div>
+
+      <div class="biz-actions">
+        <a [routerLink]="['/business', business().slug]" class="btn btn--outline btn--sm">
+          Visit Website
+        </a>
+        <a [routerLink]="['/book', business().slug]" class="btn btn--primary btn--sm">
+          Book Appointment
+        </a>
+      </div>
+    </div>
+  </div>
+</article>
+

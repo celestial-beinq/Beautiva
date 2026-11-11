@@ -1,0 +1,151 @@
+<section class="track-shell section">
+  <div class="container track-container">
+    <div class="track-header">
+      <span class="eyebrow">Step 6 · Live Booking Lookup</span>
+      <h1>Track your booking</h1>
+      <p>
+        Enter the unique booking reference from your confirmation email (for example
+        <code>BK-2026-000124</code>) to view real-time payment and appointment status.
+      </p>
+    </div>
+
+    <form class="track-search card" (ngSubmit)="lookupBooking()">
+      <input
+        type="text"
+        class="input track-input"
+        [ngModel]="referenceInput()"
+        (ngModelChange)="referenceInput.set($event)"
+        name="reference"
+        placeholder="Enter booking ID e.g. BK-2026-000124"
+        aria-label="Booking Reference"
+      />
+      <button type="submit" class="btn btn--primary btn--lg">Track Booking →</button>
+    </form>
+
+    <div class="sample-chips">
+      <span>Quick lookup:</span>
+      @for (b of recentBookings(); track b.bookingReference) {
+        <button
+          type="button"
+          class="chip-btn"
+          [class.active]="searchedRef().toUpperCase() === b.bookingReference.toUpperCase()"
+          (click)="selectSample(b.bookingReference)"
+        >
+          {{ b.bookingReference }} · {{ b.businessName }}
+        </button>
+      }
+    </div>
+
+    @if (foundBooking(); as booking) {
+      <div class="booking-result card">
+        <div class="result-top">
+          <div>
+            <span class="result-label">Booking Information</span>
+            <h2>{{ booking.bookingReference }}</h2>
+          </div>
+          <span
+            class="badge"
+            [class.badge--success]="booking.status === 'Confirmed' || booking.status === 'Completed'"
+            [class.badge--danger]="booking.status === 'Cancelled'"
+            [class.badge--warning]="booking.status === 'Pending'"
+          >
+            {{ booking.status }}
+          </span>
+        </div>
+
+        <div class="info-table">
+          <div class="info-row">
+            <span class="info-key">Booking ID</span>
+            <strong class="info-val">{{ booking.bookingReference }}</strong>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Business</span>
+            <a [routerLink]="['/business', booking.businessSlug]" class="info-link">
+              {{ booking.businessName }} ↗
+            </a>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Service</span>
+            <strong class="info-val">{{ booking.serviceName }}</strong>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Date</span>
+            <strong class="info-val">{{ booking.dateDisplay }}</strong>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Time</span>
+            <strong class="info-val">{{ booking.time }}</strong>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Specialist</span>
+            <strong class="info-val">{{ booking.staffName }}</strong>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Payment</span>
+            <strong class="info-val">
+              {{ booking.paymentStatus }}
+              @if (booking.amountPaid > 0) {
+                ({{ marketplace.formatNaira(booking.amountPaid) }})
+              }
+              @if (booking.balanceDue > 0) {
+                · Balance at studio: {{ marketplace.formatNaira(booking.balanceDue) }}
+              }
+            </strong>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Status</span>
+            <strong class="info-val">{{ booking.status }}</strong>
+          </div>
+        </div>
+
+        <!-- Status Timeline -->
+        <div class="timeline">
+          <div class="tl-step done">
+            <span class="tl-dot">✓</span>
+            <span>Booking Created</span>
+          </div>
+          <div class="tl-step done">
+            <span class="tl-dot">✓</span>
+            <span>{{ booking.paymentStatus }}</span>
+          </div>
+          <div
+            class="tl-step"
+            [class.done]="booking.status === 'Confirmed' || booking.status === 'Completed'"
+          >
+            <span class="tl-dot">{{ booking.status === 'Cancelled' ? '✕' : '✓' }}</span>
+            <span>{{ booking.status }}</span>
+          </div>
+        </div>
+
+        <div class="result-footer">
+          <div class="cust-meta">
+            Booked for <strong>{{ booking.customerName }}</strong> ({{ booking.customerEmail }})
+          </div>
+          <div class="result-actions">
+            @if (booking.status === 'Confirmed') {
+              <button
+                type="button"
+                class="btn btn--outline btn--sm"
+                (click)="cancelBooking(booking.bookingReference)"
+              >
+                Cancel Booking
+              </button>
+            }
+            <a [routerLink]="['/book', booking.businessSlug]" class="btn btn--primary btn--sm">
+              Book Again →
+            </a>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="not-found-card card">
+        <h3>No booking found for “{{ searchedRef() }}”</h3>
+        <p>
+          Double-check the booking reference from your email, or try the sample reference
+          <strong>BK-2026-000124</strong> above.
+        </p>
+      </div>
+    }
+  </div>
+</section>
+

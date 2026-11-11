@@ -1,0 +1,367 @@
+<section class="book-shell section">
+  <div class="container">
+    @if (business(); as biz) {
+      @if (confirmedBooking(); as booking) {
+        <!-- STEP 5 COMPLETE: BOOKING CONFIRMATION + SIMULATED EMAIL -->
+        <div class="confirmation-wrap">
+          <div class="confirm-banner card">
+            <span class="confirm-check">✓</span>
+            <span class="badge badge--success">Booking Confirmed</span>
+            <h1>Your appointment is locked in!</h1>
+            <p>
+              We generated your unique booking reference and dispatched a confirmation email to
+              <strong>{{ booking.customerEmail }}</strong>.
+            </p>
+
+            <div class="ref-box">
+              <div>
+                <span class="ref-label">Booking Reference</span>
+                <strong class="ref-code">{{ booking.bookingReference }}</strong>
+              </div>
+              <button
+                type="button"
+                class="btn btn--outline btn--sm"
+                (click)="copyReference(booking.bookingReference)"
+              >
+                {{ copiedRef() ? 'Copied ✓' : 'Copy ID' }}
+              </button>
+            </div>
+
+            <div class="confirm-actions">
+              <a
+                routerLink="/track"
+                [queryParams]="{ ref: booking.bookingReference }"
+                class="btn btn--primary btn--lg"
+              >
+                Track Booking Status →
+              </a>
+              <a [routerLink]="['/business', biz.slug]" class="btn btn--outline btn--lg">
+                Back to {{ biz.name }}
+              </a>
+            </div>
+          </div>
+
+          <!-- Email Confirmation Preview -->
+          <div class="email-preview card">
+            <div class="email-header">
+              <span class="eyebrow">Email Confirmation Preview</span>
+              <div class="email-meta">
+                <div><span>To:</span> {{ booking.customerEmail }}</div>
+                <div>
+                  <span>Subject:</span> Booking Confirmed — {{ booking.bookingReference }} ({{
+                    booking.businessName
+                  }})
+                </div>
+              </div>
+            </div>
+
+            <div class="email-body">
+              <p>Hi {{ booking.customerName }},</p>
+              <p>
+                Your appointment at <strong>{{ booking.businessName }}</strong> is confirmed. Keep
+                your booking reference handy to track or manage your visit anytime.
+              </p>
+
+              <div class="email-summary-grid">
+                <div><span>Booking ID</span><strong>{{ booking.bookingReference }}</strong></div>
+                <div><span>Business</span><strong>{{ booking.businessName }}</strong></div>
+                <div><span>Service</span><strong>{{ booking.serviceName }}</strong></div>
+                <div><span>Date</span><strong>{{ booking.dateDisplay }}</strong></div>
+                <div><span>Time</span><strong>{{ booking.time }}</strong></div>
+                <div><span>Specialist</span><strong>{{ booking.staffName }}</strong></div>
+                <div><span>Payment</span><strong>{{ booking.paymentStatus }}</strong></div>
+                <div><span>Status</span><strong>{{ booking.status }}</strong></div>
+              </div>
+
+              @if (booking.paystackReference) {
+                <p class="email-psk">
+                  Paystack Transaction Ref: <code>{{ booking.paystackReference }}</code> · Amount
+                  Paid: <strong>{{ marketplace.formatNaira(booking.amountPaid) }}</strong>
+                  @if (booking.balanceDue > 0) {
+                    (Balance due at studio: {{ marketplace.formatNaira(booking.balanceDue) }})
+                  }
+                </p>
+              }
+            </div>
+          </div>
+        </div>
+      } @else {
+        <!-- BOOKING WIZARD -->
+        <div class="book-head">
+          <a [routerLink]="['/business', biz.slug]" class="back-link">← Back to {{ biz.name }}</a>
+          <span class="eyebrow">Step 4 & 5 · Schedule & Paystack Checkout</span>
+          <h1>Book at {{ biz.name }}</h1>
+          <p class="book-sub">📍 {{ biz.address }}</p>
+        </div>
+
+        <div class="book-layout">
+          <div class="book-form-col">
+            <!-- 1. Preferred Service -->
+            <div class="book-card card">
+              <h2>1. Select Preferred Service</h2>
+              <div class="service-radio-list">
+                @for (srv of biz.services; track srv.id) {
+                  <label
+                    class="service-option"
+                    [class.selected]="selectedServiceId() === srv.id"
+                  >
+                    <input
+                      type="radio"
+                      name="service"
+                      [value]="srv.id"
+                      [checked]="selectedServiceId() === srv.id"
+                      (change)="selectedServiceId.set(srv.id)"
+                    />
+                    <div class="srv-opt-info">
+                      <strong>{{ srv.name }}</strong>
+                      <span>
+                        {{ marketplace.formatDuration(srv.durationMinutes) }} · {{ srv.description }}
+                      </span>
+                    </div>
+                    <strong class="srv-opt-price">{{ marketplace.formatNaira(srv.price) }}</strong>
+                  </label>
+                }
+              </div>
+            </div>
+
+            <!-- 2. Date & Time -->
+            <div class="book-card card">
+              <h2>2. Choose Date & Time</h2>
+
+              <div class="date-strip">
+                @for (d of dateOptions; track d.iso) {
+                  <button
+                    type="button"
+                    class="date-chip"
+                    [class.selected]="selectedDate() === d.iso"
+                    (click)="selectDate(d.iso)"
+                  >
+                    <span class="dc-day">{{ d.dayShort }}</span>
+                    <strong class="dc-num">{{ d.dateNum }}</strong>
+                    <span class="dc-mon">{{ d.monthShort }}</span>
+                  </button>
+                }
+              </div>
+
+              <div class="slots-label">Available times for {{ selectedDateDisplay() }}</div>
+              <div class="slot-grid">
+                @for (slot of timeSlots; track slot) {
+                  <button
+                    type="button"
+                    class="slot-btn"
+                    [class.selected]="selectedTime() === slot"
+                    [disabled]="isSlotBooked(slot)"
+                    (click)="selectedTime.set(slot)"
+                  >
+                    {{ slot }}
+                    @if (isSlotBooked(slot)) {
+                      <small>Booked</small>
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- 3. Optional Staff Member -->
+            <div class="book-card card">
+              <h2>3. Optional Staff Member</h2>
+              <div class="staff-pills">
+                <button
+                  type="button"
+                  class="staff-pill"
+                  [class.selected]="selectedStaff() === 'Any available specialist'"
+                  (click)="selectedStaff.set('Any available specialist')"
+                >
+                  Any available specialist
+                </button>
+                @for (member of biz.staff; track member.id) {
+                  <button
+                    type="button"
+                    class="staff-pill"
+                    [class.selected]="selectedStaff() === member.name"
+                    (click)="selectedStaff.set(member.name)"
+                  >
+                    {{ member.name }} · {{ member.role }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- 4. Customer Details -->
+            <div class="book-card card">
+              <h2>4. Customer Details</h2>
+              <div class="details-grid">
+                <div class="field">
+                  <label class="field-label" for="cust-name">Full Name *</label>
+                  <input
+                    id="cust-name"
+                    class="input"
+                    [(ngModel)]="customerName"
+                    placeholder="e.g. Adaeze Okonkwo"
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="cust-email">Email Address (for confirmation) *</label>
+                  <input
+                    id="cust-email"
+                    type="email"
+                    class="input"
+                    [(ngModel)]="customerEmail"
+                    placeholder="you@example.com"
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="cust-phone">Phone / WhatsApp *</label>
+                  <input
+                    id="cust-phone"
+                    class="input"
+                    [(ngModel)]="customerPhone"
+                    placeholder="+234 803 000 0000"
+                  />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="cust-notes">Notes (Optional)</label>
+                  <input
+                    id="cust-notes"
+                    class="input"
+                    [(ngModel)]="customerNotes"
+                    placeholder="Hair colour, skin sensitivity, inspiration..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Payment Option (Paystack) -->
+            <div class="book-card card">
+              <h2>5. Payment Option (Paystack)</h2>
+              <div class="pay-options">
+                @if (biz.paymentPolicy.allowFull) {
+                  <label class="pay-card" [class.selected]="paymentOption() === 'full'">
+                    <input
+                      type="radio"
+                      name="payOption"
+                      [checked]="paymentOption() === 'full'"
+                      (change)="paymentOption.set('full')"
+                    />
+                    <div>
+                      <strong>Full Payment via Paystack</strong>
+                      <span>Pay 100% upfront and walk in cashless.</span>
+                    </div>
+                    <strong>
+                      {{ marketplace.formatNaira(selectedService()?.price || 0) }}
+                    </strong>
+                  </label>
+                }
+
+                @if (biz.paymentPolicy.allowDeposit) {
+                  <label class="pay-card" [class.selected]="paymentOption() === 'deposit'">
+                    <input
+                      type="radio"
+                      name="payOption"
+                      [checked]="paymentOption() === 'deposit'"
+                      (change)="paymentOption.set('deposit')"
+                    />
+                    <div>
+                      <strong>Deposit Payment ({{ biz.paymentPolicy.depositPercent }}%) via Paystack</strong>
+                      <span>Secure your slot now; pay the remaining balance at the studio.</span>
+                    </div>
+                    <strong>
+                      {{
+                        marketplace.formatNaira(
+                          ((selectedService()?.price || 0) * biz.paymentPolicy.depositPercent) / 100
+                        )
+                      }}
+                    </strong>
+                  </label>
+                }
+
+                @if (biz.paymentPolicy.allowPayAtBusiness) {
+                  <label class="pay-card" [class.selected]="paymentOption() === 'pay-at-business'">
+                    <input
+                      type="radio"
+                      name="payOption"
+                      [checked]="paymentOption() === 'pay-at-business'"
+                      (change)="paymentOption.set('pay-at-business')"
+                    />
+                    <div>
+                      <strong>Pay at the Business</strong>
+                      <span>Allowed by {{ biz.name }} — settle directly after your appointment.</span>
+                    </div>
+                    <strong>₦0 now</strong>
+                  </label>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Sticky Summary -->
+          <aside class="book-summary card">
+            <h3>Booking Summary</h3>
+            <div class="summary-studio">
+              <strong>{{ biz.name }}</strong>
+              <span>{{ biz.location }}</span>
+            </div>
+
+            @if (selectedService(); as srv) {
+              <div class="summary-rows">
+                <div><span>Service</span><strong>{{ srv.name }}</strong></div>
+                <div><span>Date</span><strong>{{ selectedDateDisplay() }}</strong></div>
+                <div><span>Time</span><strong>{{ selectedTime() }}</strong></div>
+                <div><span>Specialist</span><strong>{{ selectedStaff() }}</strong></div>
+                <div><span>Total Price</span><strong>{{ marketplace.formatNaira(srv.price) }}</strong></div>
+                <div class="summary-pay-now">
+                  <span>Due Now</span>
+                  <strong>{{ marketplace.formatNaira(payableNow()) }}</strong>
+                </div>
+                @if (balanceAtVenue() > 0) {
+                  <div>
+                    <span>Balance at Studio</span>
+                    <strong>{{ marketplace.formatNaira(balanceAtVenue()) }}</strong>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (validationError()) {
+              <div class="form-error">{{ validationError() }}</div>
+            }
+
+            <button
+              type="button"
+              class="btn btn--primary btn--lg summary-cta"
+              (click)="proceedToCheckout()"
+            >
+              @if (paymentOption() === 'pay-at-business') {
+                Confirm Booking →
+              } @else {
+                Pay {{ marketplace.formatNaira(payableNow()) }} with Paystack →
+              }
+            </button>
+
+            <p class="summary-note">
+              You’ll immediately receive a unique reference ID (e.g. <code>BK-2026-000125</code>)
+              and email confirmation.
+            </p>
+          </aside>
+        </div>
+      }
+    } @else {
+      <div class="card empty-book">
+        <h2>Studio not found</h2>
+        <a routerLink="/businesses" class="btn btn--primary">Explore All Studios</a>
+      </div>
+    }
+  </div>
+</section>
+
+@if (showPaystackModal() && business(); as biz) {
+  <app-paystack-modal
+    [businessName]="biz.name"
+    [customerEmail]="customerEmail"
+    [amount]="payableNow()"
+    [description]="selectedService()?.name || 'Appointment'"
+    (cancel)="showPaystackModal.set(false)"
+    (success)="onPaystackSuccess($event)"
+  />
+}
+

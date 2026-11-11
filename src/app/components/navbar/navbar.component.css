@@ -1,0 +1,113 @@
+.nav-shell {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.nav-shell--transparent {
+  background: linear-gradient(180deg, rgba(23, 20, 18, 0.55) 0%, rgba(23, 20, 18, 0) 100%);
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.nav-shell--solid {
+  background: rgba(250, 247, 242, 0.94);
+  backdrop-filter: blur(14px);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.nav-inner {
+  height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  font-size: 1rem;
+}
+
+.brand-mark {
+  font-size: 1.05rem;
+  color: var(--accent-bronze);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.nav-links a {
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.nav-links a:hover,
+.nav-links a.is-active {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.menu-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  border-radius: var(--radius-xs);
+  width: 38px;
+  height: 38px;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.mobile-drawer {
+  display: none;
+  flex-direction: column;
+  padding: 1rem 1.5rem 1.5rem;
+  gap: 0.75rem;
+  background: var(--bg-alabaster);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mobile-drawer a {
+  padding: 0.5rem 0;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 900px) {
+  .nav-links {
+    display: none;
+  }
+
+  .menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-drawer {
+    display: flex;
+  }
+}
+

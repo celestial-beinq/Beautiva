@@ -1,0 +1,56 @@
+<header
+  class="nav-shell"
+  [class.nav-shell--transparent]="isTransparentHero()"
+  [class.nav-shell--solid]="!isTransparentHero()"
+>
+  <div class="container nav-inner">
+    <a routerLink="/" class="brand" (click)="closeMobile()">
+      <span class="brand-mark" aria-hidden="true">✦</span>
+      <span class="brand-name">BEAUTIVA</span>
+    </a>
+
+    <nav class="nav-links" aria-label="Primary">
+      <a routerLink="/businesses" routerLinkActive="is-active">Explore Studios</a>
+      <a routerLink="/category/hairdressers" routerLinkActive="is-active">Categories</a>
+      <a routerLink="/business/glamour-studio" routerLinkActive="is-active">Sample Site</a>
+      <a routerLink="/track" routerLinkActive="is-active">Track Booking</a>
+      <a routerLink="/vendor" routerLinkActive="is-active">For Vendors</a>
+    </nav>
+
+    <div class="nav-actions">
+      <a
+        routerLink="/businesses"
+        class="btn btn--sm"
+        [class.btn--white]="isTransparentHero()"
+        [class.btn--primary]="!isTransparentHero()"
+      >
+        Book a session →
+      </a>
+
+      <button
+        type="button"
+        class="menu-btn"
+        aria-label="Toggle menu"
+        [attr.aria-expanded]="mobileOpen()"
+        (click)="toggleMobile()"
+      >
+        {{ mobileOpen() ? '✕' : '☰' }}
+      </button>
+    </div>
+  </div>
+
+  @if (mobileOpen()) {
+    <div class="mobile-drawer">
+      <a routerLink="/businesses" (click)="closeMobile()">Explore Studios</a>
+      <a routerLink="/category/hairdressers" (click)="closeMobile()">Hairdressers</a>
+      <a routerLink="/category/barbers" (click)="closeMobile()">Barbers</a>
+      <a routerLink="/category/nail-technicians" (click)="closeMobile()">Nail Technicians</a>
+      <a routerLink="/category/lash-technicians" (click)="closeMobile()">Lash Technicians</a>
+      <a routerLink="/category/makeup-artists" (click)="closeMobile()">Makeup Artists</a>
+      <a routerLink="/category/tattoo-artists" (click)="closeMobile()">Tattoo Artists</a>
+      <a routerLink="/track" (click)="closeMobile()">Track Booking</a>
+      <a routerLink="/vendor" (click)="closeMobile()">List Your Studio (Vendor Builder)</a>
+    </div>
+  }
+</header>
+

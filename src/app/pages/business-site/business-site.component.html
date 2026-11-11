@@ -1,0 +1,292 @@
+@if (business(); as biz) {
+  <!-- Auto-Generated Business Website Banner -->
+  <div class="site-topbar">
+    <div class="container site-topbar-inner">
+      <div class="site-url-pill">
+        <span class="live-dot"></span>
+        <span>Auto-generated site:</span>
+        <code>beautiva.app/business/{{ biz.slug }}</code>
+      </div>
+      <div class="site-subnav">
+        <a href="#about">About</a>
+        <a href="#services">Services</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#hours">Hours & Location</a>
+        <a href="#reviews">Reviews</a>
+        <a [routerLink]="['/category', biz.categorySlug]" class="back-cat">← {{ biz.categoryLabel }}</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Studio Hero -->
+  <section class="studio-hero">
+    <img [src]="biz.coverImage" [alt]="biz.name" class="studio-hero-bg" />
+    <div class="studio-hero-scrim"></div>
+
+    <div class="container studio-hero-inner">
+      <div class="studio-identity">
+        <div class="studio-logo" [style.background]="biz.logoBg">
+          @if (biz.logoImage) {
+            <img [src]="biz.logoImage" [alt]="biz.name + ' logo'" />
+          } @else {
+            {{ biz.logoText }}
+          }
+        </div>
+        <div>
+          <div class="studio-badges">
+            <span class="badge badge--bronze">{{ biz.categoryLabel }}</span>
+            @if (biz.verified) {
+              <span class="badge badge--success">✓ Verified Studio</span>
+            }
+            <span class="rating-pill">★ {{ biz.rating.toFixed(1) }} ({{ biz.reviewCount }} reviews)</span>
+          </div>
+          <h1 class="studio-name">{{ biz.name }}</h1>
+          <p class="studio-tagline">{{ biz.tagline }}</p>
+          <div class="studio-meta-row">
+            <span>📍 {{ biz.address }}</span>
+            <span>📞 {{ biz.contact.phone }}</span>
+            <span>📷 {{ biz.contact.instagram }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="studio-hero-cta">
+        <span class="from-label">Services from {{ startingPrice() }}</span>
+        <a [routerLink]="['/book', biz.slug]" class="btn btn--white btn--lg">
+          Book Appointment →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content & Sticky Sidebar -->
+  <section class="section">
+    <div class="container studio-layout">
+      <div class="studio-main">
+        <!-- About -->
+        <div id="about" class="studio-block">
+          <span class="eyebrow">About the Studio</span>
+          <h2 class="block-title">Welcome to {{ biz.name }}</h2>
+          <p class="about-text">{{ biz.about }}</p>
+
+          <div class="policy-pills">
+            @if (biz.paymentPolicy.allowFull) {
+              <span class="badge">✓ Full Payment (Paystack)</span>
+            }
+            @if (biz.paymentPolicy.allowDeposit) {
+              <span class="badge badge--bronze">
+                ✓ {{ biz.paymentPolicy.depositPercent }}% Deposit Option
+              </span>
+            }
+            @if (biz.paymentPolicy.allowPayAtBusiness) {
+              <span class="badge badge--success">✓ Pay at Business Allowed</span>
+            }
+          </div>
+        </div>
+
+        <!-- Service Catalogue & Prices -->
+        <div id="services" class="studio-block">
+          <span class="eyebrow">Service Catalogue</span>
+          <h2 class="block-title">Services & Transparent Pricing</h2>
+
+          <div class="catalogue-list">
+            @for (srv of biz.services; track srv.id) {
+              <div class="catalogue-item card">
+                <div class="catalogue-info">
+                  <div class="catalogue-top">
+                    <span class="srv-cat-tag">{{ srv.categoryLabel }}</span>
+                    <span class="srv-duration">⏱ {{ marketplace.formatDuration(srv.durationMinutes) }}</span>
+                  </div>
+                  <h3>{{ srv.name }}</h3>
+                  <p>{{ srv.description }}</p>
+                </div>
+
+                <div class="catalogue-action">
+                  <strong class="srv-price">{{ marketplace.formatNaira(srv.price) }}</strong>
+                  <a
+                    [routerLink]="['/book', biz.slug]"
+                    [queryParams]="{ service: srv.id }"
+                    class="btn btn--primary btn--sm"
+                  >
+                    Book Service →
+                  </a>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Team / Specialists -->
+        @if (biz.staff.length > 0) {
+          <div class="studio-block">
+            <span class="eyebrow">Our Team</span>
+            <h2 class="block-title">Optional Specialists</h2>
+            <div class="staff-grid">
+              @for (member of biz.staff; track member.id) {
+                <div class="staff-card card">
+                  <div class="staff-avatar" [style.background]="member.avatarColor">
+                    {{ member.name.charAt(0) }}
+                  </div>
+                  <div>
+                    <strong>{{ member.name }}</strong>
+                    <div class="staff-role">{{ member.role }}</div>
+                    <div class="staff-spec">{{ member.specialty }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Image Gallery -->
+        <div id="gallery" class="studio-block">
+          <span class="eyebrow">Portfolio</span>
+          <h2 class="block-title">Studio & Work Gallery</h2>
+          <div class="gallery-grid">
+            @for (img of biz.gallery; track $index) {
+              <button type="button" class="gallery-item" (click)="openLightbox(img)">
+                <img [src]="img" [alt]="biz.name + ' gallery ' + ($index + 1)" loading="lazy" />
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Reviews -->
+        <div id="reviews" class="studio-block">
+          <div class="reviews-head">
+            <div>
+              <span class="eyebrow">Client Feedback</span>
+              <h2 class="block-title">
+                Reviews ({{ biz.reviewCount }}) · ★ {{ biz.rating.toFixed(1) }}
+              </h2>
+            </div>
+            <button
+              type="button"
+              class="btn btn--outline btn--sm"
+              (click)="showReviewForm.set(!showReviewForm())"
+            >
+              {{ showReviewForm() ? 'Cancel' : '+ Leave a Review' }}
+            </button>
+          </div>
+
+          @if (reviewSubmitted()) {
+            <div class="review-toast">Thank you! Your review has been published.</div>
+          }
+
+          @if (showReviewForm()) {
+            <form class="review-form card" (ngSubmit)="submitReview()">
+              <div class="review-form-row">
+                <div class="field">
+                  <label class="field-label">Your Name</label>
+                  <input class="input" [(ngModel)]="reviewAuthor" name="author" required placeholder="e.g. Tolu M." />
+                </div>
+                <div class="field">
+                  <label class="field-label">Service Booked</label>
+                  <select class="select" [(ngModel)]="reviewService" name="service">
+                    @for (srv of biz.services; track srv.id) {
+                      <option [value]="srv.name">{{ srv.name }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="field-label">Rating</label>
+                  <select class="select" [(ngModel)]="reviewRating" name="rating">
+                    <option [ngValue]="5">5 ★ — Exceptional</option>
+                    <option [ngValue]="4">4 ★ — Great</option>
+                    <option [ngValue]="3">3 ★ — Good</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Your Review</label>
+                <textarea
+                  class="textarea"
+                  rows="3"
+                  [(ngModel)]="reviewComment"
+                  name="comment"
+                  required
+                  placeholder="Share your experience with the studio..."
+                ></textarea>
+              </div>
+              <button type="submit" class="btn btn--primary btn--sm">Publish Review</button>
+            </form>
+          }
+
+          <div class="studio-reviews">
+            @for (rev of biz.reviews; track rev.id) {
+              <article class="studio-review-card card">
+                <div class="sr-top">
+                  <strong>{{ rev.author }}</strong>
+                  <span class="sr-stars">{{ '★'.repeat(rev.rating) }}</span>
+                </div>
+                <div class="sr-meta">{{ rev.serviceName }} · {{ rev.dateLabel }}</div>
+                <p>{{ rev.comment }}</p>
+              </article>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Sticky Right Sidebar: Booking Card + Hours + Location & Contact -->
+      <aside class="studio-sidebar">
+        <div class="sidebar-card card">
+          <h3>Ready to book?</h3>
+          <p>Instant slot confirmation with Paystack or pay at studio where supported.</p>
+          <a [routerLink]="['/book', biz.slug]" class="btn btn--primary btn--lg sidebar-book-btn">
+            Book Appointment →
+          </a>
+        </div>
+
+        <div id="hours" class="sidebar-card card">
+          <h3>Working Hours</h3>
+          <ul class="hours-list">
+            @for (wh of biz.workingHours; track wh.day) {
+              <li>
+                <span>{{ wh.day }}</span>
+                <strong>{{ wh.closed ? 'Closed' : wh.open + ' – ' + wh.close }}</strong>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <div class="sidebar-card card">
+          <h3>Location & Contact</h3>
+          <div class="contact-rows">
+            <div>
+              <span>Address</span>
+              <strong>{{ biz.address }}</strong>
+            </div>
+            <div>
+              <span>Phone</span>
+              <strong>{{ biz.contact.phone }}</strong>
+            </div>
+            <div>
+              <span>Email</span>
+              <strong>{{ biz.contact.email }}</strong>
+            </div>
+            <div>
+              <span>Instagram</span>
+              <strong>{{ biz.contact.instagram }}</strong>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  @if (lightboxImage(); as img) {
+    <div class="lightbox" (click)="closeLightbox()">
+      <button type="button" class="lightbox-close" (click)="closeLightbox()">✕</button>
+      <img [src]="img" alt="Gallery preview" (click)="$event.stopPropagation()" />
+    </div>
+  }
+} @else {
+  <section class="section not-found">
+    <div class="container">
+      <h1>Studio not found</h1>
+      <p>We couldn’t locate a business website at <code>/business/{{ slug() }}</code>.</p>
+      <a routerLink="/businesses" class="btn btn--primary">Browse All Studios</a>
+    </div>
+  </section>
+}
+

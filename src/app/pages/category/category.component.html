@@ -1,0 +1,130 @@
+<section class="cat-hero">
+  <img
+    [src]="activeCategory()?.coverImage || 'images/hero-salon.jpg'"
+    [alt]="activeCategory()?.name || 'All Beauty Studios'"
+    class="cat-hero-bg"
+  />
+  <div class="cat-hero-scrim"></div>
+
+  <div class="container cat-hero-inner">
+    <a routerLink="/" class="back-link">← Back to Marketplace</a>
+    <span class="eyebrow eyebrow--light">
+      {{ activeCategory() ? 'Service Category' : 'Marketplace Directory' }}
+    </span>
+    <h1 class="cat-hero-title">
+      {{ activeCategory()?.name || 'All Beauty & Personal Care Studios' }}
+    </h1>
+    <p class="cat-hero-desc">
+      {{
+        activeCategory()?.description ||
+          'Browse vetted professionals across all 6 disciplines. Visit each business’s auto-generated website or book directly with Paystack.'
+      }}
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <!-- Category Switcher Pills -->
+    <div class="cat-switcher" role="tablist" aria-label="Service categories">
+      <button
+        type="button"
+        class="switch-pill"
+        [class.active]="routeSlug() === 'all'"
+        (click)="switchCategory('all')"
+      >
+        All Studios
+      </button>
+      @for (cat of categories(); track cat.slug) {
+        <button
+          type="button"
+          class="switch-pill"
+          [class.active]="routeSlug() === cat.slug"
+          (click)="switchCategory(cat.slug)"
+        >
+          {{ cat.shortName }}
+        </button>
+      }
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar card">
+      <div class="field">
+        <label class="field-label" for="cat-search">Search business, service, or area</label>
+        <input
+          id="cat-search"
+          type="text"
+          class="input"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          placeholder="e.g. Knotless Braids, Lekki, Glamour Studio..."
+        />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="cat-city">City</label>
+        <select
+          id="cat-city"
+          class="select"
+          [ngModel]="selectedCity()"
+          (ngModelChange)="selectedCity.set($event)"
+        >
+          <option value="all">All Cities</option>
+          @for (city of cities(); track city) {
+            <option [value]="city">{{ city }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="cat-sort">Sort by</label>
+        <select
+          id="cat-sort"
+          class="select"
+          [ngModel]="sortBy()"
+          (ngModelChange)="sortBy.set($event)"
+        >
+          <option value="rating">Highest Rated</option>
+          <option value="price-asc">Starting Price (Low to High)</option>
+          <option value="reviews">Most Reviewed</option>
+        </select>
+      </div>
+
+      <label class="toggle-check">
+        <input
+          type="checkbox"
+          [ngModel]="onlyPayAtBusiness()"
+          (ngModelChange)="onlyPayAtBusiness.set($event)"
+        />
+        <span>Pay at business allowed</span>
+      </label>
+    </div>
+
+    <div class="results-meta">
+      <span>
+        Showing <strong>{{ filteredBusinesses().length }}</strong>
+        {{ filteredBusinesses().length === 1 ? 'studio' : 'studios' }}
+      </span>
+      @if (searchQuery() || selectedCity() !== 'all' || onlyPayAtBusiness()) {
+        <button type="button" class="clear-btn" (click)="resetFilters()">Clear filters</button>
+      }
+    </div>
+
+    @if (filteredBusinesses().length > 0) {
+      <div class="listing-grid">
+        @for (biz of filteredBusinesses(); track biz.id) {
+          <app-business-card [business]="biz" />
+        }
+      </div>
+    } @else {
+      <div class="empty-state card">
+        <h3>No matching studios found</h3>
+        <p>Try clearing your filters or searching across all categories.</p>
+        <button type="button" class="btn btn--primary" (click)="resetFilters()">
+          Reset Filters
+        </button>
+      </div>
+    }
+  </div>
+</section>
+
