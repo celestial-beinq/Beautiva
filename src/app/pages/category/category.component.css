@@ -20,7 +20,7 @@
 .cat-hero-scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(31, 28, 25, 0.68) 0%, rgba(31, 28, 25, 0.92) 100%);
+  background: linear-gradient(180deg, rgba(43, 6, 6, 0.68) 0%, rgba(43, 6, 6, 0.92) 100%);
 }
 
 .cat-hero-inner {
@@ -73,9 +73,9 @@
 
 .switch-pill.active,
 .switch-pill:hover {
-  background: var(--dark-bg);
-  border-color: var(--dark-bg);
-  color: var(--bg-ivory);
+  background: var(--accent-crimson);
+  border-color: var(--accent-crimson);
+  color: #ffffff;
 }
 
 .filter-bar {

@@ -139,23 +139,29 @@
             </div>
           </div>
 
-          <div class="bar-list">
-            @for (row of categoryBreakdown(); track row.slug) {
-              <div class="bar-row">
-                <div class="bar-labels">
-                  <strong>{{ row.name }}</strong>
-                  <span>
-                    {{ row.studioCount }} {{ row.studioCount === 1 ? 'studio' : 'studios' }} ·
-                    {{ row.bookingCount }} {{ row.bookingCount === 1 ? 'booking' : 'bookings' }} ·
-                    <strong>{{ marketplace.formatNaira(row.volume) }}</strong>
-                  </span>
+          @if (categoryBreakdown().length === 0) {
+            <p class="muted-note">
+              No categories yet. Open <strong>03 · Categories</strong> to add your first service category.
+            </p>
+          } @else {
+            <div class="bar-list">
+              @for (row of categoryBreakdown(); track row.slug) {
+                <div class="bar-row">
+                  <div class="bar-labels">
+                    <strong>{{ row.name }}</strong>
+                    <span>
+                      {{ row.studioCount }} {{ row.studioCount === 1 ? 'studio' : 'studios' }} ·
+                      {{ row.bookingCount }} {{ row.bookingCount === 1 ? 'booking' : 'bookings' }} ·
+                      <strong>{{ marketplace.formatNaira(row.volume) }}</strong>
+                    </span>
+                  </div>
+                  <div class="bar-track">
+                    <div class="bar-fill" [style.width.%]="row.barWidthPct"></div>
+                  </div>
                 </div>
-                <div class="bar-track">
-                  <div class="bar-fill" [style.width.%]="row.barWidthPct"></div>
-                </div>
-              </div>
-            }
-          </div>
+              }
+            </div>
+          }
         </div>
 
         <div class="side-stack">
@@ -221,27 +227,31 @@
           </button>
         </div>
 
-        <div class="mini-ledger">
-          @for (b of bookings().slice(0, 6); track b.bookingReference) {
-            <div class="mini-row">
-              <a routerLink="/track" [queryParams]="{ ref: b.bookingReference }" class="ref-link">
-                {{ b.bookingReference }}
-              </a>
-              <span>{{ b.businessName }}</span>
-              <span>{{ b.serviceName }}</span>
-              <span>{{ b.customerName }}</span>
-              <strong>{{ marketplace.formatNaira(b.servicePrice) }}</strong>
-              <span
-                class="badge"
-                [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
-                [class.badge--warning]="b.status === 'Pending'"
-                [class.badge--danger]="b.status === 'Cancelled'"
-              >
-                {{ b.status }}
-              </span>
-            </div>
-          }
-        </div>
+        @if (bookings().length === 0) {
+          <p class="muted-note">No bookings recorded yet.</p>
+        } @else {
+          <div class="mini-ledger">
+            @for (b of bookings().slice(0, 6); track b.bookingReference) {
+              <div class="mini-row">
+                <a routerLink="/track" [queryParams]="{ ref: b.bookingReference }" class="ref-link">
+                  {{ b.bookingReference }}
+                </a>
+                <span>{{ b.businessName }}</span>
+                <span>{{ b.serviceName }}</span>
+                <span>{{ b.customerName }}</span>
+                <strong>{{ marketplace.formatNaira(b.servicePrice) }}</strong>
+                <span
+                  class="badge"
+                  [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
+                  [class.badge--warning]="b.status === 'Pending'"
+                  [class.badge--danger]="b.status === 'Cancelled'"
+                >
+                  {{ b.status }}
+                </span>
+              </div>
+            }
+          </div>
+        }
       </div>
     }
 
@@ -252,14 +262,14 @@
           <button
             type="button"
             class="btn btn--primary btn--sm"
-            (click)="showCreateVendor.set(!showCreateVendor()); showInviteVendor.set(false)"
+            (click)="toggleCreateVendorForm()"
           >
             + Create Vendor Account
           </button>
           <button
             type="button"
             class="btn btn--outline btn--sm"
-            (click)="showInviteVendor.set(!showInviteVendor()); showCreateVendor.set(false)"
+            (click)="toggleInviteVendorForm()"
           >
             ✉ Invite New Vendor
           </button>
@@ -390,6 +400,13 @@
       </div>
 
       <div class="studio-admin-list">
+        @if (filteredStudios().length === 0) {
+          <div class="panel-card">
+            <p class="muted-note">
+              No vendor studios yet. Click <strong>+ Create Vendor Account</strong> above to add your first studio.
+            </p>
+          </div>
+        }
         @for (biz of filteredStudios(); track biz.id) {
           <div class="studio-admin-card">
             <div class="studio-admin-row" [class.is-suspended]="biz.status === 'suspended'">
@@ -582,29 +599,35 @@
 
         <div class="panel-card">
           <h2>Active Categories ({{ categories().length }})</h2>
-          <div class="cat-list">
-            @for (cat of categories(); track cat.slug) {
-              <div class="cat-item">
-                <img [src]="cat.coverImage" [alt]="cat.name" class="cat-item-img" />
-                <div class="cat-item-info">
-                  <strong>{{ cat.name }}</strong>
-                  <span>/{{ cat.slug }} · {{ cat.tagline }}</span>
+          @if (categories().length === 0) {
+            <p class="muted-note">
+              No categories added yet. Create your first service category using the form on the left.
+            </p>
+          } @else {
+            <div class="cat-list">
+              @for (cat of categories(); track cat.slug) {
+                <div class="cat-item">
+                  <img [src]="cat.coverImage" [alt]="cat.name" class="cat-item-img" />
+                  <div class="cat-item-info">
+                    <strong>{{ cat.name }}</strong>
+                    <span>/{{ cat.slug }} · {{ cat.tagline }}</span>
+                  </div>
+                  <div class="table-actions">
+                    <button type="button" class="btn btn--outline btn--sm" (click)="editCategory(cat)">
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn--outline btn--sm btn-danger-outline"
+                      (click)="removeCategory(cat.slug)"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div class="table-actions">
-                  <button type="button" class="btn btn--outline btn--sm" (click)="editCategory(cat)">
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn--outline btn--sm btn-danger-outline"
-                    (click)="removeCategory(cat.slug)"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
+              }
+            </div>
+          }
         </div>
       </div>
     }

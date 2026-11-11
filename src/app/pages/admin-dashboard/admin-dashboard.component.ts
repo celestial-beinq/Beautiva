@@ -318,6 +318,30 @@ export class AdminDashboardComponent {
   // ==========================================================================
   // VENDOR MANAGEMENT ACTIONS
   // ==========================================================================
+  toggleCreateVendorForm(): void {
+    const opening = !this.showCreateVendor();
+    this.showCreateVendor.set(opening);
+    this.showInviteVendor.set(false);
+    if (opening) {
+      const firstCat = this.categories()[0]?.slug;
+      if (firstCat && !this.categories().some((c) => c.slug === this.newVendor.categorySlug)) {
+        this.newVendor.categorySlug = firstCat;
+      }
+    }
+  }
+
+  toggleInviteVendorForm(): void {
+    const opening = !this.showInviteVendor();
+    this.showInviteVendor.set(opening);
+    this.showCreateVendor.set(false);
+    if (opening) {
+      const firstCat = this.categories()[0]?.slug;
+      if (firstCat && !this.categories().some((c) => c.slug === this.inviteForm.categorySlug)) {
+        this.inviteForm.categorySlug = firstCat;
+      }
+    }
+  }
+
   async submitCreateVendor(): Promise<void> {
     if (!this.newVendor.businessName.trim() || !this.newVendor.email.trim()) {
       this.flash('Enter Business Name and Vendor Email.');
@@ -327,13 +351,17 @@ export class AdminDashboardComponent {
       this.flash('Enter a temporary password (minimum 6 characters) for the vendor login.');
       return;
     }
+    const resolvedCategory = this.categories().some((c) => c.slug === this.newVendor.categorySlug)
+      ? this.newVendor.categorySlug
+      : this.categories()[0]?.slug || this.newVendor.categorySlug;
+
     const res = await this.marketplace.createVendorAccount({
       fullName: this.newVendor.fullName || 'Studio Owner',
       email: this.newVendor.email,
       password: this.newVendor.password,
       phone: this.newVendor.phone,
       businessName: this.newVendor.businessName,
-      categorySlug: this.newVendor.categorySlug,
+      categorySlug: resolvedCategory,
       city: this.newVendor.city,
       location: this.newVendor.location || this.newVendor.city,
     });
@@ -344,7 +372,7 @@ export class AdminDashboardComponent {
       password: '',
       phone: '',
       businessName: '',
-      categorySlug: 'hairdressers',
+      categorySlug: this.categories()[0]?.slug || ('hairdressers' as CategorySlug),
       city: 'Lagos',
       location: '',
     };
@@ -356,12 +384,19 @@ export class AdminDashboardComponent {
       this.flash('Enter email and studio name to send an invite.');
       return;
     }
-    const inv = this.marketplace.inviteVendor(this.inviteForm);
+    const resolvedCategory = this.categories().some((c) => c.slug === this.inviteForm.categorySlug)
+      ? this.inviteForm.categorySlug
+      : this.categories()[0]?.slug || this.inviteForm.categorySlug;
+
+    const inv = this.marketplace.inviteVendor({
+      ...this.inviteForm,
+      categorySlug: resolvedCategory,
+    });
     this.showInviteVendor.set(false);
     this.inviteForm = {
       email: '',
       businessName: '',
-      categorySlug: 'hairdressers',
+      categorySlug: this.categories()[0]?.slug || ('hairdressers' as CategorySlug),
       city: 'Lagos',
     };
     this.flash(`Vendor invitation created (token: ${inv.inviteToken}).`);

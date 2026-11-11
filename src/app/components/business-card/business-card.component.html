@@ -30,18 +30,6 @@
       </div>
     </div>
 
-    <div class="biz-services">
-      @for (srv of business().services.slice(0, 3); track srv.id) {
-        <div class="srv-row">
-          <span>{{ srv.name }}</span>
-          <strong>{{ formatPrice(srv.price) }}</strong>
-        </div>
-      }
-      @if (business().services.length > 3) {
-        <span class="srv-more">+{{ business().services.length - 3 }} more in studio menu</span>
-      }
-    </div>
-
     <div class="biz-footer">
       <div class="biz-price">
         <span class="price-label">From</span>

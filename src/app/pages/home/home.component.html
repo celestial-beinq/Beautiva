@@ -1,75 +1,40 @@
-<!-- 01 | EDITORIAL HERO (NATURAL ASPECT RATIO, ZERO STRETCH) -->
-<section class="hero">
-  <div class="container hero-grid">
-    <div class="hero-left">
-      <div class="hero-pill">
-        <span class="hero-pill-num">01</span>
-        <span>Beauty &amp; Care · Lagos &amp; Abuja</span>
+<!-- 01 | CENTERED CREAM + CRIMSON HERO & 4-COLUMN PORTRAIT STRIP -->
+<section class="hero-top">
+  <div class="container hero-center">
+    <div class="laurel-rating">
+      <span class="laurel-leaf" aria-hidden="true">🌿</span>
+      <div class="laurel-center">
+        <span class="stars" aria-label="5 stars">★★★★★</span>
+        <span class="rating-caption">4.9/5 (1,400+ Bookings)</span>
       </div>
-
-      <h1 class="hero-title">
-        The art of<br />
-        great care.
-      </h1>
-
-      <p class="hero-sub">
-        Hair stylists, barbers, nail techs, lash artists, makeup and tattoo studios. Tailored to
-        your craft, your city and the look you want.
-      </p>
-
-      <div class="hero-ctas">
-        <a routerLink="/vendors" class="btn btn--white">Explore vendors →</a>
-        <a href="#service-menu" class="btn btn--ghost-light">Explore services →</a>
-      </div>
-
-      <a routerLink="/business/glamour-studio" class="hero-highlight">
-        <img
-          src="images/cat-hairdressers.jpg"
-          alt="Glamour Studio Knotless Braids"
-          class="highlight-thumb"
-        />
-        <div class="highlight-meta">
-          <span class="highlight-label">Most booked this week</span>
-          <strong class="highlight-title">Knotless Braids · Glamour Studio</strong>
-          <span class="highlight-sub">3 hrs, from ₦25,000</span>
-        </div>
-        <span class="highlight-arrow" aria-hidden="true">↗</span>
-      </a>
+      <span class="laurel-leaf laurel-leaf--flip" aria-hidden="true">🌿</span>
     </div>
 
-    <div class="hero-media">
-      <figure class="hero-frame hero-frame--main">
-        <img
-          src="images/hero-salon.jpg"
-          alt="Nigerian hair salon with arched LED mirrors"
-          width="736"
-          height="981"
-        />
-      </figure>
+    <h1 class="hero-headline">
+      MASTER STYLISTS. TRANSPARENT NAIRA PRICING.<br />
+      ZERO COMPROMISE. THIS IS WHAT GREAT CARE<br />
+      ACTUALLY LOOKS LIKE.
+    </h1>
 
-      <div class="hero-frame-stack">
-        <figure class="hero-frame">
-          <img
-            src="images/hero-pedicure.jpg"
-            alt="Nigerian nail and pedicure studio lounge"
-            width="720"
-            height="888"
-          />
-        </figure>
-        <figure class="hero-frame">
-          <img
-            src="images/hero-barber-studio.jpg"
-            alt="Nigerian barbershop and grooming studio"
-            width="720"
-            height="720"
-          />
-        </figure>
-      </div>
+    <div class="hero-cta-row">
+      <a routerLink="/vendors" class="btn btn--primary btn--lg">Book Appointment →</a>
+    </div>
+  </div>
+
+  <div class="container hero-strip-wrap">
+    <div class="hero-strip">
+      @for (col of heroColumns; track col.label) {
+        <a [routerLink]="col.route" class="strip-panel">
+          <img [src]="col.image" [alt]="col.alt" />
+          <div class="strip-scrim" aria-hidden="true"></div>
+          <span class="strip-label">{{ col.label }}</span>
+        </a>
+      }
     </div>
   </div>
 </section>
 
-<!-- CLEAN SEARCH BAR STRIP -->
+<!-- SEARCH BAR STRIP -->
 <div class="search-strip">
   <div class="container">
     <form class="hero-search" (ngSubmit)="submitSearch()">
@@ -78,7 +43,7 @@
         name="q"
         [ngModel]="searchQuery()"
         (ngModelChange)="searchQuery.set($event)"
-        placeholder="Search Knotless Braids, Skin Fade, Lekki..."
+        placeholder="Search Knotless Braids, Skin Fade, Lekki, Abuja..."
         aria-label="Search beauty professionals or services"
       />
 
@@ -94,169 +59,159 @@
         }
       </select>
 
-      <button type="submit" class="btn btn--primary">Search studios</button>
+      <button type="submit" class="btn btn--primary">Search vendors →</button>
     </form>
   </div>
 </div>
 
-<!-- 02 | SIX CRAFTS (INTERACTIVE EDITORIAL SHOWCASE) -->
-<section id="categories" class="section">
+<!-- 02 | SOLUTIONS (PROBLEMS + SOLUTION WHITE CARDS) -->
+<section class="section">
   <div class="container">
-    <div class="split-intro">
+    <div class="section-header">
       <div>
-        <div class="section-index">
-          <span class="section-index-num">02</span>
-          <span>Six disciplines</span>
-        </div>
-        <h2 class="section-title split-heading">
-          Braids and fades,<br />
-          nails and bridal glam.
-        </h2>
-      </div>
-
-      <div class="split-aside">
-        <div class="rating-summary">
-          <strong>4.9</strong>
-          <span>from 1,400+ Nigerian bookings across Lagos &amp; Abuja</span>
-        </div>
-        <p class="split-copy">
-          Every listed professional gets a live website with transparent Naira pricing, real studio
-          work, and instant slot availability before you pay.
+        <span class="eyebrow">[ PROBLEMS + SOLUTION ]</span>
+        <h2 class="section-title">SOLUTIONS</h2>
+        <p class="section-subtitle">
+          Booking Nigerian beauty studios shouldn’t mean buried Instagram DMs or guesswork—real
+          availability, instant studio sites, and clear Naira checkout.
         </p>
-        <a routerLink="/vendors" class="btn btn--outline">View all vendors</a>
       </div>
+      <a routerLink="/vendors" class="btn btn--primary">Book now →</a>
     </div>
 
-    <div class="crafts-grid">
-      <div class="crafts-list">
-        @for (cat of categories(); track cat.slug; let i = $index) {
-          <a
-            [routerLink]="['/category', cat.slug]"
-            class="craft-row"
-            [class.is-active]="activeCategoryIndex() === i"
-            (mouseenter)="activeCategoryIndex.set(i)"
-            (focus)="activeCategoryIndex.set(i)"
-          >
-            <span class="craft-num">0{{ i + 1 }}</span>
-            <div class="craft-text">
-              <div class="craft-title-line">
-                <strong>{{ cat.name }}</strong>
-                <span class="craft-count">
-                  {{ categoryCountMap().get(cat.slug) || 0 }}
-                  {{ (categoryCountMap().get(cat.slug) || 0) === 1 ? 'studio' : 'studios' }}
-                </span>
-              </div>
-              <p>{{ cat.tagline }}</p>
-            </div>
-            <span class="craft-arrow" aria-hidden="true">→</span>
-          </a>
-        }
-      </div>
+    <div class="solutions-grid">
+      <article class="solution-card">
+        <div class="solution-top">
+          <span class="solution-num">01</span>
+          <svg class="solution-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <path
+              d="M7 9h22v14H14l-7 5V9z"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linejoin="round"
+            />
+            <path d="M13 15h10M13 19h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+          </svg>
+        </div>
+        <h3>BURIED DMS &amp; WAITLISTS</h3>
+        <p>
+          Skip endless WhatsApp back-and-forth. Compare studio menus, open slots, and real Naira
+          prices before you book.
+        </p>
+      </article>
 
-      @if (activeCategory(); as currentCat) {
-        <div class="craft-preview">
-          <div class="craft-image-frame">
-            <img [src]="currentCat.coverImage" [alt]="currentCat.name" />
-          </div>
-          <div class="craft-preview-foot">
-            <div>
-              <span class="craft-preview-label">{{ currentCat.name }}</span>
-              <p class="craft-preview-desc">{{ currentCat.description }}</p>
-              <div class="craft-tags">
-                @for (tag of currentCat.popularTags; track tag) {
-                  <span>{{ tag }}</span>
-                }
+      <article class="solution-card">
+        <div class="solution-top">
+          <span class="solution-num">02</span>
+          <svg class="solution-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <rect x="5" y="7" width="26" height="22" rx="2" stroke="currentColor" stroke-width="2.2" />
+            <path d="M5 13h26M11 19h8M11 23h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+          </svg>
+        </div>
+        <h3>NO STUDIO WEBSITE</h3>
+        <p>
+          Every vendor gets an auto-generated website at <code>/business/your-studio</code> without
+          hiring a developer.
+        </p>
+      </article>
+
+      <article class="solution-card">
+        <div class="solution-top">
+          <span class="solution-num">03</span>
+          <svg class="solution-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <circle cx="18" cy="18" r="12" stroke="currentColor" stroke-width="2.2" />
+            <path d="M13 18l3.5 3.5L23.5 14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <h3>PAYMENT &amp; TRACKING GAPS</h3>
+        <p>
+          Settle via Paystack (full or 30% deposit) or pay at the studio, then track live with
+          <code>BK-2026-XXXXXX</code>.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 03 | SERVICES (WHAT WE OFFER — EXPANDABLE CATEGORY ACCORDION) -->
+<section id="service-menu" class="section section--tight-top">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <span class="eyebrow">[ WHAT WE OFFER ]</span>
+        <h2 class="section-title">SERVICES</h2>
+        <p class="section-subtitle">
+          Six specialized disciplines across Lagos and Abuja—tap any category to inspect pricing
+          and jump straight to vetted studios.
+        </p>
+      </div>
+      <a routerLink="/vendors" class="btn btn--primary">Book now →</a>
+    </div>
+
+    <div class="accordion-stack">
+      @for (cat of categories(); track cat.slug; let i = $index) {
+        <div class="accordion-card" [class.is-open]="activeCategoryIndex() === i">
+          <button
+            type="button"
+            class="accordion-header"
+            (click)="activeCategoryIndex.set(i)"
+          >
+            <div class="acc-title-wrap">
+              <span class="acc-num">[ 0{{ i + 1 }} ]</span>
+              <span class="acc-title">{{ cat.name }}</span>
+            </div>
+
+            <div class="acc-pills">
+              @for (tag of cat.popularTags.slice(0, 3); track tag) {
+                <span class="acc-pill">{{ tag }}</span>
+              }
+            </div>
+          </button>
+
+          @if (activeCategoryIndex() === i) {
+            <div class="accordion-body">
+              <div class="acc-media">
+                <img [src]="cat.coverImage" [alt]="cat.name" />
+              </div>
+
+              <div class="acc-details">
+                <span class="eyebrow">[ {{ cat.shortName }} · {{ categoryPriceRanges().get(cat.slug)?.count || 0 }} STUDIOS ]</span>
+                <h3>{{ cat.name }}</h3>
+                <p>{{ cat.description }}</p>
+
+                <div class="acc-price-line">
+                  <span>Price range:</span>
+                  <strong>
+                    {{ marketplace.formatNaira(categoryPriceRanges().get(cat.slug)?.min || 0) }} –
+                    {{ marketplace.formatNaira(categoryPriceRanges().get(cat.slug)?.max || 0) }}
+                  </strong>
+                </div>
+
+                <a [routerLink]="['/category', cat.slug]" class="btn btn--primary btn--lg acc-cta">
+                  Book {{ cat.shortName }} →
+                </a>
               </div>
             </div>
-            <a [routerLink]="['/category', currentCat.slug]" class="btn btn--primary">
-              Browse {{ currentCat.shortName }}
-            </a>
-          </div>
+          }
         </div>
       }
     </div>
   </div>
 </section>
 
-<!-- 03 | SERVICE MENU (SCISSOR TABBED LIST) -->
-<section id="service-menu" class="section section--sand">
-  <div class="container menu-layout">
-    <div class="menu-sidebar">
-      <div class="section-index">
-        <span class="section-index-num">03</span>
-        <span>Service menu</span>
-      </div>
-      <h2 class="section-title">One menu across six crafts.</h2>
-      <p class="section-subtitle">
-        Compare real starting prices in Naira and jump straight into scheduling with Paystack or
-        studio checkout.
-      </p>
-
-      <div class="menu-tabs" role="tablist" aria-label="Service disciplines">
-        @for (grp of menuGroups; track grp.id; let i = $index) {
-          <button
-            type="button"
-            class="menu-tab"
-            [class.is-active]="activeMenuGroupIndex() === i"
-            (click)="activeMenuGroupIndex.set(i)"
-          >
-            <span class="menu-tab-num">{{ grp.num }}</span>
-            <span>{{ grp.label }}</span>
-          </button>
-        }
-      </div>
-    </div>
-
-    <div class="menu-list-col">
-      <p class="menu-group-tagline">{{ activeMenuGroup().tagline }}</p>
-
-      <div class="menu-rows">
-        @for (srv of activeMenuServices(); track srv.serviceId) {
-          <div class="menu-row">
-            <div class="menu-row-info">
-              <div class="menu-row-head">
-                <h3>{{ srv.name }}</h3>
-                <span class="menu-row-studio">{{ srv.businessName }} · {{ srv.location }}</span>
-              </div>
-              <p>{{ srv.description }}</p>
-            </div>
-
-            <div class="menu-row-meta">
-              <div class="menu-price-col">
-                <strong>from {{ marketplace.formatNaira(srv.price) }}</strong>
-                <span>{{ marketplace.formatDuration(srv.durationMinutes) }}</span>
-              </div>
-              <a
-                [routerLink]="['/book', srv.businessSlug]"
-                [queryParams]="{ service: srv.serviceId }"
-                class="btn btn--outline btn--sm"
-              >
-                Book
-              </a>
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- 04 | FEATURED STUDIOS -->
-<section class="section">
+<section class="section section--tight-top">
   <div class="container">
     <div class="section-header">
       <div>
-        <div class="section-index">
-          <span class="section-index-num">04</span>
-          <span>Featured studios</span>
-        </div>
-        <h2 class="section-title">Studios open for booking</h2>
+        <span class="eyebrow">[ VERIFIED VENDORS ]</span>
+        <h2 class="section-title">FEATURED STUDIOS</h2>
         <p class="section-subtitle">
-          Every studio has an auto-generated website with its full menu, work gallery, working
-          hours, and live booking engine.
+          Every studio includes an automatically generated business website with live menus, work
+          galleries, hours, and instant booking.
         </p>
       </div>
-      <a routerLink="/vendors" class="btn btn--outline">Explore directory</a>
+      <a routerLink="/vendors" class="btn btn--primary">Explore vendors →</a>
     </div>
 
     <div class="biz-grid">
@@ -267,297 +222,154 @@
   </div>
 </section>
 
-<!-- 05 | AUTO-GENERATED STUDIO WEBSITES (DARK ESPRESSO SHOWCASE) -->
-<section class="section section--dark">
-  <div class="container showcase-grid">
-    <div class="showcase-left">
-      <div class="section-index section-index--light">
-        <span class="section-index-num">05</span>
-        <span>Instant studio websites</span>
+<!-- 05 | WHY US? (BENTO GRID FROM SCREENSHOT 4) -->
+<section class="section section--tight-top">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <span class="eyebrow">[ BENEFITS ]</span>
+        <h2 class="section-title">WHY US?</h2>
+        <p class="section-subtitle">
+          Elevate your beauty bookings with vetted Nigerian professionals, instant vendor websites,
+          and Paystack-secured appointments.
+        </p>
       </div>
-      <h2 class="section-title showcase-title">
-        Every vendor gets a live website automatically.
-      </h2>
-      <p class="showcase-copy">
-        No developer needed. Studios upload their services, photos, hours, and Paystack policy once
-        and get a dedicated site ready for Instagram bios and WhatsApp links.
-      </p>
-
-      <div class="showcase-switcher">
-        @for (studio of showcaseStudios(); track studio.id; let i = $index) {
-          <button
-            type="button"
-            class="showcase-btn"
-            [class.is-active]="activeShowcaseStudio().slug === studio.slug"
-            (click)="activeShowcaseSlug.set(studio.slug)"
-          >
-            <span>0{{ i + 1 }}</span>
-            <div>
-              <strong>{{ studio.name }}</strong>
-              <small>/business/{{ studio.slug }}</small>
-            </div>
-          </button>
-        }
-      </div>
-
-      <div class="showcase-actions">
-        <a [routerLink]="['/business', activeShowcaseStudio().slug]" class="btn btn--white">
-          Open {{ activeShowcaseStudio().name }} site
-        </a>
-        <a routerLink="/vendor" class="btn btn--ghost-light">Create a studio site</a>
-      </div>
+      <a routerLink="/vendors" class="btn btn--primary">Book now →</a>
     </div>
 
-    @if (activeShowcaseStudio(); as studio) {
-      <div class="showcase-card">
-        <div class="showcase-url-bar">
-          <span class="url-dot"></span>
-          <code>beautiva.ng/business/{{ studio.slug }}</code>
-          <span class="url-city">{{ studio.location }}</span>
+    <div class="bento-grid">
+      <!-- Tall Left Portrait -->
+      <a routerLink="/category/makeup-artists" class="bento-tall">
+        <img src="images/cat-makeup.jpg" alt="Nigerian bridal and soft glam makeup" />
+        <div class="bento-tall-scrim" aria-hidden="true"></div>
+        <div class="bento-tall-copy">
+          <h3>CRAFTED WITH<br />PASSION</h3>
+          <p>Precision, hygiene, and genuine expertise across every Lagos &amp; Abuja studio.</p>
         </div>
+      </a>
 
-        <div class="showcase-photos">
-          <img [src]="studio.coverImage" [alt]="studio.name" class="showcase-photo-main" />
-          <img
-            [src]="studio.gallery[1] || studio.coverImage"
-            [alt]="studio.name + ' portfolio'"
-            class="showcase-photo-side"
-          />
-        </div>
-
-        <div class="showcase-card-body">
-          <div class="showcase-meta-row">
-            <div>
-              <h3>{{ studio.name }}</h3>
-              <p>{{ studio.tagline }}</p>
+      <!-- Right Bento Matrix -->
+      <div class="bento-right">
+        <!-- Top Wide Card -->
+        <div class="bento-card bento-wide">
+          <div class="bento-wide-copy">
+            <h3>INSTANT STUDIO SITES</h3>
+            <p>
+              Every vendor gets a dedicated site like <code>/business/glamour-studio</code> ready
+              for bookings from day one.
+            </p>
+            <div class="bento-tags">
+              <span>Auto-Generated</span>
+              <span>Live Catalogue</span>
+              <span>Paystack</span>
             </div>
-            <span class="showcase-rating">★ {{ studio.rating.toFixed(1) }}</span>
+          </div>
+          <div class="bento-wide-thumb">
+            <img src="images/hero-salon.jpg" alt="Nigerian salon interior" />
+          </div>
+        </div>
+
+        <!-- Middle 2 Columns -->
+        <div class="bento-mid-row">
+          <div class="bento-card bento-metric">
+            <div class="mini-thumbs">
+              <img src="images/hair-knotless-2.jpg" alt="Knotless braids" />
+              <img src="images/cat-nails.jpg" alt="Espresso manicure" />
+              <img src="images/cat-tattoo.jpg" alt="Fine-line ink" />
+            </div>
+            <strong class="metric-big">1,400+</strong>
+            <p>Signature sessions booked across our verified Lagos &amp; Abuja studios.</p>
           </div>
 
-          <div class="showcase-services">
-            @for (srv of studio.services.slice(0, 3); track srv.id) {
-              <div class="showcase-srv-row">
-                <span>{{ srv.name }}</span>
-                <strong>{{ marketplace.formatNaira(srv.price) }}</strong>
+          <a routerLink="/category/barbers" class="bento-photo-card">
+            <img src="images/hero-barber-studio.jpg" alt="Nigerian barbershop floor" />
+            <div class="bento-photo-scrim" aria-hidden="true"></div>
+            <span class="bento-brand-badge">BEAUTIVA®</span>
+          </a>
+        </div>
+
+        <!-- Bottom 2 Columns -->
+        <div class="bento-bot-row">
+          <div class="bento-card bento-track-card">
+            <div>
+              <h3>TRACK EVERY BOOKING</h3>
+              <p>
+                Enter your booking ID to check live confirmation and Paystack payment status
+                anytime.
+              </p>
+              <div class="bento-tags">
+                <span>BK-2026-000124</span>
+                <span>Email Confirm</span>
+                <span>Live Status</span>
               </div>
+            </div>
+
+            <form class="bento-track-form" (ngSubmit)="submitQuickTrack()">
+              <input
+                type="text"
+                name="quickTrackRef"
+                class="input"
+                [ngModel]="quickTrackRef()"
+                (ngModelChange)="quickTrackRef.set($event)"
+                placeholder="BK-2026-000124"
+                aria-label="Booking Reference"
+              />
+              <button type="submit" class="btn btn--primary">Track →</button>
+            </form>
+          </div>
+
+          <div class="bento-card bento-metric">
+            <div class="avatar-row" aria-hidden="true">
+              <img src="images/cat-hairdressers.jpg" alt="" />
+              <img src="images/cat-makeup.jpg" alt="" />
+              <img src="images/cat-barbers.jpg" alt="" />
+              <img src="images/lashes-client-2.jpg" alt="" />
+            </div>
+            <strong class="metric-big">99%</strong>
+            <p>Client satisfaction rate across every category we offer.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 | CLARITY (COMMON QUESTIONS — SCREENSHOT 5 SPLIT) -->
+<section class="section section--tight-top">
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <span class="eyebrow">[ COMMON QUESTIONS ]</span>
+        <h2 class="section-title">CLARITY</h2>
+        <p class="section-subtitle">
+          Everything you need to know about booking studios, Paystack settlements, and vendor
+          websites on Beautiva.
+        </p>
+      </div>
+      <a routerLink="/vendors" class="btn btn--primary">Book now →</a>
+    </div>
+
+    <div class="clarity-grid">
+      <div class="clarity-photo-card">
+        <img src="images/makeup-bridal.jpg" alt="Nigerian bridal makeup portrait" />
+        <a routerLink="/contact" class="btn btn--white clarity-contact-btn">Contact us →</a>
+      </div>
+
+      <div class="clarity-faq-list">
+        @for (faq of faqs; track faq.question; let i = $index) {
+          <div class="clarity-faq-item" [class.is-open]="openFaqIndex() === i">
+            <button type="button" class="clarity-faq-trigger" (click)="toggleFaq(i)">
+              <span>{{ faq.question }}</span>
+              <span class="faq-circle" [class.is-open]="openFaqIndex() === i">
+                {{ openFaqIndex() === i ? '×' : '+' }}
+              </span>
+            </button>
+            @if (openFaqIndex() === i) {
+              <p class="clarity-faq-answer">{{ faq.answer }}</p>
             }
           </div>
-        </div>
+        }
       </div>
-    }
-  </div>
-</section>
-
-<!-- 06 | FOUR SIMPLE STEPS -->
-<section id="how-it-works" class="section">
-  <div class="container">
-    <div class="section-header">
-      <div>
-        <div class="section-index">
-          <span class="section-index-num">06</span>
-          <span>How it works</span>
-        </div>
-        <h2 class="section-title">From first search to the chair.</h2>
-      </div>
-      <a routerLink="/track" class="btn btn--outline">Track a booking</a>
-    </div>
-
-    <div class="steps-grid">
-      <div class="step-item">
-        <div class="step-head">
-          <span class="step-num">Step 01</span>
-          <span class="step-time">1 minute</span>
-        </div>
-        <h3>Pick a craft &amp; studio</h3>
-        <p>
-          Filter Hairdressers, Barbers, Nail Techs, Lash Artists, Makeup Artists, or Tattoo Artists
-          by Lagos or Abuja area and starting Naira price.
-        </p>
-      </div>
-
-      <div class="step-item">
-        <div class="step-head">
-          <span class="step-num">Step 02</span>
-          <span class="step-time">Instant site</span>
-        </div>
-        <h3>Inspect their studio site</h3>
-        <p>
-          Open their generated site like <code>/business/glamour-studio</code> to view real photos,
-          services, specialists, hours, and reviews.
-        </p>
-      </div>
-
-      <div class="step-item">
-        <div class="step-head">
-          <span class="step-num">Step 03</span>
-          <span class="step-time">Paystack / Studio</span>
-        </div>
-        <h3>Choose slot &amp; settle</h3>
-        <p>
-          Select date, time, and optional specialist. Pay in full with Paystack, put down a 30%
-          deposit, or pay at the studio where allowed.
-        </p>
-      </div>
-
-      <div class="step-item">
-        <div class="step-head">
-          <span class="step-num">Step 04</span>
-          <span class="step-time">Live ID</span>
-        </div>
-        <h3>Track with your reference</h3>
-        <p>
-          Receive a confirmation email preview and booking code like <code>BK-2026-000124</code>
-          to check your appointment anytime.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- 07 | CLIENT REVIEWS (SAND EDITORIAL QUOTE) -->
-<section class="section section--sand">
-  <div class="container">
-    <div class="reviews-top">
-      <div>
-        <div class="section-index">
-          <span class="section-index-num">07</span>
-          <span>Client reviews</span>
-        </div>
-        <div class="reviews-score">4.9 from 1,400+ verified bookings</div>
-      </div>
-      <a [routerLink]="['/business', activeReview().businessSlug]" class="btn btn--outline">
-        Visit {{ activeReview().businessName }} →
-      </a>
-    </div>
-
-    @if (activeReview(); as rev) {
-      <blockquote class="featured-quote">
-        “{{ rev.comment }}”
-        <footer>
-          <strong>{{ rev.author }}</strong>
-          <span>{{ rev.serviceName }} · {{ rev.businessName }}</span>
-        </footer>
-      </blockquote>
-    }
-
-    <div class="review-selector">
-      @for (rev of reviews(); track rev.id; let i = $index) {
-        <button
-          type="button"
-          class="review-pill"
-          [class.is-active]="activeReviewIndex() === i"
-          (click)="activeReviewIndex.set(i)"
-        >
-          <strong>{{ rev.author }}</strong>
-          <span>{{ rev.serviceName }}</span>
-        </button>
-      }
-    </div>
-  </div>
-</section>
-
-<!-- 08 | LOOKBOOK -->
-<section class="section">
-  <div class="container">
-    <div class="section-header">
-      <div>
-        <div class="section-index">
-          <span class="section-index-num">08</span>
-          <span>Lookbook</span>
-        </div>
-        <h2 class="section-title">Fresh from Nigerian chairs.</h2>
-        <p class="section-subtitle">
-          Real braids, fades, BIAB sets, lashes, bridal glam, and fine-line ink across Lagos and
-          Abuja studios.
-        </p>
-      </div>
-      <a routerLink="/businesses" class="btn btn--primary">Book a look</a>
-    </div>
-
-    <div class="lookbook-grid">
-      @for (item of lookbookItems; track item.title) {
-        <a [routerLink]="['/business', item.studioSlug]" class="look-card">
-          <div class="look-img-wrap">
-            <img [src]="item.image" [alt]="item.title" loading="lazy" />
-          </div>
-          <div class="look-meta">
-            <div>
-              <strong>{{ item.title }}</strong>
-              <span>{{ item.studioName }}</span>
-            </div>
-            <span class="look-price">{{ item.priceLabel }}</span>
-          </div>
-        </a>
-      }
-    </div>
-  </div>
-</section>
-
-<!-- 09 | FAQ & QUICK TRACKING -->
-<section class="section faq-section">
-  <div class="container faq-layout">
-    <div class="faq-left">
-      <div class="section-index">
-        <span class="section-index-num">09</span>
-        <span>FAQ &amp; booking lookup</span>
-      </div>
-      <h2 class="section-title">Questions, answered.</h2>
-      <p class="section-subtitle">
-        Already booked an appointment? Enter your reference ID below to open live payment and
-        confirmation details.
-      </p>
-
-      <form class="quick-track" (ngSubmit)="submitQuickTrack()">
-        <label class="field-label" for="home-track-ref">Quick Booking Reference</label>
-        <div class="quick-track-row">
-          <input
-            id="home-track-ref"
-            type="text"
-            class="input"
-            name="quickTrackRef"
-            [ngModel]="quickTrackRef()"
-            (ngModelChange)="quickTrackRef.set($event)"
-            placeholder="BK-2026-000124"
-          />
-          <button type="submit" class="btn btn--primary">Track</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="faq-list">
-      @for (faq of faqs; track faq.question; let i = $index) {
-        <div class="faq-item" [class.is-open]="openFaqIndex() === i">
-          <button type="button" class="faq-trigger" (click)="toggleFaq(i)">
-            <span>{{ faq.question }}</span>
-            <span class="faq-plus">{{ openFaqIndex() === i ? '−' : '+' }}</span>
-          </button>
-          @if (openFaqIndex() === i) {
-            <p class="faq-answer">{{ faq.answer }}</p>
-          }
-        </div>
-      }
-    </div>
-  </div>
-</section>
-
-<!-- 10 | CONCIERGE & CONTACT SPLIT -->
-<section class="section section--sand">
-  <div class="container contact-cta-split">
-    <div>
-      <div class="section-index">
-        <span class="section-index-num">10</span>
-        <span>Concierge &amp; Onboarding</span>
-      </div>
-      <h2 class="section-title">Need help with a booking or studio site?</h2>
-      <p class="section-subtitle">
-        Speak directly with our Lagos and Abuja desk—whether you are rescheduling a chair or
-        bringing your studio onto Beautiva.
-      </p>
-    </div>
-
-    <div class="contact-cta-actions">
-      <a routerLink="/contact" class="btn btn--primary btn--lg">Contact our desk</a>
-      <a routerLink="/about" class="btn btn--outline btn--lg">Read our story</a>
     </div>
   </div>
 </section>

@@ -6,6 +6,7 @@ import {
   AvailabilitySettings,
   BookingStatus,
   BusinessContact,
+  BusinessProfile,
   CategorySlug,
   PaymentPolicy,
   ServiceItem,
@@ -37,7 +38,7 @@ export class VendorStudioComponent {
   readonly activeTab = signal<
     'bookings' | 'profile' | 'menu' | 'availability' | 'analytics' | 'customers' | 'builder'
   >('bookings');
-  readonly selectedStudioSlug = signal<string>(this.auth.demoVendorStudioSlug() || 'glamour-studio');
+  readonly selectedStudioSlug = signal<string>(this.auth.demoVendorStudioSlug() || '');
   readonly bookingStatusFilter = signal<'all' | BookingStatus>('all');
   readonly bookingSearch = signal('');
   readonly customerSearch = signal('');
@@ -146,7 +147,7 @@ export class VendorStudioComponent {
     return all;
   });
 
-  readonly activeStudio = computed(() => {
+  readonly activeStudio = computed<BusinessProfile | undefined>(() => {
     const list = this.availableStudios();
     return list.find((b) => b.slug === this.selectedStudioSlug()) ?? list[0];
   });

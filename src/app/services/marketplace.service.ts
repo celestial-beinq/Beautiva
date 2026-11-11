@@ -1,11 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
-import {
-  DEFAULT_WORKING_HOURS,
-  SEED_BOOKINGS,
-  SEED_BUSINESSES,
-  SEED_CATEGORIES,
-} from '../data/seed-data';
+import { DEFAULT_WORKING_HOURS } from '../data/seed-data';
 import {
   AccountStatus,
   AvailabilitySettings,
@@ -32,13 +27,23 @@ import {
 import { AuthService } from './auth.service';
 import { SupabaseService } from './supabase.service';
 
-const BUSINESSES_STORAGE_KEY = 'beautiva_businesses_v1';
-const BOOKINGS_STORAGE_KEY = 'beautiva_bookings_v1';
-const CATEGORIES_STORAGE_KEY = 'beautiva_categories_v1';
-const TRANSACTIONS_STORAGE_KEY = 'beautiva_transactions_v1';
-const INVITATIONS_STORAGE_KEY = 'beautiva_invitations_v1';
-const SETTINGS_STORAGE_KEY = 'beautiva_settings_v1';
-const CUSTOMERS_STORAGE_KEY = 'beautiva_customers_v1';
+const BUSINESSES_STORAGE_KEY = 'beautiva_businesses_v2';
+const BOOKINGS_STORAGE_KEY = 'beautiva_bookings_v2';
+const CATEGORIES_STORAGE_KEY = 'beautiva_categories_v2';
+const TRANSACTIONS_STORAGE_KEY = 'beautiva_transactions_v2';
+const INVITATIONS_STORAGE_KEY = 'beautiva_invitations_v2';
+const SETTINGS_STORAGE_KEY = 'beautiva_settings_v2';
+const CUSTOMERS_STORAGE_KEY = 'beautiva_customers_v2';
+
+const LEGACY_STORAGE_KEYS = [
+  'beautiva_businesses_v1',
+  'beautiva_bookings_v1',
+  'beautiva_categories_v1',
+  'beautiva_transactions_v1',
+  'beautiva_invitations_v1',
+  'beautiva_settings_v1',
+  'beautiva_customers_v1',
+];
 
 export const DEFAULT_TIME_SLOTS = [
   '09:00 AM',
@@ -179,6 +184,7 @@ export class MarketplaceService {
   });
 
   constructor() {
+    this.clearLegacySeedStorage();
     if (this.isBrowser && this.sb.client) {
       void this.refreshFromBackend();
 
@@ -211,7 +217,7 @@ export class MarketplaceService {
 
       if (catRes.error) throw catRes.error;
 
-      if (catRes.data && catRes.data.length > 0) {
+      if (catRes.data) {
         const mappedCats: CategoryInfo[] = catRes.data.map((c: any) => ({
           id: c.id,
           slug: c.slug,
@@ -228,7 +234,7 @@ export class MarketplaceService {
         this.saveCategories(mappedCats);
       }
 
-      if (bizRes.data && bizRes.data.length > 0) {
+      if (bizRes.data) {
         const srvByBiz = new Map<string, ServiceItem[]>();
         for (const s of srvRes.data || []) {
           const list = srvByBiz.get(s.business_id) ?? [];
@@ -366,13 +372,13 @@ export class MarketplaceService {
           this.sb.client.from('profiles').select('*').order('created_at', { ascending: false }),
         ]);
 
-        if (bkRes.data && bkRes.data.length > 0) {
+        if (bkRes.data) {
           const mappedBookings = bkRes.data.map((b: any) => this.mapBookingRow(b));
           this.bookings.set(mappedBookings);
           this.saveBookings(mappedBookings);
         }
 
-        if (txRes.data && txRes.data.length > 0) {
+        if (txRes.data) {
           const mappedTx: TransactionRecord[] = txRes.data.map((t: any) => ({
             id: t.id,
             bookingId: t.booking_id || undefined,
@@ -1567,7 +1573,7 @@ export class MarketplaceService {
   }
 
   private generateNextBookingReference(): string {
-    let maxSeq = 124;
+    let maxSeq = 0;
     for (const b of this.bookings()) {
       const match = b.bookingReference.match(/BK-\d{4}-(\d+)/i);
       if (match) {
@@ -1581,157 +1587,76 @@ export class MarketplaceService {
     return `BK-2026-${next}`;
   }
 
-  private loadCategories(): CategoryInfo[] {
-    if (!this.isBrowser) return SEED_CATEGORIES;
+  private clearLegacySeedStorage(): void {
+    if (!this.isBrowser) return;
     try {
-      const raw = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-      if (!raw) return SEED_CATEGORIES;
-      const parsed = JSON.parse(raw) as CategoryInfo[];
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : SEED_CATEGORIES;
+      for (const key of LEGACY_STORAGE_KEYS) {
+        localStorage.removeItem(key);
+      }
     } catch {
-      return SEED_CATEGORIES;
+      // Ignore
     }
+  }
+
+  private loadArrayFromStorage<T>(key: string): T[] {
+    if (!this.isBrowser) return [];
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as T[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private saveArrayToStorage<T>(key: string, list: T[]): void {
+    if (!this.isBrowser) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(list));
+    } catch {
+      // Ignore
+    }
+  }
+
+  private loadCategories(): CategoryInfo[] {
+    return this.loadArrayFromStorage<CategoryInfo>(CATEGORIES_STORAGE_KEY);
   }
 
   private saveCategories(list: CategoryInfo[]): void {
-    if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(list));
-    } catch {
-      // Ignore
-    }
+    this.saveArrayToStorage(CATEGORIES_STORAGE_KEY, list);
   }
 
   private loadBusinesses(): BusinessProfile[] {
-    if (!this.isBrowser) return SEED_BUSINESSES;
-    try {
-      const raw = localStorage.getItem(BUSINESSES_STORAGE_KEY);
-      if (!raw) return SEED_BUSINESSES;
-      const parsed = JSON.parse(raw) as BusinessProfile[];
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : SEED_BUSINESSES;
-    } catch {
-      return SEED_BUSINESSES;
-    }
+    return this.loadArrayFromStorage<BusinessProfile>(BUSINESSES_STORAGE_KEY);
   }
 
   private saveBusinesses(list: BusinessProfile[]): void {
-    if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(BUSINESSES_STORAGE_KEY, JSON.stringify(list));
-    } catch {
-      // Ignore
-    }
+    this.saveArrayToStorage(BUSINESSES_STORAGE_KEY, list);
   }
 
   private loadBookings(): BookingRecord[] {
-    if (!this.isBrowser) return SEED_BOOKINGS;
-    try {
-      const raw = localStorage.getItem(BOOKINGS_STORAGE_KEY);
-      if (!raw) return SEED_BOOKINGS;
-      const parsed = JSON.parse(raw) as BookingRecord[];
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : SEED_BOOKINGS;
-    } catch {
-      return SEED_BOOKINGS;
-    }
+    return this.loadArrayFromStorage<BookingRecord>(BOOKINGS_STORAGE_KEY);
   }
 
   private saveBookings(list: BookingRecord[]): void {
-    if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(list));
-    } catch {
-      // Ignore
-    }
+    this.saveArrayToStorage(BOOKINGS_STORAGE_KEY, list);
   }
 
   private loadTransactions(): TransactionRecord[] {
-    const seedTx: TransactionRecord[] = SEED_BOOKINGS.filter((b) => b.amountPaid > 0).map(
-      (b, idx) => ({
-        id: `tx-seed-${idx + 1}`,
-        bookingReference: b.bookingReference,
-        businessName: b.businessName,
-        customerName: b.customerName,
-        customerEmail: b.customerEmail,
-        gateway: 'Paystack',
-        gatewayReference: b.paystackReference || `PSK_SEED_${idx + 1}`,
-        amount: b.amountPaid,
-        platformCommissionRate: 10,
-        platformCommissionAmount: Math.round(b.amountPaid * 0.1),
-        vendorNetAmount: b.amountPaid - Math.round(b.amountPaid * 0.1),
-        status: 'success',
-        paidAt: b.createdAt,
-        createdAt: b.createdAt,
-      }),
-    );
-    seedTx.push({
-      id: 'tx-seed-fail-1',
-      bookingReference: 'BK-2026-000119',
-      businessName: 'Velvet Crown Atelier',
-      customerName: 'Teniola Adewale',
-      customerEmail: 'teniola.a@example.com',
-      gateway: 'Paystack',
-      gatewayReference: 'PSK_FAIL_000119',
-      amount: 45000,
-      platformCommissionRate: 10,
-      platformCommissionAmount: 0,
-      vendorNetAmount: 0,
-      status: 'failed',
-      failureReason: 'Insufficient funds / 3DS timeout',
-      createdAt: '2026-11-08T15:10:00.000Z',
-    });
-
-    if (!this.isBrowser) return seedTx;
-    try {
-      const raw = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
-      if (!raw) return seedTx;
-      const parsed = JSON.parse(raw) as TransactionRecord[];
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : seedTx;
-    } catch {
-      return seedTx;
-    }
+    return this.loadArrayFromStorage<TransactionRecord>(TRANSACTIONS_STORAGE_KEY);
   }
 
   private saveTransactions(list: TransactionRecord[]): void {
-    if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(list));
-    } catch {
-      // Ignore
-    }
+    this.saveArrayToStorage(TRANSACTIONS_STORAGE_KEY, list);
   }
 
   private loadInvitations(): VendorInvitation[] {
-    const seedInv: VendorInvitation[] = [
-      {
-        id: 'inv-seed-1',
-        email: 'founder@solaceglow.ng',
-        businessName: 'Solace Glow Collective',
-        categorySlug: 'lash-technicians',
-        city: 'Lagos',
-        inviteToken: 'inv-beautiva-solace-2026',
-        status: 'pending',
-        createdAt: '2026-11-10T10:00:00.000Z',
-        expiresAt: '2026-11-24T10:00:00.000Z',
-      },
-    ];
-    if (!this.isBrowser) return seedInv;
-    try {
-      const raw = localStorage.getItem(INVITATIONS_STORAGE_KEY);
-      if (!raw) return seedInv;
-      const parsed = JSON.parse(raw) as VendorInvitation[];
-      return Array.isArray(parsed) ? parsed : seedInv;
-    } catch {
-      return seedInv;
-    }
+    return this.loadArrayFromStorage<VendorInvitation>(INVITATIONS_STORAGE_KEY);
   }
 
   private saveInvitations(list: VendorInvitation[]): void {
-    if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(INVITATIONS_STORAGE_KEY, JSON.stringify(list));
-    } catch {
-      // Ignore
-    }
+    this.saveArrayToStorage(INVITATIONS_STORAGE_KEY, list);
   }
 
   private loadSettings(): PlatformSettings {
@@ -1755,32 +1680,10 @@ export class MarketplaceService {
   }
 
   private loadCustomerAccounts(): UserProfile[] {
-    const derived: UserProfile[] = SEED_BOOKINGS.map((b, idx) => ({
-      id: `cust-seed-${idx + 1}`,
-      email: b.customerEmail,
-      fullName: b.customerName,
-      phone: b.customerPhone,
-      role: 'customer',
-      status: 'active',
-      createdAt: b.createdAt,
-    }));
-    if (!this.isBrowser) return derived;
-    try {
-      const raw = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
-      if (!raw) return derived;
-      const parsed = JSON.parse(raw) as UserProfile[];
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : derived;
-    } catch {
-      return derived;
-    }
+    return this.loadArrayFromStorage<UserProfile>(CUSTOMERS_STORAGE_KEY);
   }
 
   private saveCustomerAccounts(list: UserProfile[]): void {
-    if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(list));
-    } catch {
-      // Ignore
-    }
+    this.saveArrayToStorage(CUSTOMERS_STORAGE_KEY, list);
   }
 }

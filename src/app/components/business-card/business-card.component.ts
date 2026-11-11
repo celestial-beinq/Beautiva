@@ -17,9 +17,5 @@ export class BusinessCardComponent {
   readonly startingPrice = computed(() =>
     this.marketplace.formatNaira(this.marketplace.getStartingPrice(this.business())),
   );
-
-  formatPrice(amount: number): string {
-    return this.marketplace.formatNaira(amount);
-  }
 }
 

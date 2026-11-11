@@ -168,8 +168,9 @@
   text-align: left;
   cursor: pointer;
   font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
   color: var(--ink-primary);
 }
 

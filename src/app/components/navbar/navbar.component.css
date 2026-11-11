@@ -46,6 +46,7 @@
 
 .nav-link.is-active {
   font-weight: 600;
+  color: var(--accent-crimson);
 }
 
 .nav-brand {
@@ -57,9 +58,9 @@
 .brand-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.96rem;
+  font-size: 0.98rem;
   letter-spacing: 0.18em;
-  color: var(--dark-bg);
+  color: var(--ink-primary);
 }
 
 .nav-actions {

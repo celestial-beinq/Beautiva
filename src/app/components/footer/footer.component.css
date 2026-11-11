@@ -2,7 +2,7 @@
   padding-top: 5.5rem;
   padding-bottom: 2.5rem;
   background: var(--dark-bg);
-  color: var(--bg-ivory);
+  color: #ffffff;
 }
 
 .footer-hero {
@@ -12,16 +12,17 @@
   justify-content: space-between;
   gap: 2rem;
   padding-bottom: 4rem;
-  border-bottom: 1px solid rgba(247, 245, 240, 0.14);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .footer-headline {
   font-family: var(--font-display);
-  font-size: clamp(2.2rem, 5vw, 4rem);
-  font-weight: 600;
-  line-height: 0.98;
-  letter-spacing: -0.04em;
-  color: var(--bg-ivory);
+  font-size: clamp(2.2rem, 5vw, 3.9rem);
+  font-weight: 700;
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  color: #ffffff;
 }
 
 .footer-lead {

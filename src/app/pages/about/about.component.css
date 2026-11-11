@@ -1,12 +1,12 @@
 .page-hero {
   position: relative;
-  min-height: 68vh;
+  min-height: 62vh;
   display: flex;
   align-items: flex-end;
   padding-top: 120px;
   padding-bottom: 4rem;
   background: var(--dark-bg);
-  color: var(--bg-ivory);
+  color: #ffffff;
   overflow: hidden;
 }
 
@@ -16,7 +16,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.48;
+  opacity: 0.44;
 }
 
 .page-hero-scrim {
@@ -24,9 +24,9 @@
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(31, 28, 25, 0.55) 0%,
-    rgba(31, 28, 25, 0.35) 45%,
-    rgba(31, 28, 25, 0.92) 100%
+    rgba(43, 6, 6, 0.58) 0%,
+    rgba(43, 6, 6, 0.38) 45%,
+    rgba(43, 6, 6, 0.92) 100%
   );
 }
 
@@ -142,28 +142,23 @@
 .standards-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid rgba(48, 44, 40, 0.16);
+  gap: 1rem;
 }
 
 .standard-item {
-  padding: 2rem 1.5rem;
-  border-bottom: 1px solid rgba(48, 44, 40, 0.16);
-}
-
-.standard-item:not(:last-child) {
-  border-right: 1px solid rgba(48, 44, 40, 0.16);
-}
-
-.standard-item:first-child {
-  padding-left: 0;
+  background: #ffffff;
+  border: 1px solid var(--border-linen);
+  border-radius: var(--radius-xs);
+  padding: 1.5rem;
 }
 
 .standard-num {
   display: block;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--accent-bronze-dark);
-  margin-bottom: 1rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: rgba(59, 11, 11, 0.08);
+  margin-bottom: 1.15rem;
 }
 
 .standard-item h3 {
