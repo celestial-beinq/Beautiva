@@ -189,9 +189,12 @@
             <thead>
               <tr>
                 <th>Booking</th>
+                <th>Booked At</th>
                 <th>Service &amp; Client</th>
                 <th>Schedule &amp; Specialist</th>
                 <th>Amount</th>
+                <th>Status</th>
+                <th>Payment</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -199,27 +202,16 @@
               @for (b of pagedStudioBookings(); track b.bookingReference) {
                 <tr>
                   <td>
-                    <div class="booking-ref-stack">
-                      <div class="ledger-top-line">
-                        <a
-                          routerLink="/track"
-                          [queryParams]="{ ref: b.bookingReference }"
-                          class="ref-link"
-                        >
-                          {{ b.bookingReference }}
-                        </a>
-                        <span
-                          class="badge"
-                          [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
-                          [class.badge--warning]="b.status === 'Pending'"
-                          [class.badge--danger]="b.status === 'Cancelled'"
-                        >
-                          {{ b.status }}
-                        </span>
-                        <span class="badge badge--bronze">{{ b.paymentStatus }}</span>
-                      </div>
-                      <span class="cell-sub">Booked: {{ marketplace.formatDateTime(b.createdAt) }}</span>
-                    </div>
+                    <a
+                      routerLink="/track"
+                      [queryParams]="{ ref: b.bookingReference }"
+                      class="ref-link"
+                    >
+                      {{ b.bookingReference }}
+                    </a>
+                  </td>
+                  <td class="cell-sub">
+                    {{ marketplace.formatDateTime(b.createdAt) }}
                   </td>
                   <td>
                     <strong>{{ b.serviceName }} · {{ b.customerName }}</strong>
@@ -244,6 +236,28 @@
                         Settled in full
                       }
                     </div>
+                  </td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.badge--success]="b.status === 'Confirmed' || b.status === 'Completed'"
+                      [class.badge--warning]="b.status === 'Pending'"
+                      [class.badge--danger]="b.status === 'Cancelled'"
+                    >
+                      {{ b.status }}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.badge--success]="b.paymentStatus === 'Paid'"
+                      [class.badge--danger]="b.paymentStatus === 'Failed'"
+                      [class.badge--warning]="
+                        b.paymentStatus !== 'Paid' && b.paymentStatus !== 'Failed'
+                      "
+                    >
+                      {{ b.paymentStatus }}
+                    </span>
                   </td>
                   <td>
                     <div class="ledger-actions">
@@ -303,7 +317,7 @@
 
                 @if (reschedulingRef() === b.bookingReference) {
                   <tr class="reschedule-row">
-                    <td colspan="5" class="reschedule-cell">
+                    <td colspan="8" class="reschedule-cell">
                       <div class="reschedule-bar">
                         <strong>Reschedule {{ b.bookingReference }}</strong>
                         <input type="date" class="input" [(ngModel)]="rescheduleDate" />
