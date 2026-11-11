@@ -213,6 +213,9 @@
                     {{ b.dateDisplay }} at {{ b.time }} · Specialist: {{ b.staffName }} ·
                     {{ b.customerPhone }} ({{ b.customerEmail }})
                   </p>
+                  <p class="ledger-sub">
+                    Booked: {{ marketplace.formatDateTime(b.createdAt) }}
+                  </p>
                   @if (b.rescheduledFrom) {
                     <p class="ledger-note">Rescheduled from: {{ b.rescheduledFrom }}</p>
                   }
@@ -709,7 +712,16 @@
                   [class.is-active]="editAvailability.enabledSlots.includes(slot)"
                   (click)="toggleSlot(slot)"
                 >
-                  {{ slot }}
+                  <span>{{ slot }}</span>
+                  @if (isCustomSlot(slot)) {
+                    <span
+                      class="chip-x"
+                      title="Remove custom slot"
+                      (click)="removeCustomSlot(slot, $event)"
+                    >
+                      ×
+                    </span>
+                  }
                 </button>
               }
             </div>
@@ -717,6 +729,7 @@
               <input
                 class="input"
                 [(ngModel)]="newCustomSlot"
+                (keyup.enter)="addCustomSlot()"
                 placeholder="Add custom slot (e.g. 07:00 PM)"
               />
               <button type="button" class="btn btn--outline btn--sm" (click)="addCustomSlot()">

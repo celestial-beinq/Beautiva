@@ -304,4 +304,44 @@ describe('App & MarketplaceService', () => {
     expect(paystack.isRealKeyConfigured('pk_test_1234567890abcdef')).toBe(true);
     expect(paystack.isRealKeyConfigured('pk_live_1234567890abcdef')).toBe(true);
   });
+
+  it('should capture dates on all transactions and log platform activities', () => {
+    const service = TestBed.inject(MarketplaceService);
+    expect(service.activityLogs().length).toBe(0);
+
+    seedAdminTestStudio(service);
+    expect(service.activityLogs().some((l) => l.eventType === 'category.created')).toBe(true);
+    expect(service.activityLogs().some((l) => l.eventType === 'vendor.created')).toBe(true);
+
+    const created = service.createBooking({
+      businessSlug: 'atelier-lagos',
+      serviceId: 'srv-al-1',
+      date: '2026-11-22',
+      dateDisplay: '22 November 2026',
+      time: '03:00 PM',
+      staffName: 'Tolu Adeyemi',
+      customerName: 'Amaka Nwosu',
+      customerEmail: 'amaka@beautiva.ng',
+      customerPhone: '+234 800 111 2222',
+      paymentOption: 'deposit',
+      paystackReference: 'PSK_DEP_555',
+    });
+
+    const depositTx = service.transactions().find((t) => t.gatewayReference === 'PSK_DEP_555');
+    expect(depositTx).toBeTruthy();
+    expect(depositTx?.createdAt).toBeTruthy();
+    expect(depositTx?.paidAt).toBeTruthy();
+    expect(service.formatDateTime(depositTx?.paidAt)).not.toBe('—');
+    expect(service.activityLogs().some((l) => l.eventType === 'booking.created')).toBe(true);
+    expect(service.activityLogs().some((l) => l.eventType === 'payment.success')).toBe(true);
+
+    service.updateBookingStatus(created.bookingReference, 'Completed', 'Paid');
+    expect(service.transactions().length).toBe(2);
+    const settlementTx = service.transactions()[0];
+    expect(settlementTx.amount).toBe(17500);
+    expect(settlementTx.paidAt).toBeTruthy();
+    expect(settlementTx.createdAt).toBeTruthy();
+    expect(service.activityLogs().some((l) => l.eventType === 'payment.balance_settled')).toBe(true);
+    expect(service.activityLogs().some((l) => l.eventType === 'booking.status_updated')).toBe(true);
+  });
 });

@@ -152,6 +152,41 @@ function getSuperAdminEmails(): string[] {
     .filter(Boolean);
 }
 
+async function writeServerActivityLog(
+  admin: SupabaseClient,
+  entry: {
+    eventType: string;
+    category: string;
+    actorName?: string;
+    actorEmail?: string | null;
+    actorRole?: string;
+    entityType?: string;
+    entityId?: string;
+    entityName?: string;
+    summary: string;
+    metadata?: Record<string, unknown>;
+    createdAt?: string;
+  },
+): Promise<void> {
+  try {
+    await admin.from('activity_logs').insert({
+      event_type: entry.eventType,
+      category: entry.category,
+      actor_name: entry.actorName || 'System',
+      actor_email: entry.actorEmail || null,
+      actor_role: entry.actorRole || 'system',
+      entity_type: entry.entityType || null,
+      entity_id: entry.entityId || null,
+      entity_name: entry.entityName || null,
+      summary: entry.summary,
+      metadata: entry.metadata ?? {},
+      created_at: entry.createdAt || new Date().toISOString(),
+    });
+  } catch {
+    // Ignore if activity_logs migration has not been executed yet
+  }
+}
+
 async function verifySuperAdmin(
   req: express.Request,
   res: express.Response,
@@ -644,6 +679,7 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
     });
   }
 
+  const nowIso = new Date().toISOString();
   const onboardingFee = Number(appRow['onboarding_fee']) || 25000;
   await admin.from('transactions').insert({
     booking_reference: appNum,
@@ -658,7 +694,22 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
     platform_commission_amount: onboardingFee,
     vendor_net_amount: 0,
     status: 'success',
-    paid_at: new Date().toISOString(),
+    paid_at: nowIso,
+    created_at: nowIso,
+  });
+
+  await writeServerActivityLog(admin, {
+    eventType: 'payment.onboarding_success',
+    category: 'transaction',
+    actorName: ownerName || String(appRow['owner_name'] || businessName),
+    actorEmail: normalizedEmail,
+    actorRole: 'vendor',
+    entityType: 'transaction',
+    entityId: paystackReference,
+    entityName: businessName,
+    summary: `Onboarding fee of ₦${onboardingFee.toLocaleString('en-NG')} paid via Paystack (${paystackReference}) for ${businessName} (${appNum}).`,
+    metadata: { amount: onboardingFee, applicationNumber: appNum, paystackReference },
+    createdAt: nowIso,
   });
 
   const { data: updatedAppRow } = await admin
@@ -666,7 +717,7 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
     .update({
       status: 'paid_live',
       paystack_reference: paystackReference,
-      paid_at: new Date().toISOString(),
+      paid_at: nowIso,
       issued_login_email: normalizedEmail,
       issued_temp_password: tempPassword,
       live_business_slug: bizRow['slug'],
@@ -682,6 +733,25 @@ app.post('/api/public/vendor-applications/:appNumber/complete-onboarding', async
     business: bizRow,
     application: updatedAppRow,
   });
+});
+
+// Super Admin: Fetch platform activity logs
+app.get('/api/admin/activity-logs', async (req, res) => {
+  const authCtx = await verifySuperAdmin(req, res);
+  if (!authCtx) return;
+  const { admin } = authCtx;
+
+  const { data, error } = await admin
+    .from('activity_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (error) {
+    res.status(200).json({ logs: [] });
+    return;
+  }
+  res.status(200).json({ logs: data || [] });
 });
 
 /**

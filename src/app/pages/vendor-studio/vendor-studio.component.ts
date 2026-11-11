@@ -291,7 +291,15 @@ export class VendorStudioComponent {
     { label: 'Salon Interior', path: 'images/hero-salon.jpg' },
   ];
 
-  readonly allSlotChoices = DEFAULT_TIME_SLOTS;
+  get allSlotChoices(): string[] {
+    return Array.from(
+      new Set([...DEFAULT_TIME_SLOTS, ...(this.editAvailability?.enabledSlots || [])]),
+    );
+  }
+
+  isCustomSlot(slot: string): boolean {
+    return !DEFAULT_TIME_SLOTS.includes(slot);
+  }
 
   constructor() {
     effect(() => {
@@ -639,10 +647,21 @@ export class VendorStudioComponent {
   }
 
   addCustomSlot(): void {
-    const s = this.newCustomSlot.trim().toUpperCase();
-    if (!s || this.editAvailability.enabledSlots.includes(s)) return;
-    this.editAvailability.enabledSlots.push(s);
+    const raw = this.newCustomSlot.trim().replace(/\s+/g, ' ').toUpperCase();
+    if (!raw) {
+      this.flashToast('Enter a time slot first (e.g. 07:00 PM).');
+      return;
+    }
+    if (!this.editAvailability.enabledSlots.includes(raw)) {
+      this.editAvailability.enabledSlots = [...this.editAvailability.enabledSlots, raw];
+    }
     this.newCustomSlot = '';
+    this.flashToast(`Added slot "${raw}". Click "Save Availability, Hours & Payment Rules" to publish.`);
+  }
+
+  removeCustomSlot(slot: string, event: Event): void {
+    event.stopPropagation();
+    this.editAvailability.enabledSlots = this.editAvailability.enabledSlots.filter((s) => s !== slot);
   }
 
   addBlockedDate(): void {

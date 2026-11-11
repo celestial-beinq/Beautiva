@@ -1,8 +1,10 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
   AccountStatus,
+  ActivityCategory,
   BusinessProfile,
   CategoryInfo,
   CategorySlug,
@@ -25,6 +27,8 @@ export class AdminDashboardComponent {
   readonly marketplace = inject(MarketplaceService);
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly destroyRef = inject(DestroyRef);
 
   async logout(): Promise<void> {
     await this.auth.signOut();
@@ -33,19 +37,31 @@ export class AdminDashboardComponent {
 
   readonly categories = this.marketplace.categories;
   readonly businesses = this.marketplace.businesses;
+  readonly bookings = this.marketplace.bookings;
   readonly transactions = this.marketplace.transactions;
   readonly invitations = this.marketplace.vendorInvitations;
   readonly vendorApplications = this.marketplace.vendorApplications;
+  readonly activityLogs = this.marketplace.activityLogs;
+
+  // Live analytics & chart state
+  readonly analyticsRange = signal<7 | 14 | 30>(14);
+  readonly chartMetric = signal<'revenue' | 'activity'>('revenue');
+  readonly donutMode = signal<'payments' | 'bookings'>('payments');
+  readonly liveAutoRefresh = signal(true);
+  readonly isSyncing = signal(false);
+  readonly lastSyncedAt = signal(new Date());
+  readonly hoveredDayIndex = signal<number | null>(null);
 
   readonly activeTab = signal<
-    'overview' | 'vendors' | 'categories' | 'payments' | 'settings'
+    'overview' | 'vendors' | 'categories' | 'payments' | 'settings' | 'logs'
   >('overview');
   readonly toast = signal('');
 
   // Vendor Applications review state
-  readonly applicationFilter = signal<'all' | VendorApplicationStatus>('all');
+  readonly applicationFilter = signal<'all' | 'pending' | 'approved' | 'declined'>('all');
   readonly viewingApplicationNum = signal<string | null>(null);
   readonly reviewingAppNum = signal<string | null>(null);
+  readonly dismissedCompletedNotice = signal(false);
   applicationReviewNote = '';
 
   // Vendor Management filters & forms
@@ -111,6 +127,10 @@ export class AdminDashboardComponent {
   readonly paymentFilter = signal<'all' | 'success' | 'failed' | 'refunded'>('all');
   readonly paymentSearch = signal('');
 
+  // Activity Log filters
+  readonly logCategoryFilter = signal<'all' | ActivityCategory>('all');
+  readonly logSearch = signal('');
+
   // Platform Settings & Customer Accounts
   readonly customerSearch = signal('');
   settingsDraft: PlatformSettings = { ...this.marketplace.platformSettings() };
@@ -122,7 +142,40 @@ export class AdminDashboardComponent {
       this.settingsDraft = { ...s };
       this.onboardingFeeInput = s.vendorOnboardingFee;
     });
+
+    if (isPlatformBrowser(this.platformId)) {
+      const timer = setInterval(() => {
+        if (this.liveAutoRefresh() && !this.isSyncing()) {
+          void this.syncLiveAnalytics(true);
+        }
+      }, 15000);
+      this.destroyRef.onDestroy(() => clearInterval(timer));
+    }
   }
+
+  async syncLiveAnalytics(silent = false): Promise<void> {
+    if (this.isSyncing()) return;
+    this.isSyncing.set(true);
+    try {
+      if (this.marketplace.supabaseConfigured) {
+        await this.marketplace.refreshFromBackend();
+      }
+      this.lastSyncedAt.set(new Date());
+      if (!silent) {
+        this.flash('Live analytics synced.');
+      }
+    } finally {
+      this.isSyncing.set(false);
+    }
+  }
+
+  readonly lastSyncedLabel = computed(() =>
+    this.lastSyncedAt().toLocaleTimeString('en-NG', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+  );
 
   readonly uniqueCustomers = computed(() => {
     return this.marketplace
@@ -204,9 +257,355 @@ export class AdminDashboardComponent {
       .sort((a, b) => b.studioCount - a.studioCount);
   });
 
+  readonly liveChart = computed(() => {
+    const days = this.analyticsRange();
+    const metric = this.chartMetric();
+    const rate = this.marketplace.platformSettings().commissionRate || 10;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const buckets = new Map<
+      string,
+      {
+        dateKey: string;
+        shortLabel: string;
+        fullLabel: string;
+        grossVolume: number;
+        commission: number;
+        txCount: number;
+        allTxCount: number;
+        bookingsCount: number;
+        onboardingCount: number;
+      }
+    >();
+
+    const orderedKeys: string[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      orderedKeys.push(key);
+      buckets.set(key, {
+        dateKey: key,
+        shortLabel: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        fullLabel: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        grossVolume: 0,
+        commission: 0,
+        txCount: 0,
+        allTxCount: 0,
+        bookingsCount: 0,
+        onboardingCount: 0,
+      });
+    }
+
+    for (const tx of this.transactions()) {
+      const key = this.toLocalDateKey(tx.paidAt || tx.createdAt);
+      const bucket = key ? buckets.get(key) : undefined;
+      if (!bucket) continue;
+      bucket.allTxCount += 1;
+      if (tx.status === 'success') {
+        bucket.txCount += 1;
+        bucket.grossVolume += tx.amount;
+        bucket.commission +=
+          tx.platformCommissionAmount || Math.round((tx.amount * rate) / 100);
+      }
+    }
+
+    for (const bk of this.bookings()) {
+      const key = this.toLocalDateKey(bk.createdAt || bk.date);
+      const bucket = key ? buckets.get(key) : undefined;
+      if (bucket) {
+        bucket.bookingsCount += 1;
+      }
+    }
+
+    for (const app of this.vendorApplications()) {
+      const key = this.toLocalDateKey(app.createdAt);
+      const bucket = key ? buckets.get(key) : undefined;
+      if (bucket) {
+        bucket.onboardingCount += 1;
+      }
+    }
+
+    for (const biz of this.businesses()) {
+      const key = this.toLocalDateKey(biz.createdAt);
+      const bucket = key ? buckets.get(key) : undefined;
+      if (bucket) {
+        bucket.onboardingCount += 1;
+      }
+    }
+
+    const rawSeries = orderedKeys.map((k) => buckets.get(k)!);
+    const periodVolume = rawSeries.reduce((s, d) => s + d.grossVolume, 0);
+    const periodCommission = rawSeries.reduce((s, d) => s + d.commission, 0);
+    const periodTxCount = rawSeries.reduce((s, d) => s + d.txCount, 0);
+    const periodAllTxCount = rawSeries.reduce((s, d) => s + d.allTxCount, 0);
+    const periodBookings = rawSeries.reduce((s, d) => s + d.bookingsCount, 0);
+    const periodOnboardings = rawSeries.reduce((s, d) => s + d.onboardingCount, 0);
+
+    const maxPrimary = Math.max(
+      ...rawSeries.map((d) =>
+        metric === 'revenue' ? d.grossVolume : Math.max(d.bookingsCount, d.onboardingCount),
+      ),
+      0,
+    );
+
+    const yMax =
+      metric === 'revenue'
+        ? this.niceCeiling(Math.max(maxPrimary, 10000))
+        : this.niceCeiling(Math.max(maxPrimary, 4));
+
+    const width = 760;
+    const height = 240;
+    const padLeft = 58;
+    const padRight = 18;
+    const padTop = 18;
+    const padBottom = 34;
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
+    const baseY = padTop + plotH;
+
+    const labelStep = days <= 7 ? 1 : days <= 14 ? 2 : 5;
+    const slotW = plotW / rawSeries.length;
+
+    const points = rawSeries.map((d, i) => {
+      const primaryVal = metric === 'revenue' ? d.grossVolume : d.bookingsCount;
+      const secondaryVal = metric === 'revenue' ? d.commission : d.onboardingCount;
+      const x =
+        rawSeries.length === 1
+          ? padLeft + plotW / 2
+          : padLeft + (i / (rawSeries.length - 1)) * plotW;
+      const yPrimary = baseY - (primaryVal / yMax) * plotH;
+      const ySecondary = baseY - (secondaryVal / yMax) * plotH;
+      return {
+        ...d,
+        index: i,
+        x,
+        slotX: padLeft + i * slotW,
+        slotW,
+        yPrimary,
+        ySecondary,
+        primaryVal,
+        secondaryVal,
+        showLabel: i % labelStep === 0 || i === rawSeries.length - 1,
+      };
+    });
+
+    const primaryPath = points
+      .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.yPrimary.toFixed(1)}`)
+      .join(' ');
+
+    const primaryAreaPath =
+      points.length > 0
+        ? `${primaryPath} L${points[points.length - 1].x.toFixed(1)},${baseY} L${points[0].x.toFixed(1)},${baseY} Z`
+        : '';
+
+    const secondaryPath = points
+      .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.ySecondary.toFixed(1)}`)
+      .join(' ');
+
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+      const val = Math.round(yMax * ratio);
+      const y = baseY - ratio * plotH;
+      return {
+        y,
+        val,
+        label: metric === 'revenue' ? this.formatCompactNaira(val) : String(val),
+      };
+    });
+
+    return {
+      width,
+      height,
+      padLeft,
+      padRight,
+      padTop,
+      baseY,
+      points,
+      primaryPath,
+      primaryAreaPath,
+      secondaryPath,
+      yTicks,
+      summary: {
+        periodVolume,
+        periodCommission,
+        periodTxCount,
+        periodBookings,
+        periodOnboardings,
+        avgTxValue: periodTxCount > 0 ? Math.round(periodVolume / periodTxCount) : 0,
+        successRate:
+          periodAllTxCount > 0 ? Math.round((periodTxCount / periodAllTxCount) * 100) : 100,
+      },
+    };
+  });
+
+  readonly hoveredDayPoint = computed(() => {
+    const idx = this.hoveredDayIndex();
+    const pts = this.liveChart().points;
+    if (idx === null || idx < 0 || idx >= pts.length) return null;
+    return pts[idx];
+  });
+
+  readonly statusDonut = computed(() => {
+    const mode = this.donutMode();
+    const radius = 50;
+    const circumference = 2 * Math.PI * radius;
+
+    const rawSlices =
+      mode === 'payments'
+        ? [
+            {
+              label: 'Settled',
+              count: this.transactions().filter((t) => t.status === 'success').length,
+              color: '#24684b',
+            },
+            {
+              label: 'Failed',
+              count: this.transactions().filter((t) => t.status === 'failed').length,
+              color: '#b81d1a',
+            },
+            {
+              label: 'Refunded',
+              count: this.transactions().filter((t) => t.status === 'refunded').length,
+              color: '#c27803',
+            },
+          ]
+        : [
+            {
+              label: 'Confirmed',
+              count: this.bookings().filter((b) => b.status === 'Confirmed').length,
+              color: '#24684b',
+            },
+            {
+              label: 'Completed',
+              count: this.bookings().filter((b) => b.status === 'Completed').length,
+              color: '#3b0b0b',
+            },
+            {
+              label: 'Pending',
+              count: this.bookings().filter((b) => b.status === 'Pending').length,
+              color: '#c27803',
+            },
+            {
+              label: 'Cancelled',
+              count: this.bookings().filter((b) => b.status === 'Cancelled').length,
+              color: '#b81d1a',
+            },
+          ];
+
+    const total = rawSlices.reduce((s, item) => s + item.count, 0);
+    let offset = 0;
+
+    const segments = rawSlices.map((item) => {
+      const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
+      const segLen = total > 0 ? (item.count / total) * circumference : 0;
+      const segment = {
+        ...item,
+        pct,
+        dashArray: `${segLen.toFixed(2)} ${circumference.toFixed(2)}`,
+        dashOffset: (-offset).toFixed(2),
+      };
+      offset += segLen;
+      return segment;
+    });
+
+    return {
+      total,
+      radius,
+      circumference,
+      segments,
+    };
+  });
+
+  readonly topStudiosAnalytics = computed(() => {
+    const map = new Map<
+      string,
+      { name: string; revenue: number; txCount: number; bookingCount: number }
+    >();
+
+    for (const biz of this.businesses()) {
+      map.set(biz.name, {
+        name: biz.name,
+        revenue: 0,
+        txCount: 0,
+        bookingCount: 0,
+      });
+    }
+
+    for (const tx of this.transactions()) {
+      if (tx.status !== 'success') continue;
+      const entry = map.get(tx.businessName) ?? {
+        name: tx.businessName,
+        revenue: 0,
+        txCount: 0,
+        bookingCount: 0,
+      };
+      entry.revenue += tx.amount;
+      entry.txCount += 1;
+      map.set(tx.businessName, entry);
+    }
+
+    for (const bk of this.bookings()) {
+      const entry = map.get(bk.businessName) ?? {
+        name: bk.businessName,
+        revenue: 0,
+        txCount: 0,
+        bookingCount: 0,
+      };
+      entry.bookingCount += 1;
+      map.set(bk.businessName, entry);
+    }
+
+    const sorted = Array.from(map.values())
+      .filter((s) => s.revenue > 0 || s.bookingCount > 0)
+      .sort((a, b) => b.revenue - a.revenue || b.bookingCount - a.bookingCount)
+      .slice(0, 5);
+
+    const maxRev = Math.max(1, ...sorted.map((s) => s.revenue || s.bookingCount));
+    return sorted.map((s) => ({
+      ...s,
+      barPct: Math.max(12, Math.round(((s.revenue || s.bookingCount) / maxRev) * 100)),
+    }));
+  });
+
+  private toLocalDateKey(raw: string | undefined): string | null {
+    if (!raw) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return null;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private niceCeiling(val: number): number {
+    if (val <= 4) return 4;
+    const mag = Math.pow(10, Math.floor(Math.log10(val)));
+    const norm = val / mag;
+    if (norm <= 1.2) return 1.2 * mag;
+    if (norm <= 2) return 2 * mag;
+    if (norm <= 4) return 4 * mag;
+    if (norm <= 6) return 6 * mag;
+    if (norm <= 8) return 8 * mag;
+    return 10 * mag;
+  }
+
+  formatCompactNaira(amount: number): string {
+    if (amount >= 1_000_000) return `₦${(amount / 1_000_000).toFixed(1)}M`;
+    if (amount >= 1_000) return `₦${Math.round(amount / 1_000)}k`;
+    return `₦${amount}`;
+  }
+
+  readonly incomingApplications = computed(() =>
+    this.vendorApplications().filter((a) => a.status !== 'paid_live'),
+  );
+
+  readonly completedApplications = computed(() =>
+    this.vendorApplications().filter((a) => a.status === 'paid_live'),
+  );
+
   readonly filteredApplications = computed(() => {
     const f = this.applicationFilter();
-    return this.vendorApplications().filter((a) => f === 'all' || a.status === f);
+    return this.incomingApplications().filter((a) => f === 'all' || a.status === f);
   });
 
   readonly pendingApplicationsCount = computed(
@@ -242,7 +641,27 @@ export class AdminDashboardComponent {
         tx.businessName.toLowerCase().includes(q) ||
         tx.customerName.toLowerCase().includes(q) ||
         tx.customerEmail.toLowerCase().includes(q) ||
-        (tx.gatewayReference ?? '').toLowerCase().includes(q)
+        (tx.gatewayReference ?? '').toLowerCase().includes(q) ||
+        this.marketplace.formatDateTime(tx.paidAt || tx.createdAt).toLowerCase().includes(q)
+      );
+    });
+  });
+
+  readonly filteredActivityLogs = computed(() => {
+    const category = this.logCategoryFilter();
+    const q = this.logSearch().trim().toLowerCase();
+    return this.activityLogs().filter((log) => {
+      if (category !== 'all' && log.category !== category) return false;
+      if (!q) return true;
+      return (
+        log.summary.toLowerCase().includes(q) ||
+        log.eventType.toLowerCase().includes(q) ||
+        log.actorName.toLowerCase().includes(q) ||
+        (log.actorEmail ?? '').toLowerCase().includes(q) ||
+        log.actorRole.toLowerCase().includes(q) ||
+        (log.entityName ?? '').toLowerCase().includes(q) ||
+        (log.entityId ?? '').toLowerCase().includes(q) ||
+        this.marketplace.formatDateTime(log.createdAt).toLowerCase().includes(q)
       );
     });
   });

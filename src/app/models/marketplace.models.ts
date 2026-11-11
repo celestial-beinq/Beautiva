@@ -196,6 +196,32 @@ export interface TransactionRecord {
   createdAt: string;
 }
 
+export type ActivityCategory =
+  | 'transaction'
+  | 'booking'
+  | 'application'
+  | 'vendor'
+  | 'category'
+  | 'review'
+  | 'customer'
+  | 'settings'
+  | 'auth';
+
+export interface ActivityLogRecord {
+  id: string;
+  eventType: string;
+  category: ActivityCategory;
+  actorName: string;
+  actorEmail?: string;
+  actorRole: UserRole | 'guest' | 'system';
+  entityType?: string;
+  entityId?: string;
+  entityName?: string;
+  summary: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export type VendorApplicationStatus = 'pending' | 'approved' | 'declined' | 'paid_live';
 
 export interface VendorApplication {

@@ -18,33 +18,6 @@
           Sign in to manage your Beautiva beauty studio, appointments, services, and payouts — or
           access the Super Admin governance console.
         </p>
-
-        <div class="policy-callout">
-          <span class="callout-eyebrow">Vendor Onboarding</span>
-          <p>
-            Own a beauty studio? Apply with your business details to receive an application number,
-            get Super Admin approval, and activate via Paystack to receive your login details.
-          </p>
-          <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.75rem">
-            <a routerLink="/apply" class="btn btn--primary btn--sm">Apply as Vendor →</a>
-            <a
-              routerLink="/apply"
-              [queryParams]="{ tab: 'status' }"
-              class="btn btn--outline btn--sm"
-            >
-              Check Application Status
-            </a>
-          </div>
-        </div>
-
-        <div class="brand-panel-footer">
-          @if (marketplace.supabaseConfigured) {
-            <span class="status-chip status-chip--live">● Supabase Auth Active</span>
-          } @else {
-            <span class="status-chip status-chip--demo">● Local Fallback Mode</span>
-          }
-          <a routerLink="/vendors" class="browse-link">Explore Public Studios →</a>
-        </div>
       </div>
     </aside>
 

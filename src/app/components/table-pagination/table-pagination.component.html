@@ -1,0 +1,61 @@
+@if (totalItems() > 0) {
+  <div class="pagination-bar" role="navigation" aria-label="Table pagination">
+    <div class="pagination-meta">
+      <span>
+        Showing <strong>{{ startItem() }}–{{ endItem() }}</strong> of
+        <strong>{{ totalItems() }}</strong>
+      </span>
+
+      <label class="pagination-size">
+        <span>Rows</span>
+        <select
+          class="pagination-select"
+          [value]="pageSize()"
+          (change)="onSizeChange($event)"
+          aria-label="Rows per page"
+        >
+          @for (opt of pageSizeOptions(); track opt) {
+            <option [value]="opt" [selected]="opt === pageSize()">{{ opt }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="pagination-controls">
+      <button
+        type="button"
+        class="page-btn"
+        [disabled]="safePage() <= 1"
+        (click)="goToPage(safePage() - 1)"
+      >
+        ← Prev
+      </button>
+
+      @for (token of pageTokens(); track $index) {
+        @if (token === 'ellipsis') {
+          <span class="page-ellipsis" aria-hidden="true">…</span>
+        } @else {
+          <button
+            type="button"
+            class="page-btn page-btn--num"
+            [class.is-active]="token === safePage()"
+            [attr.aria-current]="token === safePage() ? 'page' : null"
+            (click)="goToPage(token)"
+          >
+            {{ token }}
+          </button>
+        }
+      }
+
+      <button
+        type="button"
+        class="page-btn"
+        [disabled]="safePage() >= totalPages()"
+        (click)="goToPage(safePage() + 1)"
+      >
+        Next →
+      </button>
+    </div>
+  </div>
+}
+

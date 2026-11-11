@@ -91,58 +91,6 @@
   max-width: 44ch;
 }
 
-.policy-callout {
-  background: rgba(247, 245, 240, 0.08);
-  border: 1px solid rgba(201, 169, 138, 0.35);
-  border-radius: var(--radius-sm);
-  padding: 14px 16px;
-}
-
-.callout-eyebrow {
-  display: block;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--accent-camel);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.policy-callout p {
-  font-size: 0.86rem;
-  color: rgba(247, 245, 240, 0.86);
-}
-
-.brand-panel-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(247, 245, 240, 0.14);
-}
-
-.status-chip {
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.status-chip--live {
-  color: #7ee2b8;
-}
-
-.status-chip--demo {
-  color: var(--accent-camel);
-}
-
-.browse-link {
-  font-size: 0.86rem;
-  color: var(--bg-ivory);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
 /* RIGHT FORM PANEL */
 .signin-form-panel {
   padding: 44px 40px;

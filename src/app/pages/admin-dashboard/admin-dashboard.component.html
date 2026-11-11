@@ -153,14 +153,430 @@
       >
         05 · Platform Settings &amp; Users
       </button>
+      <button
+        type="button"
+        class="admin-tab"
+        [class.is-active]="activeTab() === 'logs'"
+        (click)="activeTab.set('logs')"
+      >
+        06 · Activity Logs ({{ activityLogs().length }})
+      </button>
     </div>
 
     @if (toast()) {
       <div class="toast-bar">{{ toast() }}</div>
     }
 
+    @if (completedApplications().length > 0 && !dismissedCompletedNotice()) {
+      <div class="completed-notice-bar" role="status">
+        <div>
+          <span class="badge badge--success">Completed Onboarding</span>
+          <strong>
+            {{ completedApplications()[0].businessName }}
+            ({{ completedApplications()[0].applicationNumber }})
+          </strong>
+          <span>
+            completed Paystack onboarding ({{ marketplace.formatNaira(completedApplications()[0].onboardingFee) }})
+            and is now live
+            @if (completedApplications().length > 1) {
+              · +{{ completedApplications().length - 1 }} more completed
+            }
+          </span>
+        </div>
+        <div class="table-actions">
+          <button
+            type="button"
+            class="btn btn--outline btn--sm"
+            (click)="activeTab.set('overview')"
+          >
+            View Table
+          </button>
+          <button
+            type="button"
+            class="btn btn--outline btn--sm"
+            (click)="dismissedCompletedNotice.set(true)"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    }
+
     <!-- TAB 1: DASHBOARD OVERVIEW -->
     @if (activeTab() === 'overview') {
+      <!-- LIVE ANALYTICS & TIME-SERIES CHART -->
+      <div class="panel-card live-analytics-card">
+        <div class="live-analytics-head">
+          <div>
+            <div class="live-title-row">
+              <h2>Platform Live Analytics</h2>
+              <span class="live-badge" [class.is-paused]="!liveAutoRefresh()">
+                <span class="live-pulse" aria-hidden="true"></span>
+                <span>{{ liveAutoRefresh() ? 'Live' : 'Paused' }} · {{ lastSyncedLabel() }}</span>
+              </span>
+            </div>
+            <p>
+              Real-time payment volume, commissions, booking velocity, and studio onboardings across
+              the last {{ analyticsRange() }} days.
+            </p>
+          </div>
+
+          <div class="live-controls">
+            <div class="segmented-group" role="group" aria-label="Chart metric">
+              <button
+                type="button"
+                class="seg-btn"
+                [class.is-active]="chartMetric() === 'revenue'"
+                (click)="chartMetric.set('revenue')"
+              >
+                Revenue &amp; Fees
+              </button>
+              <button
+                type="button"
+                class="seg-btn"
+                [class.is-active]="chartMetric() === 'activity'"
+                (click)="chartMetric.set('activity')"
+              >
+                Bookings &amp; Vendors
+              </button>
+            </div>
+
+            <div class="segmented-group" role="group" aria-label="Timeframe">
+              @for (days of [7, 14, 30]; track days) {
+                <button
+                  type="button"
+                  class="seg-btn"
+                  [class.is-active]="analyticsRange() === days"
+                  (click)="analyticsRange.set($any(days))"
+                >
+                  {{ days }}D
+                </button>
+              }
+            </div>
+
+            <button
+              type="button"
+              class="btn btn--outline btn--sm"
+              (click)="liveAutoRefresh.set(!liveAutoRefresh())"
+            >
+              {{ liveAutoRefresh() ? 'Pause Live' : 'Resume Live' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn--primary btn--sm"
+              [disabled]="isSyncing()"
+              (click)="syncLiveAnalytics()"
+            >
+              {{ isSyncing() ? 'Syncing...' : 'Sync Now' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="live-summary-strip">
+          <div class="live-stat">
+            <span class="live-stat-label">{{ analyticsRange() }}-Day Volume</span>
+            <strong class="live-stat-val">
+              {{ marketplace.formatNaira(liveChart().summary.periodVolume) }}
+            </strong>
+            <span class="live-stat-sub">
+              {{ liveChart().summary.periodTxCount }} settled
+              {{ liveChart().summary.periodTxCount === 1 ? 'payment' : 'payments' }}
+            </span>
+          </div>
+          <div class="live-stat">
+            <span class="live-stat-label">{{ analyticsRange() }}-Day Commission</span>
+            <strong class="live-stat-val">
+              {{ marketplace.formatNaira(liveChart().summary.periodCommission) }}
+            </strong>
+            <span class="live-stat-sub">
+              Avg tx {{ marketplace.formatNaira(liveChart().summary.avgTxValue) }}
+            </span>
+          </div>
+          <div class="live-stat">
+            <span class="live-stat-label">{{ analyticsRange() }}-Day Bookings</span>
+            <strong class="live-stat-val">{{ liveChart().summary.periodBookings }}</strong>
+            <span class="live-stat-sub">
+              {{ liveChart().summary.periodOnboardings }} vendor/app updates
+            </span>
+          </div>
+          <div class="live-stat">
+            <span class="live-stat-label">Settlement Success</span>
+            <strong class="live-stat-val">{{ liveChart().summary.successRate }}%</strong>
+            <span class="live-stat-sub">Paystack gateway health</span>
+          </div>
+        </div>
+
+        <div class="chart-legend-bar">
+          <div class="chart-legend-items">
+            <span class="legend-item">
+              <span class="legend-swatch legend-swatch--primary"></span>
+              <span>
+                {{ chartMetric() === 'revenue' ? 'Gross Payment Volume (₦)' : 'Daily Bookings' }}
+              </span>
+            </span>
+            <span class="legend-item">
+              <span
+                class="legend-swatch legend-swatch--secondary"
+                [style.background]="chartMetric() === 'revenue' ? '#3b0b0b' : '#24684b'"
+              ></span>
+              <span>
+                {{
+                  chartMetric() === 'revenue'
+                    ? 'Platform Commission (₦)'
+                    : 'Vendor Applications & Studios'
+                }}
+              </span>
+            </span>
+          </div>
+
+          <div class="chart-readout">
+            @if (hoveredDayPoint(); as pt) {
+              <strong>{{ pt.fullLabel }}:</strong>
+              @if (chartMetric() === 'revenue') {
+                <span>
+                  {{ marketplace.formatNaira(pt.grossVolume) }} vol ·
+                  {{ marketplace.formatNaira(pt.commission) }} fee ·
+                  {{ pt.txCount }} tx
+                </span>
+              } @else {
+                <span>
+                  {{ pt.bookingsCount }} {{ pt.bookingsCount === 1 ? 'booking' : 'bookings' }} ·
+                  {{ pt.onboardingCount }} vendor/app
+                </span>
+              }
+            } @else {
+              <span>Hover or tap any day on the chart to inspect live daily numbers</span>
+            }
+          </div>
+        </div>
+
+        <div class="svg-chart-wrap" (mouseleave)="hoveredDayIndex.set(null)">
+          <svg
+            class="live-svg-chart"
+            [attr.viewBox]="'0 0 ' + liveChart().width + ' ' + liveChart().height"
+            role="img"
+            aria-label="Live platform analytics chart"
+          >
+            <defs>
+              <linearGradient id="beautivaPrimaryArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#b81d1a" stop-opacity="0.24" />
+                <stop offset="100%" stop-color="#b81d1a" stop-opacity="0.01" />
+              </linearGradient>
+            </defs>
+
+            <!-- Y-axis gridlines & labels -->
+            @for (tick of liveChart().yTicks; track tick.val) {
+              <line
+                [attr.x1]="liveChart().padLeft"
+                [attr.x2]="liveChart().width - liveChart().padRight"
+                [attr.y1]="tick.y"
+                [attr.y2]="tick.y"
+                class="chart-grid-line"
+              />
+              <text
+                [attr.x]="liveChart().padLeft - 10"
+                [attr.y]="tick.y + 4"
+                text-anchor="end"
+                class="chart-axis-text"
+              >
+                {{ tick.label }}
+              </text>
+            }
+
+            <!-- Area & Trend Lines -->
+            @if (liveChart().primaryAreaPath) {
+              <path [attr.d]="liveChart().primaryAreaPath" fill="url(#beautivaPrimaryArea)" />
+              <path
+                [attr.d]="liveChart().primaryPath"
+                fill="none"
+                stroke="#b81d1a"
+                stroke-width="2.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            }
+            @if (liveChart().secondaryPath) {
+              <path
+                [attr.d]="liveChart().secondaryPath"
+                fill="none"
+                [attr.stroke]="chartMetric() === 'revenue' ? '#3b0b0b' : '#24684b'"
+                stroke-width="2"
+                stroke-dasharray="5 4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            }
+
+            <!-- Hover crosshair & data points -->
+            @for (pt of liveChart().points; track pt.dateKey) {
+              @if (hoveredDayIndex() === pt.index) {
+                <line
+                  [attr.x1]="pt.x"
+                  [attr.x2]="pt.x"
+                  [attr.y1]="liveChart().padTop"
+                  [attr.y2]="liveChart().baseY"
+                  class="chart-crosshair"
+                />
+              }
+
+              <circle
+                [attr.cx]="pt.x"
+                [attr.cy]="pt.yPrimary"
+                [attr.r]="hoveredDayIndex() === pt.index ? 5.5 : 3"
+                class="chart-dot-primary"
+                [class.is-active]="hoveredDayIndex() === pt.index"
+              />
+              <circle
+                [attr.cx]="pt.x"
+                [attr.cy]="pt.ySecondary"
+                [attr.r]="hoveredDayIndex() === pt.index ? 4.5 : 2.5"
+                [attr.fill]="chartMetric() === 'revenue' ? '#3b0b0b' : '#24684b'"
+                stroke="#ffffff"
+                stroke-width="1.5"
+              />
+
+              @if (pt.showLabel) {
+                <text
+                  [attr.x]="pt.x"
+                  [attr.y]="liveChart().baseY + 20"
+                  text-anchor="middle"
+                  class="chart-axis-text"
+                >
+                  {{ pt.shortLabel }}
+                </text>
+              }
+
+              <!-- Transparent interactive hit column -->
+              <rect
+                [attr.x]="pt.slotX"
+                [attr.y]="liveChart().padTop"
+                [attr.width]="pt.slotW"
+                [attr.height]="liveChart().baseY - liveChart().padTop"
+                fill="transparent"
+                class="chart-hit-col"
+                (mouseenter)="hoveredDayIndex.set(pt.index)"
+                (click)="hoveredDayIndex.set(pt.index)"
+              />
+            }
+          </svg>
+        </div>
+      </div>
+
+      <!-- SECONDARY ANALYTICS ROW: OUTCOME DONUT + TOP STUDIOS -->
+      <div class="analytics-subgrid">
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>{{ donutMode() === 'payments' ? 'Payment Outcomes' : 'Booking Status Mix' }}</h2>
+              <p>Live distribution across all recorded platform activity.</p>
+            </div>
+            <div class="segmented-group">
+              <button
+                type="button"
+                class="seg-btn"
+                [class.is-active]="donutMode() === 'payments'"
+                (click)="donutMode.set('payments')"
+              >
+                Payments
+              </button>
+              <button
+                type="button"
+                class="seg-btn"
+                [class.is-active]="donutMode() === 'bookings'"
+                (click)="donutMode.set('bookings')"
+              >
+                Bookings
+              </button>
+            </div>
+          </div>
+
+          <div class="donut-layout">
+            <div class="donut-ring-wrap">
+              <svg viewBox="0 0 132 132" class="donut-svg" aria-hidden="true">
+                <circle
+                  cx="66"
+                  cy="66"
+                  [attr.r]="statusDonut().radius"
+                  fill="none"
+                  stroke="#efe7de"
+                  stroke-width="14"
+                />
+                @if (statusDonut().total > 0) {
+                  @for (seg of statusDonut().segments; track seg.label) {
+                    @if (seg.count > 0) {
+                      <circle
+                        cx="66"
+                        cy="66"
+                        [attr.r]="statusDonut().radius"
+                        fill="none"
+                        [attr.stroke]="seg.color"
+                        stroke-width="14"
+                        [attr.stroke-dasharray]="seg.dashArray"
+                        [attr.stroke-dashoffset]="seg.dashOffset"
+                        transform="rotate(-90 66 66)"
+                      />
+                    }
+                  }
+                }
+              </svg>
+              <div class="donut-center">
+                <strong>{{ statusDonut().total }}</strong>
+                <span>{{ donutMode() === 'payments' ? 'Payments' : 'Bookings' }}</span>
+              </div>
+            </div>
+
+            <div class="donut-legend">
+              @for (seg of statusDonut().segments; track seg.label) {
+                <div class="donut-legend-row">
+                  <div class="donut-legend-label">
+                    <span class="donut-dot" [style.background]="seg.color"></span>
+                    <span>{{ seg.label }}</span>
+                  </div>
+                  <div class="donut-legend-val">
+                    <strong>{{ seg.count }}</strong>
+                    <span>({{ seg.pct }}%)</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-head">
+            <div>
+              <h2>Top Performing Studios</h2>
+              <p>Ranked live by settled Paystack volume and booking activity.</p>
+            </div>
+          </div>
+
+          @if (topStudiosAnalytics().length === 0) {
+            <p class="muted-note">
+              No studio transactions or bookings recorded yet. Activity will populate here live as
+              customers book and pay.
+            </p>
+          } @else {
+            <div class="bar-list">
+              @for (studio of topStudiosAnalytics(); track studio.name) {
+                <div class="bar-row">
+                  <div class="bar-labels">
+                    <strong>{{ studio.name }}</strong>
+                    <span>
+                      {{ marketplace.formatNaira(studio.revenue) }} ·
+                      <strong>{{ studio.bookingCount }}</strong>
+                      {{ studio.bookingCount === 1 ? 'booking' : 'bookings' }}
+                    </span>
+                  </div>
+                  <div class="bar-track">
+                    <div class="bar-fill bar-fill--dark" [style.width.%]="studio.barPct"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
       <div class="analytics-grid">
         <div class="panel-card">
           <div class="panel-head">
@@ -265,6 +681,118 @@
           </div>
         </div>
       </div>
+
+      @if (completedApplications().length > 0) {
+        <div class="panel-card recent-block">
+          <div class="panel-head">
+            <div>
+              <h2>Completed Vendor Onboardings ({{ completedApplications().length }})</h2>
+              <p>Approved vendors who have paid their onboarding fee and gone live.</p>
+            </div>
+          </div>
+
+          <div class="ledger-table-wrap">
+            <table class="ledger-table">
+              <thead>
+                <tr>
+                  <th>Application #</th>
+                  <th>Studio</th>
+                  <th>Owner &amp; Contact</th>
+                  <th>Category &amp; City</th>
+                  <th>Fee Paid</th>
+                  <th>Paystack Ref</th>
+                  <th>Date &amp; Time</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (app of completedApplications(); track app.applicationNumber) {
+                  <tr>
+                    <td><code>{{ app.applicationNumber }}</code></td>
+                    <td><strong>{{ app.businessName }}</strong></td>
+                    <td>
+                      <strong>{{ app.ownerName }}</strong>
+                      <div class="cell-sub">{{ app.email }} · {{ app.phone }}</div>
+                    </td>
+                    <td>
+                      <span>{{ app.categoryLabel }}</span>
+                      <div class="cell-sub">{{ app.location }}</div>
+                    </td>
+                    <td><strong>{{ marketplace.formatNaira(app.onboardingFee) }}</strong></td>
+                    <td><code>{{ app.paystackReference || '—' }}</code></td>
+                    <td class="cell-sub">{{ marketplace.formatDateTime(app.paidAt || app.createdAt) }}</td>
+                    <td><span class="badge badge--success">Paid &amp; Live</span></td>
+                    <td>
+                      <div class="table-actions">
+                        @if (app.liveBusinessSlug) {
+                          <a
+                            [routerLink]="['/business', app.liveBusinessSlug]"
+                            class="btn btn--primary btn--sm"
+                          >
+                            Live Site ↗
+                          </a>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <div class="panel-card recent-block">
+        <div class="panel-head">
+          <div>
+            <h2>Recent Activity ({{ activityLogs().length }})</h2>
+            <p>Latest bookings, transactions, vendor applications, and admin changes.</p>
+          </div>
+          <button
+            type="button"
+            class="btn btn--outline btn--sm"
+            (click)="activeTab.set('logs')"
+          >
+            View all logs →
+          </button>
+        </div>
+
+        @if (activityLogs().length === 0) {
+          <p class="empty-note">No activity recorded yet.</p>
+        } @else {
+          <div class="ledger-table-wrap">
+            <table class="ledger-table">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Category</th>
+                  <th>Activity</th>
+                  <th>Actor</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (log of activityLogs().slice(0, 6); track log.id) {
+                  <tr>
+                    <td class="cell-sub">{{ marketplace.formatDateTime(log.createdAt) }}</td>
+                    <td><span class="badge badge--muted">{{ log.category }}</span></td>
+                    <td>
+                      <strong>{{ log.summary }}</strong>
+                      @if (log.entityName) {
+                        <div class="cell-sub">{{ log.entityName }}</div>
+                      }
+                    </td>
+                    <td>
+                      <strong>{{ log.actorName }}</strong>
+                      <div class="cell-sub">{{ log.actorRole }}</div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
     }
 
     <!-- TAB 2: VENDOR MANAGEMENT -->
@@ -273,15 +801,14 @@
       <div class="panel-card" style="margin-bottom: 1.5rem">
         <div class="panel-head">
           <div>
-            <h2>Incoming Vendor Applications ({{ vendorApplications().length }})</h2>
+            <h2>Incoming Vendor Applications ({{ incomingApplications().length }})</h2>
             <p>
-              Inspect submitted business applications and accept or decline. Approved vendors pay
-              their onboarding fee using their Application Number to go live and receive login
-              credentials.
+              Inspect submitted business applications and accept or decline. Completed (paid)
+              onboardings automatically move to the Completed Onboardings table on Dashboard Overview.
             </p>
           </div>
           <div class="status-pills">
-            @for (st of ['all', 'pending', 'approved', 'declined', 'paid_live']; track st) {
+            @for (st of ['all', 'pending', 'approved', 'declined']; track st) {
               <button
                 type="button"
                 class="filter-pill"
@@ -291,13 +818,11 @@
                 {{
                   st === 'all'
                     ? 'All'
-                    : st === 'paid_live'
-                      ? 'Paid & Live'
-                      : st === 'pending'
-                        ? 'Pending'
-                        : st === 'approved'
-                          ? 'Approved'
-                          : 'Declined'
+                    : st === 'pending'
+                      ? 'Pending'
+                      : st === 'approved'
+                        ? 'Approved'
+                        : 'Declined'
                 }}
               </button>
             }
@@ -918,7 +1443,7 @@
           class="input toolbar-search"
           [ngModel]="paymentSearch()"
           (ngModelChange)="paymentSearch.set($event)"
-          placeholder="Search gateway ref, business, or payer..."
+          placeholder="Search gateway ref, business, payer, or date..."
         />
         <div class="status-pills">
           @for (st of ['all', 'success', 'failed', 'refunded']; track st) {
@@ -938,6 +1463,7 @@
         <table class="ledger-table">
           <thead>
             <tr>
+              <th>Date &amp; Time</th>
               <th>Gateway Ref</th>
               <th>Business</th>
               <th>Payer</th>
@@ -950,6 +1476,7 @@
           <tbody>
             @for (tx of filteredTransactions(); track tx.id) {
               <tr>
+                <td class="cell-sub">{{ marketplace.formatDateTime(tx.paidAt || tx.createdAt) }}</td>
                 <td><code>{{ tx.gatewayReference || '—' }}</code></td>
                 <td>{{ tx.businessName }}</td>
                 <td>
@@ -976,6 +1503,10 @@
                   }
                 </td>
               </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="empty-note">No transactions match your current filter.</td>
+              </tr>
             }
           </tbody>
         </table>
@@ -989,7 +1520,7 @@
           <div class="panel-head">
             <div>
               <h2>Commission, Website Content &amp; Notifications</h2>
-              <p>Platform-wide configuration stored in Supabase <code>platform_settings</code>.</p>
+              <p>System Configuration.</p>
             </div>
           </div>
 
@@ -1149,6 +1680,81 @@
               }
             </div>
           </div>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 6: ACTIVITY LOGS -->
+    @if (activeTab() === 'logs') {
+      <div class="panel-card">
+        <div class="panel-head">
+          <div>
+            <h2>Platform Activity Logs ({{ activityLogs().length }})</h2>
+            <p>Chronological audit trail of every transaction, booking, application, and platform change.</p>
+          </div>
+        </div>
+
+        <div class="toolbar-row">
+          <input
+            type="text"
+            class="input toolbar-search"
+            [ngModel]="logSearch()"
+            (ngModelChange)="logSearch.set($event)"
+            placeholder="Search event, actor, studio, target, or date..."
+          />
+          <div class="status-pills">
+            @for (cat of ['all', 'transaction', 'booking', 'application', 'vendor', 'category', 'review', 'customer', 'settings']; track cat) {
+              <button
+                type="button"
+                class="filter-pill"
+                [class.is-active]="logCategoryFilter() === cat"
+                (click)="logCategoryFilter.set($any(cat))"
+              >
+                {{ cat === 'all' ? 'All Events' : cat }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="ledger-table-wrap">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>Date &amp; Time</th>
+                <th>Category</th>
+                <th>Activity</th>
+                <th>Actor</th>
+                <th>Target</th>
+                <th>Event</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (log of filteredActivityLogs(); track log.id) {
+                <tr>
+                  <td class="cell-sub">{{ marketplace.formatDateTime(log.createdAt) }}</td>
+                  <td><span class="badge badge--muted">{{ log.category }}</span></td>
+                  <td><strong>{{ log.summary }}</strong></td>
+                  <td>
+                    <strong>{{ log.actorName }}</strong>
+                    <div class="cell-sub">
+                      {{ log.actorRole }}@if (log.actorEmail) { · {{ log.actorEmail }}}
+                    </div>
+                  </td>
+                  <td>
+                    <span>{{ log.entityName || log.entityId || '—' }}</span>
+                    @if (log.entityName && log.entityId) {
+                      <div class="cell-sub"><code>{{ log.entityId }}</code></div>
+                    }
+                  </td>
+                  <td><code>{{ log.eventType }}</code></td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-note">No activity logs match your current filter.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       </div>
     }

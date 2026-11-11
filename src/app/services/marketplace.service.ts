@@ -3,6 +3,8 @@ import { Injectable, PLATFORM_ID, computed, effect, inject, signal } from '@angu
 import { DEFAULT_WORKING_HOURS } from '../data/seed-data';
 import {
   AccountStatus,
+  ActivityCategory,
+  ActivityLogRecord,
   AvailabilitySettings,
   BookingRecord,
   BookingStatus,
@@ -37,6 +39,7 @@ const INVITATIONS_STORAGE_KEY = 'beautiva_invitations_v2';
 const SETTINGS_STORAGE_KEY = 'beautiva_settings_v2';
 const CUSTOMERS_STORAGE_KEY = 'beautiva_customers_v2';
 const APPLICATIONS_STORAGE_KEY = 'beautiva_vendor_applications_v2';
+const ACTIVITY_LOGS_STORAGE_KEY = 'beautiva_activity_logs_v2';
 
 const LEGACY_STORAGE_KEYS = [
   'beautiva_businesses_v1',
@@ -134,6 +137,7 @@ export class MarketplaceService {
   readonly platformSettings = signal<PlatformSettings>(this.loadSettings());
   readonly customerAccounts = signal<UserProfile[]>(this.loadCustomerAccounts());
   readonly vendorApplications = signal<VendorApplication[]>(this.loadApplications());
+  readonly activityLogs = signal<ActivityLogRecord[]>(this.loadActivityLogs());
 
   readonly bookedSlotsExternal = signal<
     Array<{ businessSlug: string; bookingDate: string; bookingTime: string; status: string }>
@@ -450,6 +454,23 @@ export class MarketplaceService {
           this.customerAccounts.set(mappedProfs);
           this.saveCustomerAccounts(mappedProfs);
         }
+
+        if (this.auth.isSuperAdmin()) {
+          try {
+            const { data: logRows, error: logErr } = await this.sb.client
+              .from('activity_logs')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(200);
+            if (!logErr && logRows) {
+              const mappedLogs = logRows.map((r: any) => this.mapActivityLogRow(r));
+              this.activityLogs.set(mappedLogs);
+              this.saveActivityLogs(mappedLogs);
+            }
+          } catch {
+            // Activity logs table optional until 004_activity_logs.sql is applied
+          }
+        }
       }
 
       this.backendConnected.set(true);
@@ -653,6 +674,44 @@ export class MarketplaceService {
       void this.persistBookingToSupabase(record, txRecord);
     }
 
+    this.logActivity({
+      eventType: 'booking.created',
+      category: 'booking',
+      actorName: record.customerName,
+      actorEmail: record.customerEmail,
+      actorRole: 'customer',
+      entityType: 'booking',
+      entityId: record.bookingReference,
+      entityName: biz.name,
+      summary: `Booked ${record.serviceName} at ${biz.name} for ${record.dateDisplay} at ${record.time} (${record.bookingReference}).`,
+      metadata: {
+        amountPaid: record.amountPaid,
+        balanceDue: record.balanceDue,
+        paymentStatus: record.paymentStatus,
+      },
+      createdAt,
+    });
+
+    if (txRecord) {
+      this.logActivity({
+        eventType: 'payment.success',
+        category: 'transaction',
+        actorName: txRecord.customerName,
+        actorEmail: txRecord.customerEmail,
+        actorRole: 'customer',
+        entityType: 'transaction',
+        entityId: txRecord.gatewayReference || txRecord.id,
+        entityName: txRecord.businessName,
+        summary: `Payment of ${this.formatNaira(txRecord.amount)} succeeded via ${txRecord.gateway} for ${txRecord.bookingReference}.`,
+        metadata: {
+          amount: txRecord.amount,
+          commission: txRecord.platformCommissionAmount,
+          vendorNet: txRecord.vendorNetAmount,
+        },
+        createdAt,
+      });
+    }
+
     return record;
   }
 
@@ -687,6 +746,7 @@ export class MarketplaceService {
       payment_status: record.paymentStatus,
       paystack_reference: record.paystackReference || null,
       status: record.status,
+      created_at: record.createdAt,
     });
 
     if (!error && tx) {
@@ -704,6 +764,7 @@ export class MarketplaceService {
         vendor_net_amount: tx.vendorNetAmount,
         status: tx.status,
         paid_at: tx.paidAt,
+        created_at: tx.createdAt,
       });
     }
   }
@@ -717,6 +778,7 @@ export class MarketplaceService {
     gatewayReference?: string;
   }): TransactionRecord {
     const biz = this.getBusinessBySlug(input.businessSlug);
+    const createdAt = new Date().toISOString();
     const tx: TransactionRecord = {
       id: `tx-fail-${Date.now()}`,
       bookingReference: 'UNCOMPLETED',
@@ -732,7 +794,7 @@ export class MarketplaceService {
       vendorNetAmount: 0,
       status: 'failed',
       failureReason: input.reason,
-      createdAt: new Date().toISOString(),
+      createdAt,
     };
     const updated = [tx, ...this.transactions()];
     this.transactions.set(updated);
@@ -754,9 +816,25 @@ export class MarketplaceService {
           vendor_net_amount: 0,
           status: 'failed',
           failure_reason: tx.failureReason,
+          created_at: tx.createdAt,
         }),
       );
     }
+
+    this.logActivity({
+      eventType: 'payment.failed',
+      category: 'transaction',
+      actorName: tx.customerName,
+      actorEmail: tx.customerEmail,
+      actorRole: 'customer',
+      entityType: 'transaction',
+      entityId: tx.gatewayReference || tx.id,
+      entityName: tx.businessName,
+      summary: `Payment of ${this.formatNaira(tx.amount)} failed at ${tx.businessName}: ${tx.failureReason}.`,
+      metadata: { amount: tx.amount, reason: tx.failureReason },
+      createdAt,
+    });
+
     return tx;
   }
 
@@ -791,9 +869,13 @@ export class MarketplaceService {
     paymentStatus?: PaymentStatus,
   ): BookingRecord | undefined {
     let target: BookingRecord | undefined;
+    let settledAmount = 0;
     const updated = this.bookings().map((b) => {
       if (b.bookingReference.toUpperCase() !== reference.trim().toUpperCase()) {
         return b;
+      }
+      if (paymentStatus === 'Paid' && b.balanceDue > 0) {
+        settledAmount = b.balanceDue;
       }
       target = {
         ...b,
@@ -822,6 +904,74 @@ export class MarketplaceService {
             .ilike('booking_reference', target.bookingReference),
         );
       }
+
+      if (settledAmount > 0) {
+        const nowIso = new Date().toISOString();
+        const rate = this.platformSettings().commissionRate || 10;
+        const comm = Math.round((settledAmount * rate) / 100);
+        const settlementTx: TransactionRecord = {
+          id: `tx-settle-${Date.now()}`,
+          bookingId: target.id,
+          bookingReference: target.bookingReference,
+          businessId: target.businessId,
+          businessName: target.businessName,
+          customerName: target.customerName,
+          customerEmail: target.customerEmail,
+          gateway: 'Studio Balance Settlement',
+          gatewayReference: `BAL_${target.bookingReference}_${Date.now()}`,
+          amount: settledAmount,
+          platformCommissionRate: rate,
+          platformCommissionAmount: comm,
+          vendorNetAmount: settledAmount - comm,
+          status: 'success',
+          paidAt: nowIso,
+          createdAt: nowIso,
+        };
+        const updatedTx = [settlementTx, ...this.transactions()];
+        this.transactions.set(updatedTx);
+        this.saveTransactions(updatedTx);
+
+        if (this.sb.client && this.isBrowser && target.businessId && this.isUuid(target.businessId)) {
+          this.runSupabaseWrite(
+            this.sb.client.from('transactions').insert({
+              booking_reference: settlementTx.bookingReference,
+              business_id: target.businessId,
+              business_name: settlementTx.businessName,
+              customer_name: settlementTx.customerName,
+              customer_email: settlementTx.customerEmail,
+              gateway: settlementTx.gateway,
+              gateway_reference: settlementTx.gatewayReference,
+              amount: settlementTx.amount,
+              platform_commission_rate: settlementTx.platformCommissionRate,
+              platform_commission_amount: settlementTx.platformCommissionAmount,
+              vendor_net_amount: settlementTx.vendorNetAmount,
+              status: settlementTx.status,
+              paid_at: settlementTx.paidAt,
+              created_at: settlementTx.createdAt,
+            }),
+          );
+        }
+
+        this.logActivity({
+          eventType: 'payment.balance_settled',
+          category: 'transaction',
+          entityType: 'transaction',
+          entityId: settlementTx.gatewayReference,
+          entityName: target.businessName,
+          summary: `Settled remaining balance of ${this.formatNaira(settledAmount)} for booking ${target.bookingReference} (${target.businessName}).`,
+          metadata: { amount: settledAmount, bookingReference: target.bookingReference },
+          createdAt: nowIso,
+        });
+      }
+
+      this.logActivity({
+        eventType: 'booking.status_updated',
+        category: 'booking',
+        entityType: 'booking',
+        entityId: target.bookingReference,
+        entityName: target.businessName,
+        summary: `Booking ${target.bookingReference} marked ${target.status} (${target.paymentStatus}).`,
+      });
     }
     return target;
   }
@@ -865,16 +1015,27 @@ export class MarketplaceService {
             .ilike('booking_reference', target.bookingReference),
         );
       }
+
+      this.logActivity({
+        eventType: 'booking.rescheduled',
+        category: 'booking',
+        entityType: 'booking',
+        entityId: target.bookingReference,
+        entityName: target.businessName,
+        summary: `Rescheduled booking ${target.bookingReference} to ${newDateDisplay} at ${newTime}.`,
+      });
     }
     return target;
   }
 
   addReview(businessSlug: string, review: Omit<BusinessReview, 'id' | 'dateLabel'>): void {
     let targetBizId: string | undefined;
+    let targetBizName = businessSlug;
     const reviewId = `rev-${Date.now()}`;
     const updated = this.businesses().map((biz) => {
       if (biz.slug !== businessSlug) return biz;
       targetBizId = biz.id;
+      targetBizName = biz.name;
       const newRev: BusinessReview = {
         ...review,
         id: reviewId,
@@ -911,6 +1072,17 @@ export class MarketplaceService {
         }),
       );
     }
+
+    this.logActivity({
+      eventType: 'review.created',
+      category: 'review',
+      actorName: review.author,
+      actorRole: 'customer',
+      entityType: 'business',
+      entityId: businessSlug,
+      entityName: targetBizName,
+      summary: `${review.author} left a ${review.rating}★ review for ${targetBizName} (${review.serviceName}).`,
+    });
   }
 
   upsertBusiness(
@@ -960,6 +1132,16 @@ export class MarketplaceService {
     if (this.sb.client && this.isBrowser && this.isUuid(record.id)) {
       void this.persistBusinessToSupabase(record);
     }
+
+    this.logActivity({
+      eventType: existing ? 'vendor.updated' : 'vendor.created',
+      category: 'vendor',
+      entityType: 'business',
+      entityId: record.slug,
+      entityName: record.name,
+      summary: `${existing ? 'Updated' : 'Created'} vendor studio "${record.name}" (${record.location}).`,
+    });
+
     return record;
   }
 
@@ -1230,6 +1412,14 @@ export class MarketplaceService {
           }
         },
       );
+      this.logActivity({
+        eventType: 'vendor.updated',
+        category: 'vendor',
+        entityType: 'business',
+        entityId: biz.slug,
+        entityName: biz.name,
+        summary: `Updated studio profile/configuration for ${biz.name}.`,
+      });
     }
     return updatedBiz;
   }
@@ -1264,6 +1454,15 @@ export class MarketplaceService {
       return { ok: false, error: res.error };
     }
 
+    this.logActivity({
+      eventType: 'vendor.updated',
+      category: 'vendor',
+      entityType: 'business',
+      entityId: updatedBiz.slug,
+      entityName: updatedBiz.name,
+      summary: `Saved studio configuration for ${updatedBiz.name}.`,
+    });
+
     return { ok: true, business: updatedBiz };
   }
 
@@ -1291,6 +1490,14 @@ export class MarketplaceService {
       this.saveBusinesses(previous);
       return res;
     }
+    this.logActivity({
+      eventType: 'vendor.status_changed',
+      category: 'vendor',
+      entityType: 'business',
+      entityId: slug,
+      entityName: existing.name,
+      summary: `Studio "${existing.name}" status changed to ${status}.`,
+    });
     return { ok: true };
   }
 
@@ -1309,6 +1516,14 @@ export class MarketplaceService {
       this.saveBusinesses(previous);
       return res;
     }
+    this.logActivity({
+      eventType: 'vendor.deleted',
+      category: 'vendor',
+      entityType: 'business',
+      entityId: slug,
+      entityName: existing.name,
+      summary: `Deleted vendor studio "${existing.name}".`,
+    });
     return { ok: true };
   }
 
@@ -1330,6 +1545,14 @@ export class MarketplaceService {
       this.saveBusinesses(previous);
       return { ok: false, error: res.error };
     }
+    this.logActivity({
+      eventType: 'vendor.verified_toggled',
+      category: 'vendor',
+      entityType: 'business',
+      entityId: slug,
+      entityName: existing.name,
+      summary: `${nextVal ? 'Verified' : 'Unverified'} studio "${existing.name}".`,
+    });
     return { ok: true, verified: nextVal };
   }
 
@@ -1351,6 +1574,14 @@ export class MarketplaceService {
       this.saveBusinesses(previous);
       return { ok: false, error: res.error };
     }
+    this.logActivity({
+      eventType: 'vendor.featured_toggled',
+      category: 'vendor',
+      entityType: 'business',
+      entityId: slug,
+      entityName: existing.name,
+      summary: `${nextVal ? 'Featured' : 'Unfeatured'} studio "${existing.name}".`,
+    });
     return { ok: true, featured: nextVal };
   }
 
@@ -1394,10 +1625,21 @@ export class MarketplaceService {
         ),
       );
     }
+
+    this.logActivity({
+      eventType: existing ? 'category.updated' : 'category.created',
+      category: 'category',
+      entityType: 'category',
+      entityId: record.slug,
+      entityName: record.name,
+      summary: `${existing ? 'Updated' : 'Created'} category "${record.name}" (/${record.slug}).`,
+    });
+
     return record;
   }
 
   deleteCategory(slug: string): void {
+    const existing = this.getCategoryBySlug(slug);
     const list = this.categories().filter((c) => c.slug !== slug);
     this.categories.set(list);
     this.saveCategories(list);
@@ -1405,6 +1647,15 @@ export class MarketplaceService {
     if (this.sb.client && this.isBrowser) {
       this.runSupabaseWrite(this.sb.client.from('categories').delete().eq('slug', slug));
     }
+
+    this.logActivity({
+      eventType: 'category.deleted',
+      category: 'category',
+      entityType: 'category',
+      entityId: slug,
+      entityName: existing?.name || slug,
+      summary: `Deleted category "${existing?.name || slug}".`,
+    });
   }
 
   // ============================================================================
@@ -1527,6 +1778,15 @@ export class MarketplaceService {
       },
     });
 
+    this.logActivity({
+      eventType: 'vendor.account_created',
+      category: 'vendor',
+      entityType: 'business',
+      entityId: business.slug,
+      entityName: business.name,
+      summary: `Created vendor account & studio "${business.name}" (${input.email.toLowerCase()}).`,
+    });
+
     return { ok: true, business, authProvisioned, message };
   }
 
@@ -1565,10 +1825,20 @@ export class MarketplaceService {
         }),
       );
     }
+
+    this.logActivity({
+      eventType: 'vendor.invited',
+      category: 'vendor',
+      entityType: 'invitation',
+      entityId: invite.id,
+      entityName: invite.businessName,
+      summary: `Sent vendor invitation to ${invite.email} for "${invite.businessName}".`,
+    });
     return invite;
   }
 
   revokeInvitation(id: string): void {
+    const existing = this.vendorInvitations().find((i) => i.id === id);
     const list = this.vendorInvitations().map((i) =>
       i.id === id ? { ...i, status: 'revoked' as const } : i,
     );
@@ -1580,6 +1850,15 @@ export class MarketplaceService {
         this.sb.client.from('vendor_invitations').update({ status: 'revoked' }).eq('id', id),
       );
     }
+
+    this.logActivity({
+      eventType: 'vendor.invitation_revoked',
+      category: 'vendor',
+      entityType: 'invitation',
+      entityId: id,
+      entityName: existing?.businessName || id,
+      summary: `Revoked vendor invitation for ${existing?.email || id}.`,
+    });
   }
 
   // ============================================================================
@@ -1639,10 +1918,20 @@ export class MarketplaceService {
         }
       })();
     }
+
+    this.logActivity({
+      eventType: 'settings.updated',
+      category: 'settings',
+      entityType: 'platform_settings',
+      entityId: '1',
+      entityName: next.siteName,
+      summary: `Updated platform settings (Commission: ${next.commissionRate}%, Onboarding Fee: ${this.formatNaira(next.vendorOnboardingFee)}).`,
+    });
     return next;
   }
 
   setCustomerAccountStatus(profileId: string, status: AccountStatus): void {
+    const existing = this.customerAccounts().find((c) => c.id === profileId);
     const list = this.customerAccounts().map((c) =>
       c.id === profileId ? { ...c, status } : c,
     );
@@ -1654,14 +1943,24 @@ export class MarketplaceService {
         this.sb.client.from('profiles').update({ status }).eq('id', profileId),
       );
     }
+
+    this.logActivity({
+      eventType: 'customer.status_changed',
+      category: 'customer',
+      entityType: 'profile',
+      entityId: profileId,
+      entityName: existing?.fullName || existing?.email || profileId,
+      summary: `Customer account ${existing?.email || profileId} set to ${status}.`,
+    });
   }
 
   setReviewStatus(businessSlug: string, reviewId: string, status: 'published' | 'hidden'): void {
-    const list = this.businesses().map((biz) => {
-      if (biz.slug !== businessSlug) return biz;
+    const biz = this.getBusinessBySlug(businessSlug);
+    const list = this.businesses().map((b) => {
+      if (b.slug !== businessSlug) return b;
       return {
-        ...biz,
-        reviews: biz.reviews.map((r) => (r.id === reviewId ? { ...r, status } : r)),
+        ...b,
+        reviews: b.reviews.map((r) => (r.id === reviewId ? { ...r, status } : r)),
       };
     });
     this.businesses.set(list);
@@ -1672,19 +1971,29 @@ export class MarketplaceService {
         this.sb.client.from('reviews').update({ status }).eq('id', reviewId),
       );
     }
+
+    this.logActivity({
+      eventType: 'review.moderated',
+      category: 'review',
+      entityType: 'review',
+      entityId: reviewId,
+      entityName: biz?.name || businessSlug,
+      summary: `Review visibility set to ${status} on ${biz?.name || businessSlug}.`,
+    });
   }
 
   deleteReview(businessSlug: string, reviewId: string): void {
-    const list = this.businesses().map((biz) => {
-      if (biz.slug !== businessSlug) return biz;
-      const reviews = biz.reviews.filter((r) => r.id !== reviewId);
-      const count = Math.max(0, biz.reviewCount - 1);
+    const biz = this.getBusinessBySlug(businessSlug);
+    const list = this.businesses().map((b) => {
+      if (b.slug !== businessSlug) return b;
+      const reviews = b.reviews.filter((r) => r.id !== reviewId);
+      const count = Math.max(0, b.reviewCount - 1);
       const avg =
         reviews.length > 0
           ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1))
           : 5.0;
       return {
-        ...biz,
+        ...b,
         reviews,
         reviewCount: count,
         rating: avg,
@@ -1698,6 +2007,15 @@ export class MarketplaceService {
         this.sb.client.from('reviews').delete().eq('id', reviewId),
       );
     }
+
+    this.logActivity({
+      eventType: 'review.deleted',
+      category: 'review',
+      entityType: 'review',
+      entityId: reviewId,
+      entityName: biz?.name || businessSlug,
+      summary: `Deleted review on ${biz?.name || businessSlug}.`,
+    });
   }
 
   // ============================================================================
@@ -1745,6 +2063,76 @@ export class MarketplaceService {
 
   formatNaira(amount: number): string {
     return `₦${amount.toLocaleString('en-NG')}`;
+  }
+
+  formatDateTime(iso?: string | null): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat('en-NG', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(d);
+  }
+
+  logActivity(input: {
+    eventType: string;
+    category: ActivityCategory;
+    actorName?: string;
+    actorEmail?: string;
+    actorRole?: ActivityLogRecord['actorRole'];
+    entityType?: string;
+    entityId?: string;
+    entityName?: string;
+    summary: string;
+    metadata?: Record<string, unknown>;
+    createdAt?: string;
+  }): ActivityLogRecord {
+    const currentUser = this.auth.currentUser();
+    const record: ActivityLogRecord = {
+      id: this.generateUuid(),
+      eventType: input.eventType,
+      category: input.category,
+      actorName: input.actorName || currentUser?.fullName || 'System',
+      actorEmail: input.actorEmail || currentUser?.email,
+      actorRole: input.actorRole || currentUser?.role || 'system',
+      entityType: input.entityType,
+      entityId: input.entityId,
+      entityName: input.entityName,
+      summary: input.summary,
+      metadata: input.metadata,
+      createdAt: input.createdAt || new Date().toISOString(),
+    };
+
+    const next = [record, ...this.activityLogs()].slice(0, 300);
+    this.activityLogs.set(next);
+    this.saveActivityLogs(next);
+
+    if (this.sb.client && this.isBrowser) {
+      void Promise.resolve(
+        this.sb.client.from('activity_logs').insert({
+          id: record.id,
+          event_type: record.eventType,
+          category: record.category,
+          actor_name: record.actorName,
+          actor_email: record.actorEmail || null,
+          actor_role: record.actorRole,
+          entity_type: record.entityType || null,
+          entity_id: record.entityId || null,
+          entity_name: record.entityName || null,
+          summary: record.summary,
+          metadata: record.metadata ?? {},
+          created_at: record.createdAt,
+        }),
+      ).catch(() => {
+        // Ignore if activity_logs table has not been migrated yet
+      });
+    }
+
+    return record;
   }
 
   formatDuration(minutes: number): string {
@@ -2014,6 +2402,19 @@ export class MarketplaceService {
       })();
     }
 
+    this.logActivity({
+      eventType: 'application.submitted',
+      category: 'application',
+      actorName: record.ownerName,
+      actorEmail: record.email,
+      actorRole: 'vendor',
+      entityType: 'vendor_application',
+      entityId: record.applicationNumber,
+      entityName: record.businessName,
+      summary: `Submitted vendor application ${record.applicationNumber} for "${record.businessName}" (${record.location}).`,
+      createdAt: record.createdAt,
+    });
+
     return record;
   }
 
@@ -2143,6 +2544,17 @@ export class MarketplaceService {
     );
     this.vendorApplications.set(list);
     this.saveApplications(list);
+
+    this.logActivity({
+      eventType: `application.${decision}`,
+      category: 'application',
+      entityType: 'vendor_application',
+      entityId: updatedApp.applicationNumber,
+      entityName: updatedApp.businessName,
+      summary: `${decision === 'approved' ? 'Accepted' : 'Declined'} vendor application ${updatedApp.applicationNumber} (${updatedApp.businessName}).`,
+      metadata: trimmedNote ? { adminNote: trimmedNote } : undefined,
+      createdAt: reviewedAt,
+    });
 
     return { ok: true, application: updatedApp };
   }
@@ -2331,6 +2743,20 @@ export class MarketplaceService {
     this.vendorApplications.set(nextApps);
     this.saveApplications(nextApps);
 
+    this.logActivity({
+      eventType: 'payment.onboarding_success',
+      category: 'transaction',
+      actorName: app.ownerName,
+      actorEmail: app.email,
+      actorRole: 'vendor',
+      entityType: 'transaction',
+      entityId: paystackReference,
+      entityName: business.name,
+      summary: `Onboarding fee of ${this.formatNaira(app.onboardingFee)} paid via Paystack (${paystackReference}) for ${business.name} (${app.applicationNumber}).`,
+      metadata: { amount: app.onboardingFee, applicationNumber: app.applicationNumber },
+      createdAt: paidAt,
+    });
+
     return { ok: true, application: updatedApp, business };
   }
 
@@ -2383,6 +2809,31 @@ export class MarketplaceService {
       createdAt: r.created_at,
       reviewedAt: r.reviewed_at || undefined,
     };
+  }
+
+  private mapActivityLogRow(r: any): ActivityLogRecord {
+    return {
+      id: r.id,
+      eventType: r.event_type,
+      category: (r.category || 'system') as ActivityCategory,
+      actorName: r.actor_name || 'System',
+      actorEmail: r.actor_email || undefined,
+      actorRole: r.actor_role || 'system',
+      entityType: r.entity_type || undefined,
+      entityId: r.entity_id || undefined,
+      entityName: r.entity_name || undefined,
+      summary: r.summary,
+      metadata: r.metadata || undefined,
+      createdAt: r.created_at,
+    };
+  }
+
+  private loadActivityLogs(): ActivityLogRecord[] {
+    return this.loadArrayFromStorage<ActivityLogRecord>(ACTIVITY_LOGS_STORAGE_KEY);
+  }
+
+  private saveActivityLogs(list: ActivityLogRecord[]): void {
+    this.saveArrayToStorage(ACTIVITY_LOGS_STORAGE_KEY, list);
   }
 
   private loadApplications(): VendorApplication[] {
