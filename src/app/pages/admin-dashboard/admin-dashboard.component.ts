@@ -74,6 +74,10 @@ export class AdminDashboardComponent {
   readonly showCreateVendor = signal(false);
   readonly showInviteVendor = signal(false);
   readonly editingVendorSlug = signal<string | null>(null);
+  readonly editingVendor = computed(() => {
+    const slug = this.editingVendorSlug();
+    return slug ? (this.marketplace.getBusinessBySlug(slug) ?? null) : null;
+  });
   readonly settingPasswordSlug = signal<string | null>(null);
   readonly revealedPasswordSlugs = signal<Set<string>>(new Set());
   readonly busyStudioSlug = signal<string | null>(null);

@@ -400,43 +400,69 @@
   vertical-align: middle;
 }
 
-.cred-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.cred-email-row,
-.cred-pass-row {
-  display: flex;
+.cred-inline {
+  display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   white-space: nowrap;
 }
 
-.cred-email-row span {
-  font-size: 0.82rem;
+.cred-email-text {
+  font-size: 0.84rem;
   font-weight: 500;
   color: var(--ink-primary);
 }
 
 .cred-code {
   display: inline-block;
-  padding: 0.16rem 0.45rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
   background: var(--bg-sand);
   border: 1px solid var(--border-linen);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--ink-primary);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
-.btn-xs {
-  padding: 0.2rem 0.5rem;
-  font-size: 0.72rem;
-  line-height: 1.25;
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border-linen);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--ink-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.16s ease, color 0.16s ease, background-color 0.16s ease;
+}
+
+.icon-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--accent-bronze-dark);
+  color: var(--ink-primary);
+  background: var(--bg-ivory);
+}
+
+.icon-btn.is-active {
+  border-color: var(--brand-crimson);
+  color: var(--brand-crimson);
+  background: rgba(184, 29, 26, 0.08);
+}
+
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .completed-notice-bar {

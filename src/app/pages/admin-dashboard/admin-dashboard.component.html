@@ -729,7 +729,8 @@
                   <th>Application #</th>
                   <th>Studio</th>
                   <th>Owner &amp; Contact</th>
-                  <th>Login &amp; Password</th>
+                  <th>Login Email</th>
+                  <th>Password</th>
                   <th>Category &amp; City</th>
                   <th>Fee Paid</th>
                   <th>Paystack Ref</th>
@@ -748,34 +749,70 @@
                       <div class="cell-sub">{{ app.email }} · {{ app.phone }}</div>
                     </td>
                     <td>
-                      <div class="cred-cell">
-                        <div class="cell-sub">{{ app.issuedLoginEmail || app.email }}</div>
-                        @if (app.issuedTempPassword) {
-                          <div class="cred-pass-row">
-                            <code class="cred-code">{{
-                              isPasswordRevealed(app.applicationNumber)
-                                ? app.issuedTempPassword
-                                : '••••••••'
-                            }}</code>
-                            <button
-                              type="button"
-                              class="btn btn--outline btn-xs"
-                              (click)="toggleRevealPassword(app.applicationNumber)"
-                            >
-                              {{ isPasswordRevealed(app.applicationNumber) ? 'Hide' : 'Show' }}
-                            </button>
-                            <button
-                              type="button"
-                              class="btn btn--outline btn-xs"
-                              (click)="copyCredentialText(app.issuedTempPassword, app.businessName + ' password')"
-                            >
-                              Copy
-                            </button>
-                          </div>
-                        } @else {
-                          <span class="cell-sub">—</span>
+                      @let appEmail = app.issuedLoginEmail || app.email;
+                      <div class="cred-inline">
+                        <span class="cred-email-text">{{ appEmail }}</span>
+                        @if (appEmail) {
+                          <button
+                            type="button"
+                            class="icon-btn"
+                            title="Copy login email"
+                            aria-label="Copy login email"
+                            (click)="copyCredentialText(appEmail, app.businessName + ' login email')"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                          </button>
                         }
                       </div>
+                    </td>
+                    <td>
+                      @if (app.issuedTempPassword) {
+                        <div class="cred-inline">
+                          <code class="cred-code">{{
+                            isPasswordRevealed(app.applicationNumber)
+                              ? app.issuedTempPassword
+                              : '••••••••'
+                          }}</code>
+                          <button
+                            type="button"
+                            class="icon-btn"
+                            [title]="isPasswordRevealed(app.applicationNumber) ? 'Hide password' : 'View password'"
+                            [attr.aria-label]="isPasswordRevealed(app.applicationNumber) ? 'Hide password' : 'View password'"
+                            (click)="toggleRevealPassword(app.applicationNumber)"
+                          >
+                            @if (isPasswordRevealed(app.applicationNumber)) {
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                              </svg>
+                            } @else {
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                              </svg>
+                            }
+                          </button>
+                          <button
+                            type="button"
+                            class="icon-btn"
+                            title="Copy password"
+                            aria-label="Copy password"
+                            (click)="copyCredentialText(app.issuedTempPassword, app.businessName + ' password')"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      } @else {
+                        <span class="cell-sub">—</span>
+                      }
                     </td>
                     <td>
                       <span>{{ app.categoryLabel }}</span>
@@ -1236,7 +1273,8 @@
               <tr>
                 <th>Studio</th>
                 <th>Category &amp; City</th>
-                <th>Vendor Login &amp; Password</th>
+                <th>Login Email</th>
+                <th>Password</th>
                 <th>Rating</th>
                 <th>Actions</th>
               </tr>
@@ -1273,56 +1311,103 @@
                     <div class="cell-sub">{{ biz.location }}</div>
                   </td>
                   <td>
-                    <div class="cred-cell">
-                      <div class="cred-email-row">
-                        <span>{{ creds.email || 'No email set' }}</span>
-                        @if (creds.email) {
-                          <button
-                            type="button"
-                            class="btn btn--outline btn-xs"
-                            (click)="copyCredentialText(creds.email, biz.name + ' login email')"
-                          >
-                            Copy Email
-                          </button>
-                        }
-                      </div>
-                      <div class="cred-pass-row">
-                        @if (creds.tempPassword) {
-                          <code class="cred-code">{{
-                            isPasswordRevealed(biz.slug) ? creds.tempPassword : '••••••••'
-                          }}</code>
-                          <button
-                            type="button"
-                            class="btn btn--outline btn-xs"
-                            (click)="toggleRevealPassword(biz.slug)"
-                          >
-                            {{ isPasswordRevealed(biz.slug) ? 'Hide' : 'Show' }}
-                          </button>
-                          <button
-                            type="button"
-                            class="btn btn--outline btn-xs"
-                            (click)="copyCredentialText(creds.tempPassword, biz.name + ' password')"
-                          >
-                            Copy
-                          </button>
-                        } @else {
-                          <span class="badge badge--bronze">Password Not Set</span>
-                        }
+                    <div class="cred-inline">
+                      <span class="cred-email-text">{{ creds.email || 'No email set' }}</span>
+                      @if (creds.email) {
                         <button
                           type="button"
-                          class="btn btn--outline btn-xs"
-                          [disabled]="busyStudioSlug() === biz.slug"
-                          (click)="openSetPassword(biz)"
+                          class="icon-btn"
+                          title="Copy login email"
+                          aria-label="Copy login email"
+                          (click)="copyCredentialText(creds.email, biz.name + ' login email')"
                         >
-                          {{
-                            settingPasswordSlug() === biz.slug
-                              ? 'Close'
-                              : creds.tempPassword
-                                ? 'Reset'
-                                : 'Set Password'
-                          }}
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
                         </button>
-                      </div>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <div class="cred-inline">
+                      @if (creds.tempPassword) {
+                        <code class="cred-code">{{
+                          isPasswordRevealed(biz.slug) ? creds.tempPassword : '••••••••'
+                        }}</code>
+                        <button
+                          type="button"
+                          class="icon-btn"
+                          [title]="isPasswordRevealed(biz.slug) ? 'Hide password' : 'View password'"
+                          [attr.aria-label]="isPasswordRevealed(biz.slug) ? 'Hide password' : 'View password'"
+                          (click)="toggleRevealPassword(biz.slug)"
+                        >
+                          @if (isPasswordRevealed(biz.slug)) {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                              <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                              <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                          } @else {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          }
+                        </button>
+                        <button
+                          type="button"
+                          class="icon-btn"
+                          title="Copy password"
+                          aria-label="Copy password"
+                          (click)="copyCredentialText(creds.tempPassword, biz.name + ' password')"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                        </button>
+                      } @else {
+                        <span class="badge badge--bronze">Not Set</span>
+                      }
+                      <button
+                        type="button"
+                        class="icon-btn"
+                        [class.is-active]="settingPasswordSlug() === biz.slug"
+                        [title]="
+                          settingPasswordSlug() === biz.slug
+                            ? 'Close password editor'
+                            : creds.tempPassword
+                              ? 'Reset password'
+                              : 'Set password'
+                        "
+                        [attr.aria-label]="
+                          settingPasswordSlug() === biz.slug
+                            ? 'Close password editor'
+                            : creds.tempPassword
+                              ? 'Reset password'
+                              : 'Set password'
+                        "
+                        [disabled]="busyStudioSlug() === biz.slug"
+                        (click)="openSetPassword(biz)"
+                      >
+                        @if (settingPasswordSlug() === biz.slug) {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        } @else if (creds.tempPassword) {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                          </svg>
+                        } @else {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                          </svg>
+                        }
+                      </button>
                     </div>
                   </td>
                   <td>
@@ -1346,7 +1431,7 @@
                         [disabled]="busyStudioSlug() === biz.slug"
                         (click)="startEditVendor(biz)"
                       >
-                        {{ editingVendorSlug() === biz.slug ? 'Close' : 'Edit' }}
+                        Edit
                       </button>
                       <button
                         type="button"
@@ -1388,7 +1473,7 @@
 
                 @if (settingPasswordSlug() === biz.slug) {
                   <tr class="inline-editor-row">
-                    <td colspan="5" class="inline-editor-cell">
+                    <td colspan="6" class="inline-editor-cell">
                       <div class="inline-editor">
                         <div class="form-grid-3">
                           <input
@@ -1421,47 +1506,6 @@
                               class="btn btn--outline btn--sm"
                               [disabled]="busyStudioSlug() === biz.slug"
                               (click)="settingPasswordSlug.set(null)"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                }
-
-                @if (editingVendorSlug() === biz.slug) {
-                  <tr class="inline-editor-row">
-                    <td colspan="5" class="inline-editor-cell">
-                      <div class="inline-editor">
-                        <div class="form-grid-3">
-                          <input class="input" [(ngModel)]="editVendorForm.name" placeholder="Business Name" />
-                          <select class="select" [(ngModel)]="editVendorForm.categorySlug">
-                            @for (cat of categories(); track cat.slug) {
-                              <option [value]="cat.slug">{{ cat.name }}</option>
-                            }
-                          </select>
-                          <input class="input" [(ngModel)]="editVendorForm.city" placeholder="City" />
-                          <input class="input" [(ngModel)]="editVendorForm.location" placeholder="Area / Location" />
-                          <input class="input" [(ngModel)]="editVendorForm.address" placeholder="Street Address" />
-                          <input class="input" [(ngModel)]="editVendorForm.phone" placeholder="Phone" />
-                          <input class="input" [(ngModel)]="editVendorForm.email" placeholder="Email" />
-                          <input class="input" [(ngModel)]="editVendorForm.tagline" placeholder="Tagline" />
-                          <div class="table-actions">
-                            <button
-                              type="button"
-                              class="btn btn--primary btn--sm"
-                              [disabled]="busyStudioSlug() === biz.slug"
-                              (click)="saveVendorEdit(biz)"
-                            >
-                              {{ busyStudioSlug() === biz.slug ? 'Saving...' : 'Save Changes' }}
-                            </button>
-                            <button
-                              type="button"
-                              class="btn btn--outline btn--sm"
-                              [disabled]="busyStudioSlug() === biz.slug"
-                              (click)="editingVendorSlug.set(null)"
                             >
                               Cancel
                             </button>
@@ -2039,6 +2083,105 @@
             Approve
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+}
+
+@if (editingVendor(); as editBiz) {
+  <div class="app-modal-backdrop" (click)="editingVendorSlug.set(null)">
+    <div class="app-modal" (click)="$event.stopPropagation()">
+      <div class="app-modal-head">
+        <div>
+          <span class="badge badge--bronze">Vendor Profile</span>
+          <h2>Edit {{ editBiz.name }}</h2>
+          <p class="cell-sub">/business/{{ editBiz.slug }}</p>
+        </div>
+        <button
+          type="button"
+          class="app-modal-close"
+          aria-label="Close edit vendor modal"
+          (click)="editingVendorSlug.set(null)"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="app-modal-body">
+        <div class="form-grid-2">
+          <label class="field">
+            <span class="field-label">Business Name</span>
+            <input
+              class="input"
+              [(ngModel)]="editVendorForm.name"
+              placeholder="Business Name"
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">Category</span>
+            <select class="select" [(ngModel)]="editVendorForm.categorySlug">
+              @for (cat of categories(); track cat.slug) {
+                <option [value]="cat.slug">{{ cat.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">City</span>
+            <input class="input" [(ngModel)]="editVendorForm.city" placeholder="City" />
+          </label>
+          <label class="field">
+            <span class="field-label">Area / Location</span>
+            <input
+              class="input"
+              [(ngModel)]="editVendorForm.location"
+              placeholder="Area / Location"
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">Street Address</span>
+            <input
+              class="input"
+              [(ngModel)]="editVendorForm.address"
+              placeholder="Street Address"
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">Phone</span>
+            <input class="input" [(ngModel)]="editVendorForm.phone" placeholder="Phone" />
+          </label>
+          <label class="field">
+            <span class="field-label">Contact / Login Email</span>
+            <input
+              class="input"
+              type="email"
+              [(ngModel)]="editVendorForm.email"
+              placeholder="Email"
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">Tagline</span>
+            <input class="input" [(ngModel)]="editVendorForm.tagline" placeholder="Tagline" />
+          </label>
+        </div>
+      </div>
+
+      <div class="app-modal-foot">
+        <button
+          type="button"
+          class="btn btn--outline"
+          [disabled]="busyStudioSlug() === editBiz.slug"
+          (click)="editingVendorSlug.set(null)"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn--primary"
+          [disabled]="busyStudioSlug() === editBiz.slug"
+          (click)="saveVendorEdit(editBiz)"
+        >
+          {{ busyStudioSlug() === editBiz.slug ? 'Saving...' : 'Save Changes' }}
+        </button>
       </div>
     </div>
   </div>
