@@ -1,26 +1,130 @@
+import { AngularAppEngine, createRequestHandler } from '@angular/ssr';
 import {
-  AngularNodeAppEngine,
-  createNodeRequestHandler,
-  isMainModule,
-  writeResponseToNodeResponse,
-} from '@angular/ssr/node';
+  getAllowedHosts,
+  getContext,
+  getTrustProxyHeaders,
+} from '@netlify/angular-runtime/app-engine.js';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import express from 'express';
-import { join } from 'node:path';
 
-dotenv.config();
+function getEnv(key: string): string {
+  const netlifyEnv = (
+    globalThis as { Netlify?: { env?: { get?: (k: string) => string | undefined } } }
+  ).Netlify?.env;
+  const procEnv = typeof process !== 'undefined' ? process.env : undefined;
+  return (netlifyEnv?.get?.(key) ?? procEnv?.[key] ?? '').trim();
+}
 
-const browserDistFolder = join(import.meta.dirname, '../browser');
+interface ApiRequest {
+  body: unknown;
+  params: Record<string, string>;
+  headers: {
+    authorization?: string;
+    [key: string]: string | undefined;
+  };
+}
 
-const app = express();
-app.use(express.json());
-const angularApp = new AngularNodeAppEngine();
+interface ApiResponse {
+  status(code: number): ApiResponse;
+  json(data: unknown): void;
+}
 
-const supabaseUrl = (process.env['SUPABASE_URL'] || '').trim();
-const supabaseAnonKey = (process.env['SUPABASE_ANON_KEY'] || '').trim();
-const supabaseServiceKey = (process.env['SUPABASE_SERVICE_ROLE_KEY'] || '').trim();
-const paystackSecretKey = (process.env['PAYSTACK_SECRET_KEY'] || '').trim();
+type RouteHandler = (req: ApiRequest, res: ApiResponse) => unknown | Promise<unknown>;
+
+interface RouteEntry {
+  method: string;
+  regex: RegExp;
+  paramNames: string[];
+  handler: RouteHandler;
+}
+
+class ApiRouter {
+  private readonly routes: RouteEntry[] = [];
+
+  get(path: string, handler: RouteHandler): void {
+    this.register('GET', path, handler);
+  }
+
+  post(path: string, handler: RouteHandler): void {
+    this.register('POST', path, handler);
+  }
+
+  patch(path: string, handler: RouteHandler): void {
+    this.register('PATCH', path, handler);
+  }
+
+  delete(path: string, handler: RouteHandler): void {
+    this.register('DELETE', path, handler);
+  }
+
+  private register(method: string, path: string, handler: RouteHandler): void {
+    const paramNames: string[] = [];
+    const regexSource = path.replace(/:([A-Za-z0-9_]+)/g, (_m, name: string) => {
+      paramNames.push(name);
+      return '([^/]+)';
+    });
+    this.routes.push({
+      method,
+      regex: new RegExp(`^${regexSource}$`),
+      paramNames,
+      handler,
+    });
+  }
+
+  async handle(request: Request): Promise<Response | null> {
+    const method = request.method.toUpperCase();
+    const pathname = new URL(request.url).pathname;
+
+    for (const route of this.routes) {
+      if (route.method !== method) continue;
+      const match = route.regex.exec(pathname);
+      if (!match) continue;
+
+      const params: Record<string, string> = {};
+      route.paramNames.forEach((name, idx) => {
+        params[name] = decodeURIComponent(match[idx + 1] ?? '');
+      });
+
+      let body: unknown = {};
+      if (method !== 'GET' && method !== 'HEAD') {
+        try {
+          const text = await request.text();
+          body = text ? JSON.parse(text) : {};
+        } catch {
+          body = {};
+        }
+      }
+
+      const headers: ApiRequest['headers'] = {};
+      request.headers.forEach((value, key) => {
+        headers[key.toLowerCase()] = value;
+      });
+
+      let statusCode = 200;
+      let response: Response | null = null;
+      const res: ApiResponse = {
+        status(code: number) {
+          statusCode = code;
+          return res;
+        },
+        json(data: unknown) {
+          response = Response.json(data, { status: statusCode });
+        },
+      };
+
+      await route.handler({ body, params, headers }, res);
+      return response ?? new Response(null, { status: statusCode });
+    }
+
+    return null;
+  }
+}
+
+const app = new ApiRouter();
+
+const supabaseUrl = getEnv('SUPABASE_URL');
+const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
+const supabaseServiceKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
+const paystackSecretKey = getEnv('PAYSTACK_SECRET_KEY');
 
 function getAdminClient(): SupabaseClient | null {
   if (!supabaseUrl || !supabaseServiceKey) return null;
@@ -146,7 +250,7 @@ app.get('/api/public/track/:reference', async (req, res) => {
 });
 
 function getSuperAdminEmails(): string[] {
-  return (process.env['SUPER_ADMIN_EMAILS'] || 'admin@beautiva.ng')
+  return (getEnv('SUPER_ADMIN_EMAILS') || 'admin@beautiva.ng')
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
@@ -188,8 +292,8 @@ async function writeServerActivityLog(
 }
 
 async function verifySuperAdmin(
-  req: express.Request,
-  res: express.Response,
+  req: ApiRequest,
+  res: ApiResponse,
 ): Promise<{ admin: SupabaseClient; userId: string; email?: string } | null> {
   const admin = getAdminClient();
   if (!admin) {
@@ -949,45 +1053,27 @@ app.get('/api/admin/activity-logs', async (req, res) => {
   res.status(200).json({ logs: data || [] });
 });
 
-/**
- * Serve static files from /browser
- */
-app.use(
-  express.static(browserDistFolder, {
-    maxAge: '1y',
-    index: false,
-    redirect: false,
-  }),
-);
-
-/**
- * Handle all other requests by rendering the Angular application.
- */
-app.use((req, res, next) => {
-  angularApp
-    .handle(req)
-    .then((response) =>
-      response ? writeResponseToNodeResponse(response, res) : next(),
-    )
-    .catch(next);
+const angularAppEngine = new AngularAppEngine({
+  allowedHosts: getAllowedHosts(),
+  trustProxyHeaders: getTrustProxyHeaders(),
 });
 
-/**
- * Start the server if this module is the main entry point, or it is ran via PM2.
- * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
- */
-if (isMainModule(import.meta.url) || process.env['pm_id']) {
-  const port = process.env['PORT'] || 4000;
-  app.listen(port, (error) => {
-    if (error) {
-      throw error;
+export async function netlifyAppEngineHandler(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/api/')) {
+    const apiResponse = await app.handle(request);
+    if (apiResponse) {
+      return apiResponse;
     }
+    return Response.json({ error: 'API route not found' }, { status: 404 });
+  }
 
-    console.log(`Node Express server listening on http://localhost:${port}`);
-  });
+  const context = getContext();
+  const result = await angularAppEngine.handle(request, context);
+  return result || new Response('Not found', { status: 404 });
 }
 
 /**
- * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
+ * The request handler used by the Angular CLI (dev-server and during build).
  */
-export const reqHandler = createNodeRequestHandler(app);
+export const reqHandler = createRequestHandler(netlifyAppEngineHandler);
