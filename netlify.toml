@@ -2,3 +2,5 @@
   command = "npm run build"
   publish = "dist/Beautiva/browser"
 
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPER_ADMIN_EMAILS,SUPABASE_URL,SUPABASE_ANON_KEY,PAYSTACK_PUBLIC_KEY"
